@@ -87,10 +87,10 @@ Claude (with `qlik-expressions` auto-loaded): Returns `Sum({<[Fiscal Year]={$(=M
 
 ## What's NOT In This Version
 
-Two planned skills were dropped before initial release after auditing turned up significant inaccuracies that need rewrites, not patches:
+Two planned skills are still in development and will land in a future release:
 
-- **`qlik-security` (Section Access patterns).** The original draft contradicted Qlik Cloud documentation in several load-bearing places: missing `ACCESS` column in the data model, inverted `OMIT` semantics, missing `Section Access;` / `Section Application;` script-section structure, wrong identity field (`USER` vs `USERID`/`USER.EMAIL`), and a wide-open interpretation of the `*` wildcard. A rewrite is planned for a future release. Until then, refer to [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm).
-- **`qlik-deploy` (deployment patterns).** The original draft was missing critical content: data connection name binding (`lib://connection_name/...`), managed-space publish gotchas, moving apps between spaces deactivates reload tasks, Qlik Platform Operations and `qlik-cli` for CI/CD, Qlik Automate for Cloud orchestration. A rewrite is planned. Until then, refer to [qlik.dev/manage/platform-operations](https://qlik.dev/manage/platform-operations).
+- **`qlik-security`** — Section Access patterns for row-level and column-level data security. Until it ships, refer to the [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm).
+- **`qlik-deploy`** — App deployment patterns: data connections, reload tasks, space management, and environment promotion. Until it ships, refer to [Managing apps in Qlik Cloud](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/managing-apps.htm).
 
 ## Why No Orchestrator?
 
@@ -102,10 +102,9 @@ If a use case emerges where orchestration would clearly help, a slash command ca
 
 ## Roadmap
 
-- [ ] Rewrite `qlik-security` against current Qlik Cloud Section Access documentation.
-- [ ] Rewrite `qlik-deploy` Cloud-first, with Qlik Platform Operations and `qlik-cli` for CI/CD.
+- [ ] Ship `qlik-security` (Section Access patterns).
+- [ ] Ship `qlik-deploy` (app deployment patterns).
 - [ ] Optional slash commands for the highest-traffic workflows (driven by user feedback).
-- [ ] Marketplace metadata and screenshots once the plugin has been adopted by users outside Pupfish.
 
 ## Feedback
 
