@@ -1,12 +1,12 @@
 # pupfish-qlik
 
-> **Qlik Sense development toolkit for Claude Code.** 12 practitioner-authored skills, 7 specialist agents, and a syntax-validation hook — installed in seconds, usable from your next prompt.
+> **Make Claude Code fluent in Qlik Sense.** Install once and Claude becomes a Qlik developer you can delegate to — with deep platform knowledge, specialist agents for different tasks, and an automatic syntax check on every script.
 
 ## What This Gives You
 
-- **Claude knows Qlik.** Script syntax (what works in `LOAD` context vs `SQL` pass-through, how dollar-sign expansion handles commas, why `Count(*)` doesn't exist). Set analysis patterns. Optimized QVD reads. Incremental load strategies including dual-timestamp SCD2. Master calendar with `Dual()`-sorted month fields. The silent-failure traps that bite the most: `NullAsValue` scope leak, auto-concatenation when temp tables match field sets, `ApplyMap` aliased to the same field name, `QUALIFY` double-prefixing entity-prefixed fields.
-- **Specialist agents you can summon by intent.** Ask "design a star schema" → the `data-architect` agent activates. Ask "review my load script" → `qa-reviewer` produces structured findings with severity and remediation guidance. Each agent is invoked on demand, not as part of a forced pipeline.
-- **A post-write hook that catches Qlik script syntax errors before your reload does.** When Claude writes or edits a `.qvs` file, the hook scans for SQL constructs in `LOAD` context, unbalanced `IF`/`SUB`/`FOR` blocks, and malformed `PurgeChar()` calls. You see the warnings before you reload.
+- **Claude actually understands Qlik.** Without this plugin, Claude drifts into SQL syntax when writing Qlik load scripts, mishandles set analysis, and confuses chart-context behavior with script-context behavior. With it, Claude stops making those mistakes.
+- **Specialist agents on demand.** Different jobs need different focus: data architecture, scripting, expressions, visualization, QA review. The right agent shows up automatically based on what you describe — no forced pipeline, no slash commands to memorize.
+- **A syntax safety net.** When Claude writes or edits a `.qvs` file, common mistakes are flagged immediately so you catch them before reload, not after.
 
 ## Quick Start
 
