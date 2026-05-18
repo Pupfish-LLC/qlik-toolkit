@@ -1,4 +1,4 @@
-# pupfish-qlik
+# qlik-toolkit
 
 > **Make Claude Code fluent in Qlik Sense.** Install once and Claude becomes a Qlik developer you can delegate to. It brings deep platform knowledge, specialist agents for different tasks, and an automatic syntax check on every script.
 
@@ -16,7 +16,7 @@
 2. Choose **Create plugin → Add marketplace**.
 3. In the URL field, enter `Pupfish-LLC/claude-plugins`, then click **Sync**.
 4. Once the marketplace is synced, click the **+** button again and choose **Browse plugins**.
-5. Find **Pupfish qlik** and install it. The toggle next to the plugin name enables it.
+5. Find **Qlik toolkit** and install it. The toggle next to the plugin name enables it.
 
 ### Install from the command line
 
@@ -29,7 +29,7 @@
 2. **Install the plugin:**
 
    ```
-   /plugin install pupfish-qlik@pupfish
+   /plugin install qlik-toolkit@pupfish
    ```
 
 ### Then use it
@@ -121,7 +121,7 @@ If a use case emerges where orchestration would clearly help, a slash command ca
 
 ## Feedback
 
-Issues, suggestions, and contributions: please open an issue at [github.com/Pupfish-LLC/pupfish-qlik/issues](https://github.com/Pupfish-LLC/pupfish-qlik/issues).
+Issues, suggestions, and contributions: please open an issue at [github.com/Pupfish-LLC/qlik-toolkit/issues](https://github.com/Pupfish-LLC/qlik-toolkit/issues).
 
 ## License
 
@@ -129,4 +129,4 @@ See [LICENSE](LICENSE).
 
 ## About
 
-Built by [Pupfish, LLC](https://pupfish.io). The patterns in this plugin are drawn from years of Qlik consulting engagements, distilled into reusable Claude Code skills that any Qlik developer can install and benefit from. All examples in this release use a generic sales / retail domain.
+Built by [Pupfish Analytics](https://pupfish.io). Part of the [Pupfish Claude Marketplace](https://github.com/Pupfish-LLC/claude-plugins). The patterns in this plugin are drawn from years of Qlik consulting engagements, distilled into reusable Claude Code skills that any Qlik developer can install and benefit from. All examples in this release use a generic sales / retail domain.

@@ -1,6 +1,21 @@
 # Changelog
 
-All notable changes to the `pupfish-qlik` plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] — 2026-05-18
+
+### Changed
+
+- **Plugin renamed from `pupfish-qlik` to `qlik-toolkit`.** The repository now lives at https://github.com/Pupfish-LLC/qlik-toolkit (GitHub auto-redirects the old URL).
+- **Author display rebranded from "Pupfish, LLC" to "Pupfish Analytics"** in user-facing surfaces (plugin manifest, README, marketplace listings). The legal entity (LICENSE / NOTICE) is unchanged.
+
+No functional changes to skills, agents, or the validation hook. Plugin content is byte-identical to 0.1.2.
+
+### Migration
+
+If you have `pupfish-qlik` installed:
+1. Uninstall it: `/plugin uninstall pupfish-qlik` (or remove via the GUI).
+2. Refresh the marketplace, then install the renamed plugin: `/plugin install qlik-toolkit@pupfish`.
 
 ## [0.1.2] — 2026-05-18
 
