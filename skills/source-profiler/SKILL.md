@@ -104,18 +104,27 @@ WHERE TABLE_SCHEMA = 'dbo'  -- Adjust schema name as needed
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
 ```
 
-**Column-Level Profiling (run once per table):**
+**Column-Level Profiling (run once per table; SQL Server / Azure SQL):**
 ```sql
+-- Statistics: one row per column
 SELECT
     '[ColumnName]' AS column_name,
     COUNT(*) AS row_count,
     COUNT(DISTINCT [ColumnName]) AS cardinality,
     CAST(100.0 * SUM(CASE WHEN [ColumnName] IS NULL THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL(5,2)) AS null_percent,
     CAST(MIN([ColumnName]) AS VARCHAR(50)) AS min_value,
-    CAST(MAX([ColumnName]) AS VARCHAR(50)) AS max_value,
-    STRING_AGG(DISTINCT CAST([ColumnName] AS VARCHAR(50)), ', ') WITHIN GROUP (ORDER BY CAST([ColumnName] AS VARCHAR(50))) AS sample_values
-FROM [TableName]
-WHERE [ColumnName] IS NOT NULL;
+    CAST(MAX([ColumnName]) AS VARCHAR(50)) AS max_value
+FROM [TableName];
+
+-- Sample values: STRING_AGG does NOT accept DISTINCT inside the function,
+-- so de-duplicate in a subquery first.
+SELECT STRING_AGG(CAST(sv AS VARCHAR(50)), ', ') WITHIN GROUP (ORDER BY sv) AS sample_values
+FROM (
+    SELECT DISTINCT TOP 5 [ColumnName] AS sv
+    FROM [TableName]
+    WHERE [ColumnName] IS NOT NULL
+    ORDER BY [ColumnName]
+) d;
 ```
 
 ### PostgreSQL
@@ -132,19 +141,29 @@ WHERE table_schema = 'public'  -- Adjust schema name as needed
 ORDER BY table_name, ordinal_position;
 ```
 
-**Column-Level Profiling:**
+**Column-Level Profiling (PostgreSQL):**
 ```sql
+-- Statistics: one row per column
 SELECT
     'ColumnName' AS column_name,
     COUNT(*) AS row_count,
     COUNT(DISTINCT "ColumnName") AS cardinality,
     ROUND(100.0 * SUM(CASE WHEN "ColumnName" IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS null_percent,
     MIN("ColumnName"::TEXT) AS min_value,
-    MAX("ColumnName"::TEXT) AS max_value,
-    STRING_AGG(DISTINCT "ColumnName"::TEXT, ', ' ORDER BY "ColumnName"::TEXT) AS sample_values
-FROM "TableName"
-WHERE "ColumnName" IS NOT NULL
-LIMIT 5;
+    MAX("ColumnName"::TEXT) AS max_value
+FROM "TableName";
+
+-- Sample values: limit the row count INSIDE a subquery so STRING_AGG
+-- aggregates at most 5 distinct values. LIMIT at the outer level of an
+-- aggregate-only query is a no-op (single-row result).
+SELECT STRING_AGG(sv::TEXT, ', ' ORDER BY sv::TEXT) AS sample_values
+FROM (
+    SELECT DISTINCT "ColumnName" AS sv
+    FROM "TableName"
+    WHERE "ColumnName" IS NOT NULL
+    ORDER BY "ColumnName"
+    LIMIT 5
+) d;
 ```
 
 ### MySQL
@@ -161,19 +180,30 @@ WHERE TABLE_SCHEMA = 'database_name'  -- Adjust database name as needed
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
 ```
 
-**Column-Level Profiling:**
+**Column-Level Profiling (MySQL 8.0+):**
 ```sql
+-- Statistics: one row per column
 SELECT
     'ColumnName' AS column_name,
     COUNT(*) AS row_count,
     COUNT(DISTINCT ColumnName) AS cardinality,
     ROUND(100.0 * SUM(CASE WHEN ColumnName IS NULL THEN 1 ELSE 0 END) / COUNT(*), 2) AS null_percent,
     MIN(CAST(ColumnName AS CHAR)) AS min_value,
-    MAX(CAST(ColumnName AS CHAR)) AS max_value,
-    GROUP_CONCAT(DISTINCT CAST(ColumnName AS CHAR) SEPARATOR ', ') AS sample_values
-FROM TableName
-WHERE ColumnName IS NOT NULL
-LIMIT 5;
+    MAX(CAST(ColumnName AS CHAR)) AS max_value
+FROM TableName;
+
+-- Sample values: GROUP_CONCAT does NOT accept LIMIT inside the function
+-- in MySQL 8.0; limit the input row count via a subquery instead.
+-- The result is also truncated by the session variable group_concat_max_len
+-- (default 1024). Raise it if needed: SET SESSION group_concat_max_len = 4096;
+SELECT GROUP_CONCAT(CAST(sv AS CHAR) ORDER BY sv SEPARATOR ', ') AS sample_values
+FROM (
+    SELECT DISTINCT ColumnName AS sv
+    FROM TableName
+    WHERE ColumnName IS NOT NULL
+    ORDER BY ColumnName
+    LIMIT 5
+) d;
 ```
 
 ### Generic ANSI SQL Fallback

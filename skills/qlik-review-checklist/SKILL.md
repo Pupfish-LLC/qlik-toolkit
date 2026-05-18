@@ -34,7 +34,7 @@ The checklist can also be used standalone for ad-hoc QA reviews.
 
 ## Validation Categories (9 total)
 
-1. **Script Syntax** (9 items) — Dollar-sign expansion safety, SQL construct prohibition, function arguments, block balance, NullAsValue scope, RENAME collisions.
+1. **Script Syntax** (6 items) — Dollar-sign expansion safety, SQL construct prohibition, function arguments, block balance, NullAsValue scope, RENAME collisions.
 2. **Performance** (3 items) — Redundant disk reads, repeated expressions, temp table cleanup.
 3. **Data Model Integrity** (8 items) — Synthetic keys, associations, auto-concatenation, QUALIFY interaction, null handling, grain alignment, circular references, key consistency.
 4. **Naming Convention Compliance** (5 items) — Entity-prefix dot notation, key field conventions, variable naming, table naming, cross-layer consistency.

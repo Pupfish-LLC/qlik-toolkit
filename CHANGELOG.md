@@ -2,6 +2,75 @@
 
 All notable changes to the `pupfish-qlik` plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-05-18
+
+### Fixed
+
+Comprehensive accuracy pass against current help.qlik.com documentation, addressing ~30 inaccurate claims that the original audit identified but 0.1.0 / 0.1.1 shipped with. Anyone running 0.1.0 or 0.1.1 should upgrade.
+
+Every claim corrected in this release was re-verified against the canonical Qlik help page (or vendor docs for SQL items), and the citation is recorded in the per-skill audit reports under `staging/<skill>/audit-report.md`. Highlights:
+
+- **qlik-performance**
+  - Corrected QVD optimized-read rules. Per Qlik help, only three operations disable optimization: transformations on loaded fields, WHERE clauses that force record unpacking, and `Map()` applied to a loaded field. Field renaming via `AS` and field reordering are explicitly allowed and do NOT break optimized read. (Source: help.qlik.com `work-with-QVD-files.htm`.)
+  - Removed the fictional set-analysis `with` operator. Set modifiers are comma-separated inside `<…>`; the legitimate set operators (`+`, `-`, `*`, `/`) combine whole set expressions.
+  - Corrected `Hash128()` description: returns a 22-character string per docs, not a numeric. For memory-saving integer keys, use `AutoNumber()` or `AutoNumberHash128()`.
+  - Renamed "Performance Profiler" to its actual Qlik Cloud name **App Performance Evaluation** (sheet/object-level scope, not expression-level).
+  - Removed fictional `EXISTS(field, $1)` syntax. Documented signature is `Exists(field_name [, expr])`.
+  - Softened the `Count(DISTINCT)` "expensive" claim. The Qlik help page makes no performance claim either direction; the prior "expensive" assertion was sourced only to a non-fetchable community blog post.
+  - Reframed the field memory-cost section around the documented symbol-table / bit-stuffed-pointer model; removed unsourced specific byte counts.
+- **qlik-expressions**
+  - Corrected `$1` description: it is **previous selection history** (back-button stack), not an alternate-state reference. Alternate states are referenced by bare name without `$` prefix. Added `$_N` forward history.
+  - Fixed `Alt()` claim: per docs, `Alt()` returns the first parameter with a valid **numeric** representation. Examples like `Alt([Customer.Name], 'Unknown')` always fall through to the default. The proper text/general null-coalescer is `Coalesce()` — now documented with examples.
+  - Reversed the flag-multiplication-vs-set-analysis performance claim for large datasets, per Henric Cronström's Qlik Design Blog testing: set analysis is faster on large fact tables.
+  - Added documentation for set-analysis quoting rules (single quotes = literal/case-sensitive match; double quotes = case-insensitive search) and implicit set operators (`+=`, `-=`, `*=`, `/=`).
+  - Replaced a non-illustrative anti-pattern fix example with a clearer "operator without left-side set identifier" case.
+  - Fixed search-string examples to use the required `<FieldName={"=..."}>` field-scoping form.
+- **qlik-cloud-mcp**
+  - Added 8 missing tools to the registry: bookmark tools (`list_bookmarks`, `create_bookmark`, `select_bookmark`, `delete_bookmark`) and master-item mutation tools (`update_dimension`, `update_measure`, `delete_dimension`, `delete_measure`).
+  - Fixed the `search_field_values` Section 5.4 workflow example: `fieldName` is required per the documented signature. The "cross-field search" via omitting `fieldName` is not documented and was removed.
+  - Rewrote the master-items restriction to match official MCP docs: "You can only update and delete master items created using Qlik MCP tools." Same applies to bookmarks. Separated this MCP-only mutation rule from the (independent) published-app platform rule.
+  - Cleaned up a stale `spaceId` claim on `qlik_search` in behavioral-notes (the tool searches apps/datasets/data products/glossaries, not spaces).
+- **qlik-visualization**
+  - Replaced fabricated tiered breakpoints (1200px / 768px / "Desktop/Tablet/Mobile") with the single documented threshold (480-pixel small-screen mode) and the 300-4000px custom sheet-size range.
+  - Corrected menu paths to **Sheet properties → Sheet size (Responsive / Custom)**. Removed references to the non-existent "Responsive Preview Mode" feature.
+  - Standardized terminology to **Alternate states** (Qlik's actual term), with correct location: Master items → Alternate states, applied per visualization via Appearance → Alternate states.
+  - Corrected the KPI trending claim: the standard KPI supports conditional symbols (check/caution/X) via range limits, not "up/down arrows." Trend arrows lived in the Multi-KPI bundle, which is deprecated (no new instances since April 5, 2025; full removal May 2027). Recommendation now: place a separate spark/trend chart next to the KPI.
+  - Corrected the filter-pane "hamburger menu" claim. Documented behavior: pane shrinks dimensions, then uses a dropdown chevron for overflow.
+  - Annotated several practitioner heuristics (WCAG 4.5:1 contrast, viridis/cividis palette names, 8% colorblindness statistic, cardinality thresholds, 15-column table limit, font-pt sizes) so they aren't presented as Qlik-specific.
+- **source-profiler**
+  - Fixed SQL Server `STRING_AGG DISTINCT` syntax error (SQL Server doesn't allow `DISTINCT` inside `STRING_AGG`). Split into stats query plus a `DISTINCT TOP N` subquery feeding `STRING_AGG`.
+  - Fixed PostgreSQL `LIMIT 5` on a single-row aggregate (no-op). Moved `LIMIT` into a `DISTINCT` subquery that feeds `STRING_AGG`.
+  - Fixed MySQL `LIMIT 5` on a single-row aggregate (same issue). Used a subquery; added a note about the `group_concat_max_len` system variable for result truncation.
+  - Corrected SCD Type 2 definition in `profile-template.md` (history preserved by inserting a new row; the prior "attributes overwritten" wording was SCD Type 1).
+- **data-quality-validator/validation-queries.md**
+  - Fixed Qlik LIKE pattern that used regex-style character classes `[a-zA-Z]` (not supported — Qlik LIKE only uses `*` and `?`). Replaced with `NOT IsNum(...) AND Len(Trim(...)) > 0`.
+  - Fixed `Concat()` misuse for per-row hashing — `Concat()` is a string-aggregation function over rows; use the `&` operator for per-row.
+  - Fixed `UNION ALL` after a terminating semicolon (the `;` ended the statement, leaving `UNION ALL` as a syntax error).
+  - Labeled the `SELECT TOP` example as SQL Server-only and added a PostgreSQL / MySQL `LIMIT` variant.
+  - Moved a `WHERE` clause that referenced `COUNT()` into `HAVING` (aggregates can't appear in `WHERE`).
+- **qlik-review-checklist**
+  - Reconciled item counts: `Script Syntax` now correctly stated as 6 items (was claimed as 9); `Expression Correctness` header now correctly stated as 7 items (was claimed as 6).
+  - Reordered item 5.7 (Structurally Invalid Aggregation) to its proper numerical position after 5.6.
+  - Reconciled the §8 (Blocked Dependency Audit) applicability header to match the per-item declarations: Script (light) / Expression (light) / Comprehensive.
+- **qlik-naming-conventions**
+  - Corrected the Mapping RENAME warning: `Rename Fields` is atomic across the data model. The real reason to avoid renaming keys at this layer is semantic — key standardization belongs at the Transform layer.
+  - Corrected the `$(v.MyVar)` description: dots in variable names parse via standard dollar-sign expansion (the dot is just a character), not "property access." The discouragement is stylistic, not a parser issue.
+  - Added missing reserved characters to the character-restriction table: `:`, `(`, `)`, `` ` `` (backtick), `´` (acute accent) — all per the Qlik visualizations/fields naming guidelines page.
+  - Expanded the system fields list from 2 (`$Table`, `$Field`) to the documented 5 (`$Table`, `$Field`, `$Fields`, `$FieldNo`, `$Rows`).
+
+### Items shipped with softened (rather than fully verified) language
+
+Two items in `qlik-performance` could not be reverified against fetchable primary sources in this pass and were softened rather than asserted in the opposite direction:
+
+1. **`Count(DISTINCT)` performance.** The Qlik help page on `Count()` makes no performance claim. Henric Cronström's Qlik Design Blog post that prior audits cited could not be retrieved verbatim. The skill now states neutrally that the docs do not characterize it as slow, and points readers to actual profiling (App Performance Evaluation).
+2. **Field-type byte sizes.** Qlik's official documentation does not publish specific byte sizes per field type. The skill no longer makes unsourced byte claims; it instead reframes the discussion around the documented symbol-table / bit-stuffed-pointer model.
+
+If you can locate fetchable Tier-1 sources for either claim, please open an issue.
+
+### Process note
+
+The original audit pipeline reasoned circularly in places ("the skill uses it, so it must work") and missed SQL-influenced misconceptions in Qlik LOAD context. This release was produced by re-verifying every flagged finding directly against current `help.qlik.com` function-signature pages, with cross-vendor docs (Microsoft Learn, postgresql.org, dev.mysql.com) for the SQL items.
+
 ## [0.1.1] — 2026-05-18
 
 ### Fixed

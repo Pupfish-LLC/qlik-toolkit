@@ -47,7 +47,7 @@ Use this template to manually profile data sources when MCP connections are not 
 |---|---|
 | Role | Dimension (slowly-changing dimension) |
 | Key Structure | Surrogate key (customer_id is auto-increment integer) with business key (email is unique account identifier) |
-| Mutability | SCD Type 2 (attributes overwritten, effective_from / effective_to versioning) |
+| Mutability | SCD Type 2 (history preserved by adding a new row on each change; prior row closed via effective_to, new row inserted with effective_from) |
 | Incremental Load Pattern | Full refresh (no incremental approach; entire dimension reloaded nightly) |
 | Consumption Implication | Load surrogate key as association to fact tables. Join on customer_id. Filter for is_current=1 when modeling current customer state. Handle historical versions with dual timestamp or version flag. |
 

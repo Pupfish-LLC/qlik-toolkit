@@ -11,10 +11,12 @@
 Every component is optional. The default set is the current selection (`$`), so `Sum(Amount)` is equivalent to `Sum({$} Amount)`.
 
 ### Set Identifier
-- `$` — Current selection (default if omitted)
-- `1` — All data, ignoring all selections
-- `$1` — Alternate state (field-level bookmarks)
-- `BookmarkName` — Selections from a saved bookmark
+- `$` — Current selection in the default state (default if omitted)
+- `1` — All records in the app, ignoring all selections
+- `$1` — Previous selection in the default state (back-button history). `$2` is two back, and so on.
+- `$_1` — Next (forward) selection in the default state. `$_2` is two forward.
+- `BookmarkName` (or bookmark ID) — Selections from a saved bookmark
+- `StateName` — Selections in a named alternate state (referenced by state name, no `$` prefix). Use `StateName::BookmarkName` for a bookmark scoped to a state.
 - Omitted — Defaults to `$` (current selection)
 
 ### Set Operator
@@ -40,11 +42,45 @@ Each modifier overrides the selection for that field. Multiple field modifiers a
 What values to include in the field modifier.
 
 - **Explicit list:** `{'East', 'West'}` or `{1, 2, 3}`. String values require quotes.
-- **Search string:** `{"=Sum(Amount)>1000"}` — Expression is evaluated for each field value. Only values where the expression is true are included.
+- **Search string:** `<Customer={"=Sum(Amount)>1000"}>` — Inside a field modifier. Expression is evaluated for each value of Customer; values where the expression is true are included. Searches must be enclosed in double quotes, square brackets, or grave accents.
 - **Variable expansion:** `{$(vMyVariable)}` — Variable is expanded into the element set.
 - **Functions:** `{P(Region)}` (possible values in current selection), `{E(Region)}` (excluded values from current selection)
 - **Comparison operators:** `Year={">2020"}` or `Month={">=1<=6"}` — String comparison for date ranges or numbers.
 - **Empty set:** `<Field={}>` — Clears the selection on that field, making it contribute nothing to the aggregation.
+
+### Quoting Rules (Critical)
+
+Single and double quotes have different semantics inside element sets:
+
+- **Single quotes** — literal, case-sensitive value match. `<Country={'New Zealand'}>` matches `'New Zealand'` only.
+- **Double quotes** — case-insensitive search. `<Country={"New Zealand"}>` matches `'New Zealand'`, `'NEW ZEALAND'`, and `'new zealand'`.
+- **Square brackets and grave accents** are equivalent to double quotes (case-insensitive search).
+- **Search strings** (expressions starting with `=`, or text containing wildcards `*` / `?`) must use double quotes, brackets, or grave accents.
+
+Picking the wrong quote silently changes the result set. Use single quotes when you want an exact literal match. Use double quotes only when you want case-insensitive matching or you're building a true search.
+
+### Implicit Set Operators (Field-Level Assignments)
+
+Operators placed inside a field modifier (after the field name) modify the existing selection on that field instead of replacing it. These are convenient when you want to add to or trim a selection without rewriting it.
+
+- `Field+={values}` — Union: add values to the current selection on Field.
+- `Field-={values}` — Exclusion: remove values from the current selection on Field.
+- `Field*={values}` — Intersection: restrict the current selection on Field to also satisfy this requirement.
+- `Field/={values}` — Symmetric difference: keep values that are in one set but not both.
+
+Examples:
+```
+Sum({<Country+={'France'}>} [Sales])
+// Current selection PLUS France on Country
+
+Sum({<Country-={'Canada'}>} [Sales])
+// Current selection MINUS Canada on Country
+
+Sum({<Country*={'France', 'Germany'}>} [Sales])
+// Current selection intersected with {France, Germany} on Country
+```
+
+Implicit operators apply only to the named field. Other fields keep their current selections.
 
 ---
 
@@ -127,17 +163,23 @@ Sum({<Status={'Active', 'Pending'}>} [Amount])
 Numbers can be quoted or unquoted: `{1, 2}` or `{'1', '2'}` both work.
 
 ### Search Strings (Computed Membership)
-Expression evaluated for each field value. Only values where expression is true are included.
+Expression evaluated for each value of the scoped field. Only values where the expression is true are included. A search string is always wrapped in a field modifier `<FieldName={"=..."}>`.
 
 ```
-Sum({"=Sum(Amount)>1000"} [Amount])
+Sum({<Product={"=Sum(Amount)>1000"}>} [Amount])
 ```
-- For each Product value, evaluate `Sum(Amount) > 1000`
-- Include only products where the sum exceeds 1000
+- For each Product, evaluate `Sum(Amount) > 1000`
+- Include only Products where the sum exceeds 1000
+- The outer `Sum([Amount])` then aggregates over those Products
 
-**Data quality example:** Products with no null quantities.
+**Data quality example:** Sum of revenue from products with no null quantities.
 ```
-Count({"=NullCount([OrderLine.Qty])=0"} [Product.Key])
+Sum({<[Product.Key]={"=NullCount([OrderLine.Qty])=0"}>} [OrderLine.Amount])
+```
+
+**Independent-context search:** Use a nested `{1}` set inside the search to ignore current selections when evaluating the predicate.
+```
+Sum({<[Product.Key]={"=Sum({1} [OrderLine.Amount])>10000"}>} [OrderLine.Amount])
 ```
 
 **Practical time intelligence:** Months in the first half of the year.
@@ -273,17 +315,19 @@ Sum({<ProductCategory={'Electronics'}>} [Return.Amount]) AS [Electronics Returns
 - Product association flows through to both fact tables
 
 ### Using Alternate States for Comparative Analysis
-Alternate states allow multiple independent selections in one app.
+Alternate states let one app hold multiple independent selection sets. A state is referenced in set analysis by its name, with NO `$` prefix. State names cannot start with `$` or `$_` followed by a digit, and cannot be `$`, `0`, or `1`.
 
 ```
 Sum({$} [Amount]) AS [Current Selections]
-Sum({$Selection1} [Amount]) AS [Saved Selection 1]
-Sum({$Selection2} [Amount]) AS [Saved Selection 2]
+Sum({Selection1} [Amount]) AS [Saved Selection 1]
+Sum({Selection2} [Amount]) AS [Saved Selection 2]
 ```
 
-- `$` — Active selections from user interactions
-- `$Selection1` — Independent selections saved in an alternate state
-- Useful for "what-if" analysis and period-over-period
+- `$` — Active selections in the default state
+- `Selection1` — Independent selections saved in an alternate state named "Selection1"
+- Useful for "what-if" analysis and period-over-period comparison
+
+Do NOT write `{$Selection1}` — the `$` prefix is reserved for default-state selection history (`$1`, `$2`, `$_1`). Alternate states are referenced by bare name.
 
 ### Set Analysis with Dimensions from Different Tables
 Qlik association propagates field selections across related tables.

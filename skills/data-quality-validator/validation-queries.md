@@ -187,6 +187,7 @@ END IF
 
 ```sql
 -- Top-10 value frequency
+-- SQL Server / Azure SQL / Synapse / Fabric (TOP is T-SQL only):
 SELECT TOP 10
     customer_region,
     COUNT(*) AS Frequency,
@@ -195,7 +196,17 @@ FROM orders
 GROUP BY customer_region
 ORDER BY Frequency DESC;
 
--- Detect suspect values
+-- PostgreSQL / MySQL equivalent (use LIMIT at the bottom, no TOP):
+SELECT
+    customer_region,
+    COUNT(*) AS Frequency,
+    ROUND(CAST(COUNT(*) AS FLOAT) / (SELECT COUNT(*) FROM orders) * 100, 2) AS Pct_of_Total
+FROM orders
+GROUP BY customer_region
+ORDER BY Frequency DESC
+LIMIT 10;
+
+-- Detect suspect values (portable across SQL Server, PostgreSQL, MySQL)
 SELECT
     customer_region,
     COUNT(*) AS SuspectCount
@@ -269,7 +280,7 @@ SELECT
         WHEN COUNT(*) >= 150000 * 0.9 AND COUNT(*) <= 150000 * 1.1 THEN 'PASS'
         ELSE 'WARN'
     END AS Status
-FROM customers;
+FROM customers
 
 UNION ALL
 
@@ -320,12 +331,15 @@ END IF
 
 ```qlik
 // Detect rows where ALL fields are identical
+// Note: Use the & operator for per-row string concatenation.
+// Concat() is a string-aggregation function (aggregates across rows by GROUP BY);
+// it is not the right tool for building a per-row hash.
 [_RowHash]:
 LOAD
     [Customer.Key],
     [Customer.Name],
     [Customer.Region],
-    Concat([Customer.Key] & '|' & [Customer.Name] & '|' & [Customer.Region]) AS _row_hash
+    [Customer.Key] & '|' & [Customer.Name] & '|' & [Customer.Region] AS _row_hash
 RESIDENT [Customers];
 
 [_FullRowDups]:
@@ -440,8 +454,8 @@ SELECT
     COUNT(order_discount) AS PopulatedCount,
     ROUND(CAST(COUNT(order_discount) AS FLOAT) / COUNT(*) * 100, 2) AS Population_Pct
 FROM orders
-WHERE CAST(COUNT(order_discount) AS FLOAT) / COUNT(*) < 0.10
 GROUP BY 1, 2
+HAVING CAST(COUNT(order_discount) AS FLOAT) / COUNT(*) < 0.10
 ORDER BY Population_Pct ASC;
 ```
 
@@ -476,11 +490,13 @@ END IF
 
 DROP TABLE [_TypeCheck];
 
-// Alternative check: numeric fields with alphabetic characters
+// Alternative check: numeric fields with non-numeric values
+// Note: Qlik LIKE only supports * and ? wildcards (no regex character classes).
+// Use IsNum() instead, which returns -1 for parseable numbers and 0 otherwise.
 [_NonNumericOrders]:
 LOAD [Order.Quantity]
 RESIDENT [Orders]
-WHERE [Order.Quantity] LIKE '*[a-zA-Z]*';  // Qlik LIKE for pattern matching
+WHERE NOT IsNum([Order.Quantity]) AND Len(Trim([Order.Quantity])) > 0;
 
 LET vNonNumericCount = NoOfRows('_NonNumericOrders');
 IF $(vNonNumericCount) > 0 THEN

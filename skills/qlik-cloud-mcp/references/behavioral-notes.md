@@ -36,13 +36,18 @@ These notes document behaviors discovered through live testing against Qlik Clou
 - Returns dual representation (text + numeric) for each value.
 
 ### search_field_values
-- Case-insensitive. "florida" matches "Florida", "FLORIDA".
-- Supports partial matching. "boat" finds "Motorboat", "Sailboat".
-- Cross-field search (omitting `fieldName`) searches ALL fields. Powerful for discovery but slow on large apps.
-- Numeric search works on the text representation. "2024" matches the text "2024", not the number.
+- `fieldName` is required per the documented signature: `qlik_search_field_values(fieldName="payment_year", searchTerms=["2022"])`. To scan many fields, iterate the call per field.
+- Case-insensitive (practitioner observation, unverified in docs).
+- Partial matching (practitioner observation, unverified in docs).
+- Numeric search works on the text representation, e.g. "2024" matches the text "2024" (practitioner observation, unverified in docs).
 
 ### list_sheets
 - **The `cells` array in the response is truncated.** Never rely on it for a complete object inventory. Always follow up with `get_sheet_details` per sheet.
+
+### list_bookmarks / create_bookmark / select_bookmark / delete_bookmark
+- `select_bookmark` applies the bookmark's saved filter state to the session and returns the resulting selection state.
+- `delete_bookmark` restriction: "You can only delete bookmarks created using Qlik MCP tools." Pre-existing user-created bookmarks cannot be removed via MCP.
+- For reference-app analysis, `list_bookmarks` + `select_bookmark` is the cleanest way to reproduce a documented analytical context before extracting chart data.
 
 ### get_sheet_details
 - Returns object configurations but NOT visual layout coordinates (grid row/column positions).
@@ -116,17 +121,27 @@ These notes document behaviors discovered through live testing against Qlik Clou
 - Name must be 3-127 characters for both.
 - Once created, items are available to all sheets in the app.
 - **Expression validation does not happen at creation time** for measures. Invalid expressions silently succeed here.
-- **Published app restriction:** Master items can only be created/edited on private sheets. In published apps, changes must be made in the source app and re-published. MCP tools don't enforce this.
+- **MCP-only mutation restriction (server-enforced):** Per the documented MCP contract — "You can only update and delete master items created using Qlik MCP tools." — `qlik_update_*` / `qlik_delete_*` can only act on items created via `qlik_create_*` within MCP. Pre-existing user-created items are read-only through MCP.
+- **Published app restriction (platform-level, separate from the MCP rule):** In published apps (managed spaces), master-item edits must be made in the source app and re-published. This is a Qlik Sense rule and is independent of the MCP-only mutation restriction above.
 - **Rename/delete propagation:** If a master measure is renamed or deleted, expressions referencing it by name return NULL rather than raising an error. References are not auto-updated.
+
+### update_dimension / update_measure
+- **MCP-only mutation rule:** Per the official server contract, only master items created via `qlik_create_dimension` / `qlik_create_measure` can be updated. Attempts to update pre-existing user-created items will fail.
+- Useful for iterative scaffolding when an earlier `create_*` call produced an incorrect expression or label.
+
+### delete_dimension / delete_measure
+- **MCP-only mutation rule** applies identically (see above).
+- References to a deleted master item by name return NULL silently at expression evaluation time (see rename/delete propagation note above).
 
 ---
 
 ## 4. Dataset and Catalog Tools
 
 ### search
-- `spaceId` must be a 24-character hex string, NOT the space name. The MCP server does not expose a tool to list/resolve space IDs from space names — get the ID from the Qlik Cloud UI (Spaces → space details URL) or via the REST `/spaces` endpoint outside MCP.
+- Searches applications, datasets, data products, and glossaries. Spaces and users are NOT searchable resource types via this tool.
 - Use `resourceType` filter (e.g., "app,dataset") to narrow results.
 - Paginated via `next` token.
+- Resolving a space by name to a space ID is not available via the Qlik Cloud MCP server; obtain the ID from the Qlik Cloud UI (Spaces → space details URL) or the REST `/spaces` endpoint outside MCP. (Some other tools — e.g., `update_activate_data_product` — do accept a `spaceId` parameter; pre-resolve the ID before calling them.)
 
 ### get_dataset
 - Returns the QRI (Qlik Resource Identifier) needed for `get_lineage`.

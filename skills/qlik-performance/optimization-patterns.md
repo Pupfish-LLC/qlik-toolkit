@@ -419,4 +419,4 @@ Before deploying a Qlik app, validate memory efficiency:
 
 ## References
 
-See SKILL.md for explanation of each optimization technique. Consult Document Analyzer and Performance Profiler tools in Qlik Cloud for app-specific profiling.
+See SKILL.md for explanation of each optimization technique. Use Qlik Cloud's "Application performance evaluation" for app-specific sheet/object-level profiling.

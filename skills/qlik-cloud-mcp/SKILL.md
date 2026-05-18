@@ -62,11 +62,19 @@ Task abbreviations: **REF** = reference app analysis · **PROF** = source / data
 | `select_values` | | | | | ● | | ● |
 | `clear_selections` | | | | | ● | | ● |
 | `get_current_selections` | | | | | ● | | ● |
+| `list_bookmarks` | ● | | | | ● | | |
+| `create_bookmark` | | | | | ● | | |
+| `select_bookmark` | ● | | | | ● | | |
+| `delete_bookmark` | | | | | ● | | |
 | `create_sheet` | | | | | | ● | |
 | `add_chart` | | | | | | ● | |
 | `add_filter` | | | | | | ● | |
 | `create_dimension` | | | | | | ● | |
 | `create_measure` | | | | | ● | ● | |
+| `update_dimension` | | | | | | ● | |
+| `update_measure` | | | | | ● | ● | |
+| `delete_dimension` | | | | | | ● | |
+| `delete_measure` | | | | | | ● | |
 | `qlik_search` | ● | ● | | | | | |
 | `get_dataset` | | ● | | | | | |
 | `get_dataset_schema` | | ● | | | | | |
@@ -91,7 +99,7 @@ These are gotchas discovered through live testing that are NOT documented in the
 
 **Visualization creation has no layout control.** `create_sheet`, `add_chart`, and `add_filter` create objects but provide zero control over grid positioning, sizing, visual formatting, colors, number formats, or conditional formatting. Objects are appended sequentially. The manual build checklist remains essential for final layout work.
 
-**Master items in published apps.** Master dimensions and measures can only be created/edited on private sheets. In published apps (managed spaces), changes must be made in the source app and re-published. The MCP tools don't enforce this restriction -- they'll create items that may not be editable later. Additionally, if a master measure is renamed or deleted, any expressions referencing it by name will return NULL rather than raising an error.
+**MCP-only mutation rule (master items and bookmarks).** The MCP server enforces a hard restriction documented as: "You can only update and delete master items created using Qlik MCP tools." In practice, `qlik_update_dimension` / `qlik_update_measure` / `qlik_delete_dimension` / `qlik_delete_measure` will only act on items that this MCP session (or a prior MCP session) created. Pre-existing user-created master items in the app are read-only through MCP. The same restriction applies to bookmarks: "You can only delete bookmarks created using Qlik MCP tools." Separately, the standard Qlik Sense platform rule still applies: in published apps (managed spaces) master-item changes must be made in the source app and re-published. If a master measure is renamed or deleted, expressions that reference it by name return NULL silently rather than raising an error.
 
 **Hypercube cell limit.** `create_data_object` and `get_chart_data` are subject to a 10,000 cells per request limit (dimensions × measures × rows). For large result sets, use pagination (offset/limit) and keep dimension cardinality bounded with sort + limit settings.
 
@@ -223,10 +231,14 @@ Validates data quality through MCP as part of comprehensive QA.
    ], dimensions=[])
    → Total != Distinct means duplicates. Critical finding.
 
-4. Encoded null scan:
-   search_field_values(searchTerms=["N/A", "NULL", "TBD",
-     "-", "Unknown", "NONE", "n/a"])
-   → Searches all fields for common null encodings.
+4. Encoded null scan (iterate per field):
+   For each candidate field in the field list:
+     search_field_values(fieldName=field, searchTerms=["N/A", "NULL", "TBD",
+       "-", "Unknown", "NONE", "n/a"])
+   → Surfaces fields where common null encodings have leaked in as values.
+   Note: `fieldName` is required per the official tool signature
+   (qlik_search_field_values(fieldName, searchTerms)); there is no documented
+   cross-field-search mode.
 
 5. For Qlik-managed datasets, augment with catalog tools:
    get_dataset_profile(datasetId) → pre-computed statistics

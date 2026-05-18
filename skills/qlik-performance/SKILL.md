@@ -39,12 +39,14 @@ Qlik's in-memory engine loads all data at reload time and keeps it resident. Mem
 
 ### A. Field Data Types and Memory Footprint
 
-Qlik supports integer, numeric, and string data types. Choose the narrowest type that holds the value:
+Qlik Sense stores every distinct value of each field exactly once in a per-field **symbol table**; data tables (fact + dimension) hold only compact bit-stuffed pointers into those symbol tables. This two-table model means memory cost depends on **cardinality** (number of distinct values), not row count, for the symbol-table portion — and on `ceil(log2(cardinality))` bits per row for the pointer portion.
 
-- **Integer:** ~4-8 bytes per value (depending on range). Use for IDs, dates, counts. Integer fields compress well in QVD files.
-- **Numeric (floating-point):** ~8 bytes. Use for amounts, percentages, measurements. Less compressible than integers.
-- **String:** Full character length plus ~10-20 bytes overhead. Use only when necessary (names, descriptions, codes).
-- **Implicit conversion:** If you load a 4-digit code as a string, it consumes 14+ bytes per value. As an integer, it consumes 4 bytes. For 100M rows, this is 1GB difference.
+Practical implications:
+- Choose the narrowest type the value fits in. Integers, numerics, and short strings each have characteristic per-distinct-value costs (Qlik's official documentation does not publish exact byte numbers; published practitioner figures vary by version, but the ordering is stable: integer < numeric < short string < long string < dual).
+- A 4-digit code stored as a string has higher per-distinct-value symbol-table cost than the same code stored as an integer. The fact-table pointer cost is the same in both cases (driven by cardinality, not type).
+- For HIGH-CARDINALITY fields in LARGE fact tables, the pointer-bit savings can still matter: lower cardinality means fewer bits per pointer (e.g., 10K distinct values = 14 bits/row; 1M distinct = 20 bits/row).
+
+Reference for the symbol-table / bit-stuffed-pointer concept: Henric Cronström, "Symbol Tables and Bit-Stuffed Pointers," Qlik Design Blog.
 
 **Strategy:** Load dates as integers (days since epoch). Use expressions to format for display. Example:
 ```qlik
@@ -69,20 +71,30 @@ Dual values consume approximately 2x memory of a simple numeric field. Use Dual 
 
 ### C. Symbolic Keys vs. Numeric Keys
 
-String-based keys consume significantly more memory than numeric keys:
-- `customer_id = 'CUST_12345'` (13+ bytes per value)
-- `customer_id = 12345` (4 bytes per value)
+String-based keys consume more memory than numeric keys because each distinct string takes more bytes in the symbol table than each distinct integer. The fact-table pointer cost is the same either way (driven by cardinality).
 
-For large dimensions (>1M rows), mapping natural string keys to numeric via `AutoNumber()` or `Hash128()` reduces memory. Tradeoff: improves memory, reduces debuggability.
+- `customer_id = 'CUST_12345'` — each distinct string is stored once in the customer_id symbol table; ~12+ bytes per distinct value
+- `customer_id = 12345` — each distinct integer is stored once; ~4 bytes per distinct value
+
+For a 1M-distinct-customer fact table with 100M rows: the savings is in the symbol table (~8 bytes × 1M = ~8MB), not in the data table (which uses ~20-bit pointers either way).
+
+For large dimensions (>1M rows), converting natural string keys to sequential integers via `AutoNumber()` reduces memory significantly. For composite keys (multiple fields concatenated), use `AutoNumberHash128()`, which hashes the inputs before assigning a sequential integer — collision-safe AND integer-typed in one step. Tradeoff: improves memory, reduces debuggability.
+
+Note: `Hash128()` alone returns a 22-character string (per Qlik help), so it does NOT reduce memory versus a typical string key. Use `Hash128()` for stable cross-reload hashing or PII masking, not for memory optimization.
 
 ```qlik
 // WRONG for large tables: string keys repeated millions of times
 [Customer]: LOAD customer_id, name FROM [customers.qvd] (qvd);
 
-// RIGHT for large tables: numeric keys
+// RIGHT for large tables: sequential integer keys via AutoNumber
 [Customer]:
-LOAD Hash128(customer_id) AS [Customer.Key], name
+LOAD AutoNumber(customer_id, 'CustomerKey') AS [Customer.Key], name
 FROM [customers.qvd] (qvd);
+
+// RIGHT for composite keys: AutoNumberHash128 in one step
+[Order.Line]:
+LOAD AutoNumberHash128(order_id, line_no, 'OrderLineKey') AS [OrderLine.Key], ...
+FROM [order_lines.qvd] (qvd);
 ```
 
 ### D. Reducing Field Count
@@ -136,27 +148,43 @@ Script performance directly impacts reload duration and peak memory during load.
 
 A "QVD optimized load" allows Qlik to skip decompression and deserialization—reading QVD blocks directly into memory. Optimized loads are ~100x faster than database reads and ~10x faster than standard QVD reads.
 
-**Requirements for optimized load (ALL must be met):**
-1. No transformations on any field (no expressions, no type conversions)
-2. No field reordering
-3. No field renaming
-4. No WHERE clause filtering (except one rare exception; see below)
-5. No field subset (all fields must be loaded)
-6. No Map() function calls on fields
+**Requirements for optimized load (per Qlik help — only these operations disable it):**
+1. No transformations on the fields that are loaded (no expressions, no type conversions, no function calls)
+2. No WHERE clause that forces Qlik to unpack records (one exception below — WHERE EXISTS)
+3. No `Map()` applied to a loaded field
+
+**Explicitly allowed (does NOT break optimized load):**
+- Field renaming via `AS` (e.g., `customer_id AS [Customer.Key]`)
+- Loading a subset of the QVD's fields
+- Reordering fields in the LOAD statement relative to the QVD's stored order
+- Using `LOAD *` or an explicit field list
 
 **What breaks optimized load:**
-- Adding a derived field: `Num(id_field) AS id` breaks it
-- Filtering rows: `WHERE date_field >= '2024-01-01'` breaks it
-- Renaming: `customer_id AS [Customer.Key]` breaks it (despite alias being allowed in some documentation, safest to avoid for optimized read)
-- Reordering fields from QVD order
+- Adding a derived field: `Num(id_field) AS id` (transformation)
+- Filtering rows with a WHERE that requires unpacking: `WHERE date_field >= '2024-01-01'`
+- Applying `Map()` to any loaded field
 - Any function call on any field
 
-**One exception that preserves optimized load:**
+**Note:** Field renaming via `AS` and field reordering are explicitly allowed by Qlik. Earlier folklore that either of these breaks optimization is incorrect. Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/work-with-QVD-files.htm
+
+**Exception — WHERE EXISTS preserves optimized load:**
+
+A WHERE clause using `Exists()` against a previously loaded field is the standard pattern for filtering a QVD load while preserving optimization. The documented signature is `Exists(field_name [, expr])`:
+
 ```qlik
-// This pattern does NOT break optimized load:
-[Result]: LOAD * FROM [file.qvd] (qvd) WHERE EXISTS(qvd_hash_field, $1);
+// Step 1: Load the set of allowed keys into a prior table
+[AllowedCustomers]: LOAD customer_id FROM [allowed_keys.qvd] (qvd);
+
+// Step 2: Optimized load that filters by membership in AllowedCustomers
+[Fact.Orders]:
+LOAD *
+FROM [orders.qvd] (qvd)
+WHERE Exists(customer_id);   // single-arg form — looks up against any prior table containing customer_id
 ```
-Uses a pre-calculated hash in the QVD and validates against a hash set. Rare pattern. Document if used.
+
+Both the single-argument form `Exists(field_name)` and the two-argument form `Exists(field_name, expression)` are documented. The single-argument form is the most common QVD-filtering pattern.
+
+Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/InterRecordFunctions/Exists.htm
 
 **Pattern for optimized load:**
 ```qlik
@@ -257,25 +285,34 @@ GROUP BY product_id;
 // Execution: immediate lookup, no aggregation
 ```
 
-**Count(DISTINCT ...):** `Count(DISTINCT field)` is computationally expensive; Qlik evaluates all distinct values.
-```qlik
-// SLOW in expression (evaluated for every cell):
-Count(DISTINCT [Customer.ID])
+**Count(DISTINCT ...):** `Count(DISTINCT field)` evaluates over distinct values rather than rows. Qlik's official documentation on the Count function does not characterize it as slow. Treat it as a normal aggregation in most cases.
 
-// FAST: Pre-calculated in load:
-// In load script: Count(Distinct customer_id) AS [Customers.Count]
-// In expression: [Customers.Count]
+When to consider pre-calculation in the load script:
+- The same distinct count is used across many charts (caching the value avoids repeated work)
+- The expression is part of a larger `Aggr()` or set-analysis construct that is already a known bottleneck
+- Profiling (App Performance Evaluation — see Section 6) shows the specific Count(DISTINCT) expression as a hotspot
+
+Do NOT reflexively replace Count(DISTINCT) with a pre-calculated field. A load-script `Count(DISTINCT)` aggregates over a single grain and is not interchangeable with chart-context distinct counts, which respect user selections.
+
+### B. Combine Modifiers Inside One Set Expression
+
+Multiple field constraints belong inside a single `<...>` modifier, comma-separated. The valid set operators (`+`, `-`, `*`, `/`) combine whole set expressions for union/difference/intersection/symmetric-difference semantics — they are not a way to "chain" modifiers.
+
+```qlik
+// WRONG (fictional syntax — Qlik will not parse this):
+{<Year = {">$(vMaxYear)"}>} {<Region = {"North"}>} {<Status = {"Active"}>}
+
+// RIGHT: comma-separate modifiers inside one set
+Sum({<Year = {">$(vMaxYear)"}, Region = {"North"}, Status = {"Active"}>} [Sales.Amount])
 ```
 
-### B. Complex Set Analysis Nesting
+Each modifier inside `<...>` is evaluated once per cell context, so reducing modifier count and avoiding nested `P()`/`E()` element functions are the relevant performance levers — not "flattening levels," because levels don't exist in set syntax.
 
-Set analysis with nested conditions evaluates the set for every cell. Limit nesting:
+For union/difference of distinct selection states, use the set operators:
+
 ```qlik
-// SLOW: 3-level nesting
-{<Year = {">$(vMaxYear)"}>} with {<Region = {"North"}>} with {<Status = {"Active"}>}
-
-// FAST: Flatten to 2 levels or use pre-calculated flags
-{<Year = {">$(vMaxYear)"}, Region = {"North"}, Status = {"Active"}>}
+// Union: sales for Year=2024 OR Region=North
+Sum({<Year={2024}>} [Sales.Amount]) + Sum({<Region={"North"}>} [Sales.Amount])
 ```
 
 ### C. String Operations in Expressions
@@ -380,13 +417,19 @@ The Document Analyzer (Qlik Cloud) reports:
 
 **Usage:** After reload, sort tables by memory footprint. Target largest tables for optimization.
 
-### B. Performance Profiler
+### B. App Performance Evaluation
 
-Qlik Cloud includes a Performance Profiler for sheet-level diagnostics:
-- Identifies slow expressions by name and execution time
-- Shows which selections trigger expensive recalculations
+Qlik Cloud provides "Application performance evaluation" (sometimes called the App Performance Evaluator) for app-level diagnostics. Per Qlik help, it reports:
+- Initial load time for public sheets
+- Cached sheet load time
+- Initial and cached object load time per sheet
+- The top-5 slowest objects within each sheet
 
-**Usage:** Make a selection that triggers slowness, inspect expression times. Target >200ms expressions for optimization.
+**What it does NOT do:** It reports at sheet and object level, not at individual-expression level. To attribute slowness to a specific expression, use the object-level breakdown combined with knowledge of which expressions back which objects.
+
+**Usage:** Run the evaluation after representative reload + interaction. Target sheets and objects with load time >1s, then identify the contributing expression(s) for optimization.
+
+Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/app-performance-evaluation.htm
 
 ### C. TRACE-Based Timing
 

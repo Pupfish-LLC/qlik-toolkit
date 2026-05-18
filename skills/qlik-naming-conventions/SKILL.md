@@ -53,7 +53,7 @@ Fix: rename to `[Product.Status]` and `[Order.Status]`.
 - **Square brackets** enclose field names with spaces, dots, or special characters: `[Order.Ship Date]`
 - Dot notation IS allowed in field names. The dot is just a character, not a property accessor.
 - **Case sensitivity:** Field **names** are case-sensitive — `Product.Category` and `product.category` are two different fields and will NOT associate. Field **values** are case-insensitive by default in selections and set analysis (use single-quoted search strings like `={'ABC'}` for case-sensitive value matching). Standardize the case of every field name when you alias with `AS`, and keep the case identical across tables that must associate.
-- **Avoid these characters in field names:** `=`, `;`, curly braces `{}`, and square brackets inside field names (use them only as delimiters). Dollar sign `$` is reserved for system fields (`$Table`, `$Field`).
+- **Avoid these characters in field names:** `=`, `;`, curly braces `{}`, parentheses `()`, colon `:`, acute accent `´`, backtick `` ` ``, single quote `'`, and square brackets inside field names (use them only as delimiters). Dollar sign `$` is reserved for the five system fields: `$Table`, `$Field`, `$Fields`, `$FieldNo`, `$Rows`. (See `naming-reference.md` Section 3 for the full character restriction table.)
 - **Avoid script keywords as unquoted field names.** If unavoidable, enclose in square brackets: `[Select]`, `[Set]`, `[Load]`. See `naming-reference.md` for the complete reserved word list.
 - Double quotes can also delimit field names (`"Product.Category"`), but square brackets are the Qlik convention.
 
@@ -271,7 +271,7 @@ Rename Fields using FieldMap;
 
 **When NOT to use:**
 - The entity name is already correct. Do not rename for the sake of renaming.
-- Key fields. Never rename keys through Mapping RENAME; it breaks associations if not done consistently across all tables.
+- Key fields. `Rename Fields` operates on a field name post-load and applies atomically to every table containing that field, so the operation itself is consistent — but key naming is a Transform-layer concern. By the time you reach the DataModel rename layer, key names should already be canonical (e.g., `customer_key`). Renaming a key at this layer means a Transform-layer mistake has leaked downstream; fix it upstream instead.
 
 **Why Mapping RENAME over Resident reload:** Declarative, low memory cost, no table duplication. A Resident reload copies the entire table in memory just to rename fields.
 
@@ -302,6 +302,6 @@ For extended cross-layer naming walkthrough with additional examples, see `namin
 | Temp tables without `_` prefix left in model | Extra tables sharing fields, causing synthetic keys | Use `_` prefix AND always DROP after use |
 | Variables referencing intermediate layer field names | Expression evaluates to NULL after Mapping RENAME | Always reference final DataModel layer names |
 | Field names colliding with script keywords | Parse errors or unpredictable behavior | Enclose in square brackets: `[Set]`, or rename |
-| Using `$` prefix for non-system fields | Collision with Qlik system fields | Reserve `$` for system fields only |
+| Using `$` prefix for non-system fields | Collision with the five Qlik system fields (`$Table`, `$Field`, `$Fields`, `$FieldNo`, `$Rows`) | Reserve `$` for system fields only |
 
 For extended cross-layer naming walkthrough with additional examples, Qlik reserved word list, and character restriction reference, see `naming-reference.md` in this skill directory.

@@ -4,7 +4,7 @@ This document contains all checklist items (1.1–9.5) organized by category. Ea
 
 ---
 
-## 1. Script Syntax (9 items)
+## 1. Script Syntax (6 items)
 
 Validates script syntax, function usage, block balance, and variable scope. Ensures scripts can execute without reload errors.
 
@@ -318,7 +318,7 @@ Validates field naming, table naming, variable naming, and consistency across la
 
 ---
 
-## 5. Expression Correctness (6 items)
+## 5. Expression Correctness (7 items)
 
 Validates expression syntax, null handling, field references, and calculation conditions.
 
@@ -356,17 +356,6 @@ Validates expression syntax, null handling, field references, and calculation co
   - Check expressions for cases where set analysis `{...}` should be used instead of TOTAL
 - **Severity Escalation:** Escalate to **Critical** when TOTAL is placed inside set analysis braces (e.g., `Sum({TOTAL <Year={2024}>} Sales)`). This is structurally invalid. TOTAL must be outside the braces: `Sum({<Year={2024}>} TOTAL Sales)` or `Sum(TOTAL {<Year={2024}>} Sales)`.
 - **Finding Format:** `[E-5.2]: TOTAL qualifier misuse / Severity: Warning / Category: Expression Correctness / Location: [artifact]:[line] / Finding: [Expression using TOTAL appears to intend set analysis | TOTAL used but alternative clearer] / Impact: [Incorrect totaling behavior | Hard to understand intent] / Recommended Fix: [Replace with set analysis {value} OR clarify why TOTAL necessary]`
-
-### 5.7 Structurally Invalid Aggregation
-
-- **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
-- **What to Check:** Aggregation functions must not be directly nested. The engine cannot resolve two aggregation scopes simultaneously.
-- **How to Verify:**
-  - Search for patterns like `Avg(Sum(...))`, `Sum(Count(...))`, `Max(Sum(...))`, etc.
-  - Check dollar-sign expansion: if a variable contains an aggregation (e.g., `SET vSales = Sum(Sales)`), using `$(vSales)` inside another aggregation expands to an invalid nested form at render time.
-  - The only valid nesting pattern is via `Aggr()`: e.g., `Avg(Aggr(Sum(Sales), Customer))`.
-- **Finding Format:** `[E-5.7]: Nested aggregation without Aggr() / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: [expression] directly nests aggregation functions / Impact: Structurally invalid — guaranteed incorrect results / Recommended Fix: Use Aggr() as intermediate step or restructure calculation`
 
 ### 5.3 Null Handling in Expressions
 
@@ -421,6 +410,17 @@ Validates expression syntax, null handling, field references, and calculation co
   - Flag orphaned conditions (condition present but no user-facing message documenting what triggers suppression)
   - Verify calculation condition does not suppress legitimate zero results unintentionally
 - **Finding Format:** `[E-5.6]: Incomplete calculation condition / Severity: Warning / Category: Expression Correctness / Location: [artifact]:[line] / Finding: Calculation condition [condition] defined but no corresponding message OR condition may suppress legitimate zero / Impact: [Users don't understand why measure is blank | Legitimate data hidden] / Recommended Fix: [Add message paired with condition | Review condition logic to ensure only invalid/missing data suppressed]`
+
+### 5.7 Structurally Invalid Aggregation
+
+- **Severity:** Critical
+- **Applicable Passes:** Expression / Comprehensive
+- **What to Check:** Aggregation functions must not be directly nested. The engine cannot resolve two aggregation scopes simultaneously.
+- **How to Verify:**
+  - Search for patterns like `Avg(Sum(...))`, `Sum(Count(...))`, `Max(Sum(...))`, etc.
+  - Check dollar-sign expansion: if a variable contains an aggregation (e.g., `SET vSales = Sum(Sales)`), using `$(vSales)` inside another aggregation expands to an invalid nested form at render time.
+  - The only valid nesting pattern is via `Aggr()`: e.g., `Avg(Aggr(Sum(Sales), Customer))`.
+- **Finding Format:** `[E-5.7]: Nested aggregation without Aggr() / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: [expression] directly nests aggregation functions / Impact: Structurally invalid — guaranteed incorrect results / Recommended Fix: Use Aggr() as intermediate step or restructure calculation`
 
 ---
 
@@ -554,7 +554,7 @@ Validates alignment across multiple pipeline phases and artifacts.
 
 Validates dependency tracking and placeholder documentation per pipeline state.
 
-**Applicable Review Passes:** Script / Comprehensive
+**Applicable Review Passes:** Script (light) / Expression (light) / Comprehensive
 
 ### 8.1 Placeholder Implementation Documentation
 

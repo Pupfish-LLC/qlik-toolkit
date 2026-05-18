@@ -125,7 +125,7 @@ Use a decision framework based on the data relationship being visualized. Never 
 - Use when filter applies to only 1–2 sheets
 - Reduces cognitive load by hiding irrelevant filters
 
-**Alternative States (if needed for comparative analysis):**
+**Alternate States (if needed for comparative analysis):**
 - "This Year vs. Last Year" or "Budget vs. Actual"
 - Caution: increases complexity; use only for core workflows
 
@@ -338,7 +338,7 @@ For each dimension:
     - Sortable columns: Enabled
 
 **Responsive Behavior:**
-17. Test layout on tablet (768px width) and mobile (375px width)
+17. Test layout by resizing the browser through narrower widths (note: Qlik publishes only the 480px small-screen threshold; tiered breakpoints are author-defined)
 18. Verify KPI cards stack vertically on mobile
 19. Verify filter pane collapses to drawer on mobile
 20. Verify trend chart remains readable

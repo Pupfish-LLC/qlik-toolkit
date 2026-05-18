@@ -88,7 +88,7 @@ Top 10 Products Table | [Product.Name] | Sum([Quantity]), Avg([Margin%]) | Quant
    - Mode: list (checkboxes), search, slider, calendar, button group?
    - Cardinality: how many unique values? (influences design choice)
    - Default selections or required selections?
-3. Check if alternative states are used (separate filter contexts for comparisons)
+3. Check if alternate states are used (separate filter contexts for comparisons)
 4. Note "Current Selections" bar position and styling
 
 **Document:**
@@ -178,22 +178,22 @@ Layout Priority | Object | Breakpoint (Desktop / Tablet / Mobile)
 
 **Procedure:**
 1. Open sheet in Sheet Editor
-2. Preview > Responsive Preview Mode
-3. Drag window edge from desktop (1200+px) → tablet (768px) → mobile (<768px) widths
+2. Resize the browser window to observe responsive reflow (the sheet editor renders the responsive layout live — there is no separate "Responsive Preview Mode" feature)
+3. Note Qlik's one documented threshold: the 480-pixel "small screen" mode (read-only/limited interaction in the browser). Otherwise the layout is fluid rather than tiered, so drag the window edge through several widths and observe.
 4. Observe what happens:
    - Do objects stack vertically?
    - Do any objects disappear or get replaced with alternatives?
-   - Does filter pane collapse to hamburger menu?
+   - Does the filter pane shrink its displayed dimensions, then show a dropdown chevron for overflow (the documented behavior)?
    - Do any objects get resized?
-5. Record breakpoints where behavior changes
+5. Record the widths at which behavior changes (these are author-controlled; Qlik does not publish a tiered breakpoint scheme).
 
-**Document:**
+**Document (author-defined widths; not Qlik-published tiers):**
 ```
-Breakpoint | Behavior Changes
-------------|------------------
-Desktop (≥1200px) | 3-column layout: Filters (left) | KPIs (center-top) | Trend Chart (center-large)
-Tablet (768-1199px) | 2-column layout: Filters (left, narrower) | Charts stack below
-Mobile (<768px) | 1-column: Filter hamburger menu | KPIs stack | Trend chart reflows | Regional table hidden
+Observed Width | Behavior Changes
+---------------|------------------
+Wide (~1200px+ in the reference app) | 3-column layout: Filters (left) | KPIs (center-top) | Trend Chart (center-large)
+Medium (~768-1199px) | 2-column layout: Filters (left, narrower) | Charts stack below
+Narrow (below ~768px; ≤480px enters Qlik's documented small-screen mode) | 1-column: filter pane shrinks then uses the dropdown chevron for dimension overflow | KPIs stack | Trend chart reflows | Regional table hidden
 ```
 
 ---
@@ -217,7 +217,7 @@ Mobile (<768px) | 1-column: Filter hamburger menu | KPIs stack | Trend chart ref
 | **Layout** | 4 KPIs across top row (equal width); 1 large trend chart below (100% width); drill-down table at bottom |
 | **Filters** | Year (button group, global), Region (list, global) |
 | **Colors** | Brand blue, orange, green, purple (dimension-based); conditional red/green for KPI vs. target |
-| **Responsive** | Desktop: 3-column. Tablet: 2-column. Mobile: hamburger menu + KPIs stack + table hidden |
+| **Responsive** | Wide widths: 3-column. Medium: 2-column. Narrow: filter pane shrinks/overflows to chevron + KPIs stack + table hidden (widths are author-defined; Qlik publishes only the 480px small-screen threshold) |
 | **Accessibility** | 5:1 contrast; color-blind safe palette; all axes labeled; no information in color alone |
 | **Replicable Elements** | KPI arrangement, color scheme, global filter design, responsive breakpoints |
 | **Adaptations for New Project** | Measure names differ per dataset; color scheme aligns with client branding; responsive behavior same; layout same |
@@ -255,7 +255,7 @@ Replication Checklist for Executive Dashboard Pattern
 [X] Create KPI objects: vRevenue, vGrowth%, vCustomerCount (verify expressions exist in expression catalog)
 [ ] Create Line Chart: [Order.Date] monthly, Sum([Sales.Amount]). Conditional color red if below 10% target
 [ ] Create Regional Comparison Table: [Customer.Region], Sum([Sales.Amount]), Avg([Margin%]). Sort by Amount desc
-[ ] Test responsive preview: Mobile hamburger menu, tablet 2-column, desktop 3-column. Hide detail table on mobile
+[ ] Test responsive layout by resizing the browser: narrow widths should shrink/overflow the filter pane via the dropdown chevron, medium widths 2-column, wide widths 3-column. Hide detail table at narrow widths
 [ ] Verify accessibility: Check 4.5:1 contrast, no color-only encoding, all axes labeled
 ```
 

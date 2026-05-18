@@ -43,9 +43,9 @@ Do not choose chart types by guess. Use a decision framework based on the data r
 
 ### Specialized Chart Types
 
-**KPI object** — Single metric with large font. Use when the metric is critical to user decision, or as dashboard headline. Supports conditional coloring (red/green based on value vs. target), trending indicators (up/down arrows), calculation conditions. Example: "Total Sales YTD" KPI in top-left of executive dashboard.
+**KPI object** — Single metric with large font. Use when the metric is critical to user decision, or as dashboard headline. Supports conditional coloring and conditional symbols (e.g., check mark, caution, X) configured by adding range limits in **Appearance → Color**, and calculation conditions. Note: the standard KPI does not include up/down trend arrows; that pattern lived in the Multi-KPI chart, which is deprecated (no new instances since April 5, 2025; full removal May 2027). For trend visualization, use a separate trend line/spark chart next to the KPI. Example: "Total Sales YTD" KPI in top-left of executive dashboard, with a monthly spark line beside it.
 
-**Table** — Detailed row-level data. Use when users need exact values, multiple columns from different tables, or custom sorting. Design: limit to ≤15 columns, right-align numbers, add currency symbols, use alternating row background colors for readability.
+**Table** — Detailed row-level data. Use when users need exact values, multiple columns from different tables, or custom sorting. Design heuristic (practitioner, not Qlik-prescribed): limit to roughly 15 columns to keep the table scannable, right-align numbers, add currency symbols, use alternating row background colors for readability.
 
 **Gauge chart** — Circular progress indicator with meaningful maximum (quota, target %). Use sparingly; wastes space compared to KPI for raw numbers. Useful when dashboard space is severely constrained.
 
@@ -67,7 +67,7 @@ Apply to sheet design using Qlik Sense's responsive grid system.
 
 ### Responsive Grid Behavior
 
-Qlik Sense responsive mode stacks objects vertically on mobile/tablet. Objects in top-left remain visible on all breakpoints; lower-right objects may reflow below fold. Design: ensure single-column layout looks good on mobile. Test: Sheet Editor > Preview > Responsive Preview Mode, then drag window edge to simulate breakpoints.
+Qlik Sense responsive mode stacks objects vertically on smaller screens. Objects in top-left remain visible across screen sizes; lower-right objects may reflow below fold. Design: ensure single-column layout looks good on mobile. Test by resizing the browser window in the sheet editor — the live responsive layout renders directly (no separate "preview mode" toggle is documented).
 
 ### Layout Patterns
 
@@ -87,8 +87,8 @@ Qlik Sense responsive mode stacks objects vertically on mobile/tablet. Objects i
 
 ### Accessibility-Safe Palettes
 
-- **Color blindness** — ~8% of population has color vision deficiency (most common: red-green). Use tested colorblind-friendly palettes (viridis, cividis). When red/green necessary, also use pattern, size, or text labels to differentiate.
-- **WCAG AA contrast** — Text must have ≥4.5:1 contrast with background. Test with WebAIM Contrast Checker. Dark text on light background is always safe.
+- **Color blindness (general accessibility heuristic)** — Approximately 8% of men and ~0.5% of women have some form of color vision deficiency (most common: red-green). Use tested colorblind-friendly palettes (viridis, cividis from the matplotlib/seaborn ecosystem are widely cited; not Qlik built-ins — apply via custom color expressions or hex values). When red/green is necessary, also use pattern, size, or text labels to differentiate.
+- **WCAG AA contrast (general web standard, not Qlik-specific)** — Text should have ≥4.5:1 contrast with background per W3C WCAG 2.x AA. Test with WebAIM Contrast Checker. Dark text on light background is always safe.
 - **Recommended palette** — Blues, oranges, purples (avoid pure red/green combinations unless text labels are added)
 
 ### Number, Date, and Field Formatting
@@ -98,7 +98,7 @@ Qlik Sense responsive mode stacks objects vertically on mobile/tablet. Objects i
 - **Large numbers** — Abbreviated with tooltip: "1.2M" (tooltip shows "1,234,567")
 - **Dates** — Consistent format across sheets: "Jan 2024" or ISO format "2024-01-15" (clearer than "01/02/03")
 - **Field labels** — Friendly names: "Product Category" not "PROD_CAT". Consistent terminology across sheets.
-- **Font sizes** — KPI headline: 48-60pt (readable from distance), chart title: 16-18pt, axis labels: 12-14pt
+- **Font sizes (practitioner heuristic; Qlik docs do not prescribe pt sizes)** — Typical ranges: KPI headline ~48-60pt for at-a-distance readability, chart title ~16-18pt, axis labels ~12-14pt. Adjust to fit dashboard pixel dimensions.
 
 ---
 
@@ -106,23 +106,23 @@ Qlik Sense responsive mode stacks objects vertically on mobile/tablet. Objects i
 
 ### Global Filter Pane (Multi-Sheet)
 
-Use when users need the same filter context across multiple sheets (Year, Region, Department apply to all analyses). Appears in consistent location (typically right pane), selections persist as user navigates sheets. Design: low-cardinality fields as list (Year, Region), high-cardinality (>50 unique values) in search mode (type to narrow list).
+Use when users need the same filter context across multiple sheets (Year, Region, Department apply to all analyses). Appears in consistent location (typically right pane), selections persist as user navigates sheets. Design heuristic (practitioner, not Qlik-prescribed): low-cardinality fields work well as a direct list (Year, Region); for high-cardinality fields, expect users to use the filter pane's built-in text search.
 
 ### Sheet-Specific Filter Pane
 
 Use when filter applies only to one or two sheets (example: "Product Detail Filter" for product analysis only). Reduce cognitive load by hiding irrelevant filters. Embed filter objects on the sheet itself, above visualizations.
 
-### Alternative States for Comparative Analysis
+### Alternate States for Comparative Analysis
 
-Allow multiple independent filter contexts on the same sheet. Use for "Budget vs. Actual" or "This Year vs. Last Year" comparisons. Define states in app settings, create separate filter and visualization sets per state. Caution: increases complexity; use only when comparing is core workflow.
+Allow multiple independent filter contexts on the same sheet. Use for "Budget vs. Actual" or "This Year vs. Last Year" comparisons. Create alternate states in **Master items → Alternate states**, then apply a state to each visualization via **Appearance → Alternate states** (or drag the state onto an object and choose Apply state). Caution: increases complexity; use only when comparing is core workflow.
 
 ### Field Selection for Filters
 
-| Cardinality | Mode | Example |
+| Cardinality | Mode (practitioner heuristic; Qlik does not prescribe these thresholds) | Example |
 |---|---|---|
 | ≤20 values | List (checkboxes) | Region (4 regions) |
 | 21-50 values | List with scroll | Sales Rep (30 reps) |
-| >50 values | Search mode | Product SKU (10,000 SKUs) |
+| >50 values | Rely on the always-available text-search box rather than scrolling | Product SKU (10,000 SKUs) |
 | Time | Button group or calendar | Monthly data → button group; Daily → calendar picker |
 
 ---
@@ -131,19 +131,19 @@ Allow multiple independent filter contexts on the same sheet. Use for "Budget vs
 
 ### Qlik Sense Responsive Grid
 
-Fluid grid with breakpoints: Desktop (≥1200px), Tablet (768-1199px), Mobile (<768px). Objects reflow vertically on narrower screens. Responsive mode enabled per sheet: Sheet Settings > Layout > Responsive Mode.
+By default, Qlik Sense applies a responsive layout that "adjusts the sheet to the dimensions of the user's screen" (Qlik docs). Layout is fluid rather than tiered: there is no Qlik-documented Desktop/Tablet/Mobile breakpoint scheme. The one documented threshold is the 480-pixel "small screen" mode, in which web-browser users can navigate and select but cannot create or edit content. Authors can override responsive layout per sheet by switching Sheet size from Responsive to Custom (Sheet properties → Sheet size), with custom widths and heights between 300 and 4,000 pixels.
 
 ### Design for Responsive
 
 - **Priority objects** — Top-left objects remain visible across breakpoints. Lower-right objects reflow below fold on mobile.
 - **Single-column layout** — Ensure objects look good stacked vertically. Not too tall, readable fonts.
 - **Object sizing** — Use auto-width/height; avoid fixed pixels that break on mobile.
-- **Filter pane behavior** — Collapses to hamburger menu on mobile, appears as full-screen overlay when opened.
+- **Filter pane behavior under constraints** — When sheet space is limited, the filter pane first reduces each dimension's size to fit all dimensions; if not all dimensions fit, a dropdown arrow appears below the displayed dimensions to access the rest (per Qlik filter pane docs). In the Qlik Analytics mobile app, the filter pane is a natively rendered visualization. There is no documented "hamburger menu" collapse pattern.
 - **What to hide on mobile** — Decorative objects, secondary reference charts, wide tables. Use Responsive Visibility settings to hide below breakpoint.
 
 ### Testing
 
-Sheet Editor > Preview > Responsive Preview Mode. Drag preview edge to simulate breakpoints. Check: text readability, object visibility, no horizontal scroll at each breakpoint.
+To validate responsive behavior, resize the browser window in the Qlik Cloud sheet editor and observe how objects reflow. The editor renders the live responsive layout — there is no separate "responsive preview" toggle documented. For higher confidence, test the published sheet on an actual mobile or tablet device, since native rendering in the Qlik Analytics mobile app can differ from browser layout.
 
 ---
 
@@ -151,8 +151,8 @@ Sheet Editor > Preview > Responsive Preview Mode. Drag preview edge to simulate 
 
 ### Color Accessibility
 
-- **Color blindness-safe palettes** — Use tested palettes (viridis, cividis). When color alone distinguishes data, add pattern, shape, or text label. Example: don't just color bars red/green; also label "On Track" / "Off Track".
-- **WCAG AA contrast** — ≥4.5:1 contrast required. Dark text on light background is always safe. Colored backgrounds need testing (WebAIM Contrast Checker).
+- **Color blindness-safe palettes (general accessibility heuristic, not Qlik built-ins)** — Use tested palettes (viridis, cividis are widely cited from the matplotlib/seaborn ecosystem; apply in Qlik via custom color expressions or hex values). When color alone distinguishes data, add pattern, shape, or text label. Example: don't just color bars red/green; also label "On Track" / "Off Track".
+- **WCAG AA contrast (general web standard, not Qlik-specific)** — Per W3C WCAG 2.x AA, body text should have ≥4.5:1 contrast with its background. Dark text on light background is always safe. Colored backgrounds need testing (WebAIM Contrast Checker).
 
 ### Screen Reader Considerations
 

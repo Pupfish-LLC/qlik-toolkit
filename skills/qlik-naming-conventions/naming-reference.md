@@ -136,17 +136,21 @@ FROM orders.qvd (qvd);
 | Period / dot (`.`) | Yes | Used for entity-prefix convention: `[Product.Category]` |
 | Underscore (`_`) | Yes | Common in source system fields: `order_date` |
 | Hyphen (`-`) | Yes | Must use brackets: `[Revenue - YTD]` |
-| Equals (`=`) | Avoid | Reserved as operator in expressions |
-| Semicolon (`;`) | Avoid | Statement terminator in script |
-| Curly braces (`{}`) | Avoid | Set analysis delimiters in expressions |
-| Square brackets (`[]`) | Delimiter only | Used to enclose field names, not as content within them |
-| Dollar sign (`$`) | Reserved | System field prefix (`$Table`, `$Field`). Do not use for custom fields. |
-| Hash / pound (`#`) | Use carefully | Allowed but can conflict with date/time format interpretation |
-| Single quote (`'`) | Avoid | String literal delimiter |
-| Double quote (`"`) | Delimiter only | Alternative to square brackets for field name quoting |
-| Backslash (`\`) | Avoid | Path separator, can cause issues in some contexts |
-| Forward slash (`/`) | Use carefully | Allowed in brackets but can conflict with division operator |
-| Comma (`,`) | Avoid | Parameter separator in functions and SET statements |
+| Colon (`:`) | Avoid | Officially flagged as reserved. Used as table-label terminator in load script and in `StateName::BookmarkName` syntax. |
+| Equals (`=`) | Avoid | Officially flagged as reserved. Operator in expressions and assignments. |
+| Semicolon (`;`) | Avoid | Statement terminator in script. |
+| Parentheses (`(` `)`) | Avoid | Officially flagged as reserved. Used as function-call and expression-grouping delimiters. |
+| Curly braces (`{` `}`) | Avoid | Officially flagged as reserved. Set analysis delimiters. |
+| Square brackets (`[` `]`) | Delimiter only | Officially flagged as reserved. Used to enclose field names; not valid as content. |
+| Dollar sign (`$`) | Reserved | Officially flagged as reserved. System field prefix (`$Table`, `$Field`, `$Fields`, `$FieldNo`, `$Rows`) and dollar-sign expansion. |
+| Acute accent (`´`) | Avoid | Officially flagged as reserved. |
+| Backtick / grave accent (`` ` ``) | Avoid | Officially flagged as reserved. Alternative to double quotes for case-insensitive search delimiting in set analysis. |
+| Single quote / apostrophe (`'`) | Avoid | Officially flagged as reserved. String literal delimiter. |
+| Hash / pound (`#`) | Use carefully | Allowed but can conflict with date/time format interpretation. |
+| Double quote (`"`) | Delimiter only | Alternative to square brackets for field name quoting. |
+| Backslash (`\`) | Avoid | Path separator; can cause issues in some contexts. |
+| Forward slash (`/`) | Use carefully | Allowed in brackets but can conflict with division operator. |
+| Comma (`,`) | Avoid | Parameter separator in functions and SET statements. |
 
 ### Table Names
 
@@ -157,7 +161,7 @@ Same rules as field names. Table names with spaces or special characters require
 - Must start with a letter or underscore
 - Can contain letters, numbers, underscores, and periods
 - **Cannot contain spaces** (unlike field names)
-- Period in variable names is allowed but discouraged (causes confusion with dollar-sign expansion: `$(v.MyVar)` works but looks like property access)
+- Period in variable names is allowed by the parser (standard `$(variablename)` expansion treats the dot as a literal character — `$(v.MyVar)` simply expands the variable named `v.MyVar`). It is discouraged for stylistic reasons: it complicates regex-based search/replace when refactoring variable references, and visually it resembles property access from other languages, which can mislead readers. Standard convention is camelCase with the `v` prefix: `vMyVar`, not `v.MyVar`.
 - Convention: camelCase with `v` prefix: `vTotalRevenue`, `vCurrentPeriod`
 
 ### QVD File Names

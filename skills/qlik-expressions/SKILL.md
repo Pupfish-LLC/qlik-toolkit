@@ -24,11 +24,12 @@ All Qlik aggregation functions skip NULL values by default. This is correct beha
 - `NullCount(Field)` — Counts NULL values specifically. Useful for data quality checks.
 - `Concat(Field, Delimiter)` — Concatenates non-NULL values with a delimiter. `Concat([Product.Name], ', ')` produces comma-separated product names.
 
-**The NULL aggregation trap:** `Sum()` of all NULLs returns NULL, not 0. If you need 0 instead, wrap with `Alt()` or `RangeSum()`:
+**The NULL aggregation trap:** `Sum()` of all NULLs returns NULL, not 0. If you need 0 instead, wrap with `Alt()` or `RangeSum()` (both operate on numeric values):
 ```
 Alt(Sum([Amount]), 0)
 RangeSum(Sum([Amount]), 0)
 ```
+Note: `Alt()` returns the first parameter with a valid NUMERIC representation. Do not use it to coalesce text-valued NULLs — for that, use `Coalesce()` (see Section 9).
 
 ## 2. Set Analysis Syntax
 
@@ -39,10 +40,12 @@ Set analysis is the core expression mechanism in Qlik. It overrides the current 
 The curly braces `{}` are required. Everything inside is the set modifier.
 
 **Set identifier (optional, default `$`):**
-- `$` — Current selection (default if omitted)
-- `1` — All data ignoring selections
-- `$1` — Alternate state reference
-- Bookmark names — Selections from a named bookmark
+- `$` — Current selection in the default state (default if omitted)
+- `1` — All records in the app, ignoring all selections
+- `$1` — Previous selection in the default state (one step back in selection history). `$2` is two back, and so on.
+- `$_1` — Next (forward) selection in the default state. `$_2` is two forward, and so on.
+- `BookmarkName` (or bookmark ID) — Selections saved in a named bookmark
+- `StateName` — Selections in a named alternate state. Referenced by state name, no `$` prefix: `Sum({MyState} [Amount])`. Bookmarks scoped to a state use `StateName::BookmarkName`.
 
 **Set operator (optional, default intersection):**
 - `*` — Intersection: include only values that exist in BOTH sets
@@ -59,7 +62,7 @@ The curly braces `{}` are required. Everything inside is the set modifier.
 **Element set definitions:**
 - Explicit values: `{1, 2, 3}` or `{'East', 'West'}`
 - Wildcard (all non-null): `{*}` — matches any value EXCEPT null. Use `<Field={*}>` to exclude null values from the aggregation for that field. This is NOT the same as `<Field=>` (which clears/ignores selections on that field).
-- Search strings (computed membership): `{"=Sum(Amount)>1000"}` — only values where the expression is true
+- Search strings (computed membership): inside a field modifier, e.g., `<Customer={"=Sum(Amount)>1000"}>` — for each Customer, evaluate `Sum(Amount)>1000`; include Customer values where it returns true. Searches are always scoped to a named field and enclosed in double quotes, square brackets, or grave accents.
 - Variable references: `{$(vMyVariable)}`
 - Functions: `{P(Region)}` (possible values), `{E(Region)}` (excluded values)
 - Comparison operators: `Year={">2020"}` or `Month={">=1<=6"}`
@@ -68,6 +71,13 @@ The curly braces `{}` are required. Everything inside is the set modifier.
 - `<Field={*}>` — Restrict to non-null values of Field. Actively excludes null. Use when you need to filter out records where a field has no data (e.g., `{<[Per Capita Income]={*}>}` to exclude counties without income data).
 - `<Field=>` — Ignore any user selections on Field. The field is unconstrained; null values ARE included. Use when you want the measure to be unaffected by user filter selections on that field.
 - Omitting Field from set modifier — Field follows whatever the user has currently selected. Default behavior.
+
+**Quoting rules — single vs. double quotes:**
+- Single quotes `'East'` → literal, case-sensitive value match
+- Double quotes `"East"` → case-insensitive search (matches 'East', 'EAST', 'east')
+- Search strings (expressions starting with `=`, wildcards `*`/`?`) require double quotes, brackets, or grave accents
+
+Mismatching this is silent — the expression compiles but matches more or fewer values than intended.
 
 **Examples:**
 ```
@@ -215,14 +225,15 @@ NoOfRows('$') > 100                         // Only show if enough data rows
 
 ## 8. Expression Performance Optimization
 
-**Avoid complex set analysis when a script flag field would suffice:**
+**Set analysis beats flag multiplication for large datasets.** Per Henric Cronström's tests on a 100M-row fact table (Qlik Design Blog), set analysis benefits from index optimization and a smaller post-filter aggregation footprint:
 ```
-// Heavy - evaluates for every row
+// Fast on large datasets - indexed selection, smaller aggregation set
 Sum({<IsReturned={0}>} Amount)
 
-// Light - flag calculated once in script
+// Roughly equivalent for small datasets, slower for large
 Sum([IsReturned] * [Amount])
 ```
+For small fact tables (a few million rows), the difference is negligible — flag multiplication's per-row overhead is constant but cheap. Reach for flag multiplication only when (a) the flag lives on the fact table itself and (b) the dataset is small enough that set analysis's fixed setup cost is wasted.
 
 **Pre-calculate in script what doesn't need to be dynamic:**
 - Age groups, fiscal periods, seasonal labels — calculate at load time
@@ -237,8 +248,8 @@ Aggr creates virtual tables in memory. Each level of nesting multiplies memory u
 **TOTAL is expensive:**
 TOTAL forces row-by-row recalculation. Pre-calculate totals as a script field when used repeatedly.
 
-**Prefer flag multiplication over set analysis for simple filters:**
-`Sum([Flag] * [Amount])` is faster than `Sum({<Flag={1}>} Amount)` when the flag is boolean.
+**Set analysis is generally faster than flag multiplication for large datasets:**
+For large fact tables, prefer `Sum({<Flag={1}>} Amount)` over `Sum([Flag] * [Amount])`. Set analysis can use index optimization and shrinks the aggregation footprint; multiplication forces a per-row scan. The two are roughly equivalent on small datasets (Henric Cronström, "Performance of Conditional Aggregations," Qlik Design Blog).
 
 **Calculation conditions prevent unnecessary heavy calculations:**
 If a sheet condition fails, all calculations on that sheet skip. This saves processing time.
@@ -251,11 +262,19 @@ If a sheet condition fails, all calculations on that sheet skip. This saves proc
 
 **Division by zero returns NULL:** `1/0` = NULL (not an error). `5/0` = NULL. This is safe but can hide logic errors.
 
-**Alt() for null coalescing:** `Alt(expression, fallback)` returns fallback if expression is NULL.
+**Alt() for numeric coalescing:** Per the docs, "the alt function returns the first of the parameters that has a valid number representation. If no such match is found, the last parameter will be returned." Use Alt() only for numeric fallback:
 ```
-Alt(Sum([Amount]), 0)
-Alt([Customer.Name], 'Unknown')
+Alt(Sum([Amount]), 0)        // Returns 0 when Sum produces NULL or non-numeric
+Alt([Order.Year], Today())   // Returns Today() when Order.Year has no numeric representation
 ```
+
+**Coalesce() for general (text or numeric) null coalescing:** Per the docs, "the coalesce function returns the first of the parameters that has a valid non-NULL representation." Use Coalesce() when fallback values are text or when a non-numeric value (e.g., a name) needs a default:
+```
+Coalesce([Customer.Name], 'Unknown')
+Coalesce([Product.Description], [Product.Name], [Product.Code], 'No description')
+```
+
+Common mistake: `Alt([Customer.Name], 'Unknown')` always returns `'Unknown'` because a name like "Acme Corp" has no valid numeric representation. Reach for Coalesce() whenever the values are text.
 
 **RangeSum() for null-safe addition:** `RangeSum(A, B)` returns the non-null value if one is null. Unlike `A + B` which returns NULL if either is NULL.
 
@@ -270,7 +289,7 @@ IF(IsNull(field), Null(), Sum(field))
 
 | Anti-Pattern | What Goes Wrong | Fix |
 |---|---|---|
-| Missing `$` in set identifier | `{<Field={value}>}` defaults to `$` (current), but adding operators requires explicit set: `{$*<...>}` | Always include explicit set identifier when using operators: `{$<Field={value}>}` |
+| Operator without left-side set identifier | `{*<Year={2024}>}` — the `*` operator needs a set on its left. Parse error or unexpected behavior. | Add an explicit identifier: `{$*<Year={2024}>}` (intersect current selection with Year=2024). Same applies to `+`, `-`, `/`. |
 | Using TOTAL when set analysis needed | TOTAL changes dimension scope, not selection. Wrong tool for the job. | Use set analysis `{<...>}` to override selections. Use TOTAL to change aggregation scope. |
 | Deeply nested IF | Unreadable, error-prone, hard to maintain | Use Pick(Match(...)) for multi-branch logic |
 | `Sum(field1 * field2)` vs. `Sum(field1) * Sum(field2)` | These produce different results. First aggregates products, second multiplies aggregates. Only the second is "revenue per unit × units = total." | Choose deliberately based on business logic. Document which is intended. |
