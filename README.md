@@ -10,6 +10,16 @@
 
 ## Quick Start
 
+### Install from the Claude Code desktop UI
+
+1. In the left sidebar under **Personal plugins**, click the **+** button.
+2. Choose **Create plugin → Add marketplace**.
+3. In the URL field, enter `Pupfish-LLC/claude-plugins`, then click **Sync**.
+4. Once the marketplace is synced, click the **+** button again and choose **Browse plugins**.
+5. Find **Pupfish qlik** and install it. The toggle next to the plugin name enables it.
+
+### Install from the command line
+
 1. **Add the Pupfish plugin marketplace** (if you haven't already):
 
    ```
@@ -19,14 +29,17 @@
 2. **Install the plugin:**
 
    ```
-   /plugin install pupfish-qlik@Pupfish-LLC
+   /plugin install pupfish-qlik@pupfish
    ```
 
-3. **Just describe what you're doing in Qlik.** Examples:
-   - *"Help me design a data model for this sales dataset"* → loads `qlik-data-modeling` and offers to invoke the `data-architect` agent.
-   - *"Review my load script for issues"* → loads `qlik-review-checklist` and invokes `qa-reviewer`.
-   - *"What's the difference between SET and LET?"* → loads `qlik-load-script`, answers from skill content.
-   - *"Write a set analysis expression for YoY sales growth"* → loads `qlik-expressions`, returns an expression with correct alternate-state and selection-scope handling.
+### Then use it
+
+**Just describe what you're doing in Qlik.** Examples:
+
+- *"Help me design a data model for this sales dataset"* → loads `qlik-data-modeling` and offers to invoke the `data-architect` agent.
+- *"Review my load script for issues"* → loads `qlik-review-checklist` and invokes `qa-reviewer`.
+- *"What's the difference between SET and LET?"* → loads `qlik-load-script`, answers from skill content.
+- *"Write a set analysis expression for YoY sales growth"* → loads `qlik-expressions`, returns an expression with correct alternate-state and selection-scope handling.
 
 There are no slash commands to memorize. The skills auto-load when their descriptions match your prompt.
 
