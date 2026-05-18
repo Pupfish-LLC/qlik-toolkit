@@ -378,7 +378,7 @@ Validates expression syntax, null handling, field references, and calculation co
     - `Sum(Measure)` — nulls ignored (acceptable for sums)
     - `Avg(Measure)` — nulls ignored; if null rates high, consider noting
     - `Count(Measure)` — counts non-nulls only (acceptable)
-    - `Count(*)` — counts all rows (use when null rate matters)
+    - `NullCount(Measure)` — counts NULLs in the field (use when null rate matters). `Count(*)` is not valid in Qlik chart or LOAD context — flag any occurrence.
     - `Null()` — flag any expressions that intentionally return null without documentation
   - Verify ZERO() is used if 0 is intended for null/missing values (not NULL)
   - Check for division by zero (e.g., `Sum(A) / Sum(B)` when B might be zero)

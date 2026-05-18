@@ -52,9 +52,14 @@ DROP TABLE [_TempA];
 
 ### 2. Count() Aggregation Must Use Explicit Field Names
 
-`Count(*)` does not exist in Qlik LOAD. Write `Count(field_name)` with the exact field reference. (Pure-aggregation `Count(*)` works in RESIDENT LOAD aggregations but is unidiomatic; prefer `Count(field_name)`.)
+`Count(*)` does not exist in Qlik LOAD or chart expressions — Qlik's `Count()` function signature requires an explicit field/expression argument. The SQL `Count(*)` convention is only valid inside `SQL SELECT` pass-through statements (which Qlik hands off to the database engine).
 
-Avoid `Count(1)` — it counts rows where the literal `1` is non-null (always all rows), which appears correct but fails during incremental loads when expected row counts change.
+In Qlik LOAD or RESIDENT context:
+- **Count non-null values in a field:** `Count(field_name)`.
+- **Count NULL values in a field:** `NullCount(field_name)`.
+- **Count all rows in a loaded table:** `NoOfRows('TableName')` after the LOAD.
+
+Avoid `Count(1)` — it counts rows where the literal `1` is non-null (always all rows), which appears correct but is non-idiomatic and fragile during incremental loads.
 
 ### 3. QUALIFY / UNQUALIFY With Prefixed Fields
 

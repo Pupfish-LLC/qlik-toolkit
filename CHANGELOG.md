@@ -2,6 +2,22 @@
 
 All notable changes to the `pupfish-qlik` plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-05-18
+
+### Fixed
+
+Resolved an internal contradiction across skills regarding `Count(*)`. The corrected rule is now stated consistently throughout the plugin:
+
+- `Count(*)` is **not valid** in Qlik LOAD / RESIDENT / chart expressions — Qlik's `Count()` function requires an explicit field or expression argument.
+- `Count(*)` **is valid** only inside `SQL SELECT` pass-through statements (handed off to the database engine).
+- To count NULLs in a field, use `NullCount(field)`. To count all rows in a loaded table, use `NoOfRows('TableName')` after the LOAD.
+
+Specific fixes:
+
+- `skills/data-quality-validator/SKILL.md` — Replaced an invalid `Count(*) - Count([Order.Key])` example with the idiomatic `NullCount([Order.Key])`. Corrected the accompanying note that incorrectly allowed `Count(*)` in RESIDENT LOAD with GROUP BY.
+- `skills/qlik-review-checklist/checklist.md` — Replaced the "use `Count(*)` when null rate matters" line with the correct `NullCount(field)` recommendation, plus a flag rule against any occurrence of `Count(*)` in chart or LOAD context.
+- `agents/script-developer.md` — Removed the incorrect parenthetical that suggested pure-aggregation `Count(*)` works in RESIDENT LOAD. Expanded the guidance to cover the three valid alternatives (`Count(field)`, `NullCount(field)`, `NoOfRows()`).
+
 ## [0.1.0] — 2026-05-18
 
 ### Added

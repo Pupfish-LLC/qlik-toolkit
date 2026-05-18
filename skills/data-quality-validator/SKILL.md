@@ -87,7 +87,7 @@ END IF
 ```qlik
 LET vNullCount = 0;
 [_NullCheck]:
-LOAD Count(*) - Count([Order.Key]) AS _null_count
+LOAD NullCount([Order.Key]) AS _null_count
 RESIDENT [Orders];
 LET vNullCount = Peek('_null_count', 0, '_NullCheck');
 DROP TABLE [_NullCheck];
@@ -97,7 +97,7 @@ IF $(vNullCount) > 0 THEN
 END IF
 ```
 
-**Note:** The `Count(*)` syntax above applies only to Resident LOADs that are counting rows in a GROUP BY context. In other LOAD contexts, use `Count(field_name)` (never `Count(*)` in the context of aggregating a specific field).
+**Note:** `NullCount()` is the idiomatic Qlik aggregation for counting NULL values in a field. Do not use `Count(*)` here — it is not valid in Qlik LOAD context. To count *all* rows in a loaded table (regardless of nulls), use `NoOfRows('TableName')` after the LOAD instead.
 
 ### Integration with Error Handling
 

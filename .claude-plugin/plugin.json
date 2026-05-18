@@ -1,7 +1,7 @@
 {
   "name": "pupfish-qlik",
   "description": "Qlik Sense development toolkit: 12 practitioner-authored skills covering data modeling, load scripts, expressions, performance, visualization, QA, source profiling, and Cloud MCP integration. Includes 7 specialist agents (data architect, script developer, expression developer, viz architect, requirements analyst, QA reviewer, doc writer) for ad-hoc invocation. No rigid workflow — invoke skills and agents as needed.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Pupfish, LLC",
     "url": "https://pupfish.io"
