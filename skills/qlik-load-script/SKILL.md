@@ -318,6 +318,7 @@ See `script-templates/master-calendar.qvs` for the production-ready template.
 ## 13. Error Handling and Logging
 
 - **TRACE:** `TRACE === Phase: Extract ===;` for milestones. `TRACE Rows loaded: $(vRowCount);` for row counts.
+  - **Semicolons in the message text are NOT allowed.** TRACE doesn't take a quoted argument by default — the first `;` terminates the statement, and any words that follow become a syntax error at reload. Use a comma, period, or dash instead. WRONG: `TRACE Loaded $(vRows); see diagnostics for detail;` (the `;` after `$(vRows)` ends the TRACE; `see diagnostics for detail;` parses as an unknown statement). RIGHT: `TRACE Loaded $(vRows). See diagnostics for detail;` or `TRACE Loaded $(vRows) -- see diagnostics for detail;`. The terminating `;` at the very end is the only `;` allowed.
 - **ScriptError vs ScriptErrorCount -- do not confuse these:**
   - `ScriptError` is a **dual value** (numeric error code + text component) reflecting only the **most recent statement**. It is reset to 0 after every successfully executed statement. Because it resets, it cannot detect errors across multiple operations -- only the immediately preceding one.
   - `ScriptErrorCount` is an **integer counter** that is **cumulative** across the entire reload. It increments with each failed statement and is never reset mid-reload.

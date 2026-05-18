@@ -29,10 +29,15 @@
 #   - Table aliases    (FROM t1; use full table names in brackets instead)
 #   - SELECT DISTINCT  (for LOAD context; use LOAD DISTINCT instead)
 #
+# Other Qlik Syntax Rules Checked:
+#   - TRACE with embedded semicolon (terminates the statement early;
+#     anything after the first ';' parses as a separate invalid statement)
+#
 # Checks Applied:
 #   1. SQL Constructs in LOAD context
-#   2. Block balance (IF/END IF, SUB/END SUB, FOR/NEXT)
-#   3. PurgeChar() argument count validation
+#   2. TRACE semicolon misuse
+#   3. Block balance (IF/END IF, SUB/END SUB, FOR/NEXT)
+#   4. PurgeChar() argument count validation
 #
 # Exit Codes:
 #   0 = No findings (file is clean)
@@ -161,6 +166,18 @@ process_file() {
         # 8. SELECT DISTINCT in LOAD context (not in SQL blocks, which are already skipped)
         if echo "$line" | grep -iqE 'SELECT\s+DISTINCT'; then
             add_finding "$file" "$line_num" "'SELECT DISTINCT' not allowed in LOAD context. Use 'LOAD DISTINCT' instead."
+        fi
+
+        # 9. TRACE with embedded semicolon
+        # TRACE does not take a quoted argument; the first ';' terminates the
+        # statement, and any subsequent text on the line parses as a separate
+        # (usually invalid) statement, causing a reload error. A correct TRACE
+        # line has exactly one ';' at the end.
+        if echo "$line" | grep -iqE '^\s*TRACE\s'; then
+            semi_count=$(echo "$line" | tr -cd ';' | wc -c)
+            if [ "$semi_count" -gt 1 ]; then
+                add_finding "$file" "$line_num" "TRACE statement contains $semi_count semicolons; the first ';' terminates the statement and anything after parses as an invalid statement. Replace embedded semicolons with commas, periods, or dashes."
+            fi
         fi
 
         # ===== Block Balance Checks =====

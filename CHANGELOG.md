@@ -2,6 +2,20 @@
 
 All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2026-05-18
+
+### Fixed
+
+- **`data-quality-validator/validation-queries.md` §3:** Removed an embedded semicolon inside a TRACE message (`TRACE [WARNING] Customer.Region cardinality is $(vRegionCount); expected 4-6 unique values;`). The first `;` would have terminated the TRACE early and made the trailing text parse as an invalid statement, breaking the reload. Replaced with a comma.
+
+### Added
+
+- **TRACE semicolon rule documented across the plugin:**
+  - `qlik-load-script/SKILL.md` §13 (Error Handling and Logging): added explicit rule that semicolons inside the TRACE message are not allowed; explained why (TRACE has no quoted argument, the first `;` terminates the statement); examples of right/wrong patterns.
+  - `qlik-load-script/diagnostic-patterns.md` (TRACE Statement Templates): added the same rule with right/wrong examples at the top of the TRACE section.
+  - `qlik-review-checklist/checklist.md` §1: added item 1.7 "Semicolons inside TRACE Messages" as a Critical finding with a structured finding format. Script Syntax category count updated from 6 to 7 items.
+  - `hooks/validate-qvs-syntax.sh`: added check #9 to flag TRACE lines with more than one `;`. Now catches this pre-reload during Write/Edit.
+
 ## [0.3.0] — 2026-05-18
 
 ### Changed

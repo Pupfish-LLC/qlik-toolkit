@@ -4,7 +4,7 @@ This document contains all checklist items (1.1–9.5) organized by category. Ea
 
 ---
 
-## 1. Script Syntax (6 items)
+## 1. Script Syntax (7 items)
 
 Validates script syntax, function usage, block balance, and variable scope. Ensures scripts can execute without reload errors.
 
@@ -96,6 +96,21 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
   - Search for multiple RENAME statements targeting the same destination (collision)
   - If multiple sources need same target name, verify each LOAD assigns target name directly instead of using RENAME after
 - **Finding Format:** `[S-1.6]: RENAME FIELD collision / Severity: Critical / Category: Script Syntax / Location: [file]:[line] / Finding: RENAME FIELD [X] TO [Y] attempted but [Y] already exists in [table names] / Impact: Script reload will fail with collision error / Recommended Fix: Assign target name directly in SELECT/LOAD as [X] AS [Y] instead of using RENAME after fact, or resolve field name conflicts`
+
+### 1.7 Semicolons inside TRACE Messages
+
+- **Severity:** Critical
+- **Applicable Passes:** Script / Comprehensive
+- **What to Check:** A TRACE statement's message text must not contain a `;`. TRACE does not take a quoted argument by default, so the first `;` terminates the statement and any text after it is parsed as a separate (usually invalid) statement, causing a reload error.
+- **How to Verify:**
+  - Search scripts/*.qvs for `TRACE ` (note trailing space, to avoid matching the SQL keyword `TRACE`)
+  - For each TRACE statement, count the `;` characters. There must be exactly one, at the very end of the statement.
+  - Common bug patterns: descriptive text containing list separators (`TRACE ...; see ...; look for ...;`), variable expansions with adjacent semicolons inside (`TRACE Loaded $(vRows); count includes nulls;`).
+- **Recommended Fix:** Replace embedded semicolons with commas, periods, or dashes. Examples:
+  - WRONG: `TRACE Loaded $(vRows); see diagnostics for detail;`
+  - RIGHT: `TRACE Loaded $(vRows). See diagnostics for detail;`
+  - RIGHT: `TRACE Loaded $(vRows) -- see diagnostics for detail;`
+- **Finding Format:** `[S-1.7]: Semicolon inside TRACE message / Severity: Critical / Category: Script Syntax / Location: [file]:[line] / Finding: TRACE statement contains embedded `;` which terminates the statement early; subsequent text parses as an invalid statement / Impact: Script reload fails with syntax error / Recommended Fix: Replace embedded semicolons with commas, periods, or dashes; keep only the final terminating semicolon`
 
 ---
 

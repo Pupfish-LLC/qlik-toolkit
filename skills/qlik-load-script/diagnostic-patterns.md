@@ -8,6 +8,19 @@ TRACE statement templates, row count logging, post-load validation queries, and 
 
 TRACE writes a message to the script execution log. Use it for milestone tracking, variable inspection, and row count logging. TRACE output is visible in the reload dialog and in the script execution log file.
 
+**Critical syntax rule: no semicolons inside the TRACE message.** TRACE doesn't take a quoted argument by default — the first `;` terminates the statement. Anything after that `;` parses as a separate (and usually invalid) statement, causing a reload error. Use commas, periods, or dashes inside the message instead. The terminating `;` at the very end is the only `;` allowed in a TRACE.
+
+```qlik
+// WRONG -- the embedded semicolon ends the TRACE early;
+// "See diagnostics" then parses as an unknown statement
+TRACE Loaded $(vRows); see diagnostics for detail;
+
+// RIGHT -- comma, period, or dash separator
+TRACE Loaded $(vRows). See diagnostics for detail;
+TRACE Loaded $(vRows) -- see diagnostics for detail;
+TRACE Loaded $(vRows), see diagnostics for detail;
+```
+
 ### Phase Milestone Tracing
 
 ```qlik
