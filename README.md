@@ -1,11 +1,11 @@
 # pupfish-qlik
 
-> **Make Claude Code fluent in Qlik Sense.** Install once and Claude becomes a Qlik developer you can delegate to — with deep platform knowledge, specialist agents for different tasks, and an automatic syntax check on every script.
+> **Make Claude Code fluent in Qlik Sense.** Install once and Claude becomes a Qlik developer you can delegate to. It brings deep platform knowledge, specialist agents for different tasks, and an automatic syntax check on every script.
 
 ## What This Gives You
 
 - **Claude actually understands Qlik.** Without this plugin, Claude drifts into SQL syntax when writing Qlik load scripts, mishandles set analysis, and confuses chart-context behavior with script-context behavior. With it, Claude stops making those mistakes.
-- **Specialist agents on demand.** Different jobs need different focus: data architecture, scripting, expressions, visualization, QA review. The right agent shows up automatically based on what you describe — no forced pipeline, no slash commands to memorize.
+- **Specialist agents on demand.** Different jobs need different focus: data architecture, scripting, expressions, visualization, QA review. The right agent shows up automatically based on what you describe. No forced pipeline, no slash commands to memorize.
 - **A syntax safety net.** When Claude writes or edits a `.qvs` file, common mistakes are flagged immediately so you catch them before reload, not after.
 
 ## Quick Start
@@ -60,23 +60,23 @@ There are no slash commands to memorize. The skills auto-load when their descrip
 | **data-quality-validator** | Post-load data quality validation query templates: null rate analysis, referential integrity, value distribution, row count validation, orphaned record detection, sparse field identification, duplicate detection. |
 | **source-profiler** | Source data profiling: query templates for source schemas, field types, cardinality, null rates, sample values, data quality indicators. Includes source architecture classification (Dimensional Warehouse / OLTP / Data Vault 2.0 / Pre-Joined Views / Flat Files / API) with consumption implications per type. |
 | **platform-conventions** | Brownfield platform context template: existing app inventory, shared subroutine catalogs, naming convention maps, data connection standards, QVD storage conventions, organizational coding standards. |
-| **qlik-project-scaffold** | Cross-platform Qlik project directory scaffolder. Creates a minimal, unopinionated baseline structure (data-sources, scripts, qvds, documentation, tests) with starter READMEs. Idempotent — safe to re-run. |
+| **qlik-project-scaffold** | Cross-platform Qlik project directory scaffolder. Creates a minimal, unopinionated baseline structure (data-sources, scripts, qvds, documentation, tests) with starter READMEs. Idempotent (safe to re-run). |
 
 ### Agents (7)
 
 Think of these as a specialist team you can call on at any point:
 
-- **data-architect** — Designs your data model: star schema, key strategy, QVD layer architecture, ETL boundaries, source-architecture consumption pattern.
-- **script-developer** — Writes production Qlik load scripts from a data model specification. Handles incremental loads, master calendar, variables scaffold, error handling, diagnostics.
-- **expression-developer** — Authors master measures, master dimensions, calculated dimensions, set-analysis expressions, and variable definitions.
-- **viz-architect** — Designs sheet layouts, chart selections, filter panes, navigation flow.
-- **qa-reviewer** — Reviews any combination of artifacts (data model, scripts, expressions, full app) against quality standards. Produces structured findings with severity and remediation guidance. Read-only by design.
-- **requirements-analyst** — Conducts structured discovery: business requirements, platform context for brownfield projects, user personas, business rules with grain.
-- **doc-writer** — Generates project documentation from completed artifacts. Audience-calibrated (technical for developers, plain language for business users).
+- **data-architect**: Designs your data model: star schema, key strategy, QVD layer architecture, ETL boundaries, source-architecture consumption pattern.
+- **script-developer**: Writes production Qlik load scripts from a data model specification. Handles incremental loads, master calendar, variables scaffold, error handling, diagnostics.
+- **expression-developer**: Authors master measures, master dimensions, calculated dimensions, set-analysis expressions, and variable definitions.
+- **viz-architect**: Designs sheet layouts, chart selections, filter panes, navigation flow.
+- **qa-reviewer**: Reviews any combination of artifacts (data model, scripts, expressions, full app) against quality standards. Produces structured findings with severity and remediation guidance. Read-only by design.
+- **requirements-analyst**: Conducts structured discovery: business requirements, platform context for brownfield projects, user personas, business rules with grain.
+- **doc-writer**: Generates project documentation from completed artifacts. Audience-calibrated (technical for developers, plain language for business users).
 
 ### Hook
 
-- **PostToolUse on Write/Edit** — Runs `validate-qvs-syntax.sh` on any `.qvs` file written or edited. Scans for SQL constructs in `LOAD` context (`HAVING`, `Count(*)`, `IS NULL`, `BETWEEN`, `IN`, `CASE WHEN`, `LIMIT`, `SELECT DISTINCT`, table aliases), unbalanced control blocks (`IF`/`END IF`, `SUB`/`END SUB`, `FOR`/`NEXT`), and malformed `PurgeChar()` calls (missing second argument). Findings appear before you reload.
+- **PostToolUse on Write/Edit**: Runs `validate-qvs-syntax.sh` on any `.qvs` file written or edited. Scans for SQL constructs in `LOAD` context (`HAVING`, `Count(*)`, `IS NULL`, `BETWEEN`, `IN`, `CASE WHEN`, `LIMIT`, `SELECT DISTINCT`, table aliases), unbalanced control blocks (`IF`/`END IF`, `SUB`/`END SUB`, `FOR`/`NEXT`), and malformed `PurgeChar()` calls (missing second argument). Findings appear before you reload.
 
 ## How To Use It (Examples)
 
@@ -102,14 +102,14 @@ Claude (with `qlik-expressions` auto-loaded): Returns `Sum({<[Fiscal Year]={$(=M
 
 Two planned skills are still in development and will land in a future release:
 
-- **`qlik-security`** — Section Access patterns for row-level and column-level data security. Until it ships, refer to the [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm).
-- **`qlik-deploy`** — App deployment patterns: data connections, reload tasks, space management, and environment promotion. Until it ships, refer to [Managing apps in Qlik Cloud](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/managing-apps.htm).
+- **`qlik-security`**: Section Access patterns for row-level and column-level data security. Until it ships, refer to the [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm).
+- **`qlik-deploy`**: App deployment patterns: data connections, reload tasks, space management, and environment promotion. Until it ships, refer to [Managing apps in Qlik Cloud](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/managing-apps.htm).
 
 ## Why No Orchestrator?
 
 The plugin intentionally ships **without a top-level orchestrator agent** that would coordinate the other agents through a fixed pipeline.
 
-Reason: Claude already routes naturally based on what you describe. Each skill's `description` is the trigger. Each agent declares its inputs and capability. An orchestrator would insert a layer between you and Claude's routing — and the cost is flexibility. The intended use cases for this plugin are broad: a quick syntax check, a one-off review, a full project build, a brownfield code audit, a single expression tweak. A fixed pipeline doesn't fit all of those; a fluid prompt-driven flow does.
+Reason: Claude already routes naturally based on what you describe. Each skill's `description` is the trigger. Each agent declares its inputs and capability. An orchestrator would insert a layer between you and Claude's routing, and the cost is flexibility. The intended use cases for this plugin are broad: a quick syntax check, a one-off review, a full project build, a brownfield code audit, a single expression tweak. A fixed pipeline doesn't fit all of those; a fluid prompt-driven flow does.
 
 If a use case emerges where orchestration would clearly help, a slash command can be added in a later release. For now, agents and skills, invoked by intent.
 
