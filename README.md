@@ -66,13 +66,13 @@ There are no slash commands to memorize. The skills auto-load when their descrip
 
 Think of these as a specialist team you can call on at any point:
 
-- **data-architect**: Designs your data model: star schema, key strategy, QVD layer architecture, ETL boundaries, source-architecture consumption pattern.
-- **script-developer**: Writes production Qlik load scripts from a data model specification. Handles incremental loads, master calendar, variables scaffold, error handling, diagnostics.
-- **expression-developer**: Authors master measures, master dimensions, calculated dimensions, set-analysis expressions, and variable definitions.
-- **viz-architect**: Designs sheet layouts, chart selections, filter panes, navigation flow.
-- **qa-reviewer**: Reviews any combination of artifacts (data model, scripts, expressions, full app) against quality standards. Produces structured findings with severity and remediation guidance. Read-only by design.
-- **requirements-analyst**: Conducts structured discovery: business requirements, platform context for brownfield projects, user personas, business rules with grain.
-- **doc-writer**: Generates project documentation from completed artifacts. Audience-calibrated (technical for developers, plain language for business users).
+- **data-architect**: Designs Qlik data models. Star schema, key strategy, QVD layer architecture, ETL boundaries, source-architecture consumption patterns. Works from a project description, source schema, ERD, existing app, or a conversational ask.
+- **script-developer**: Writes production-grade Qlik load scripts (`.qvs`). Extraction, transformation, QVD generation, incremental loads, master calendar, error handling, diagnostics. Comfortable with reload-feedback fix cycles.
+- **expression-developer**: Authors Qlik expressions — set analysis, master measures and dimensions, calculation conditions, variable definitions. Iterative: ranges from one-off snippet to full catalog.
+- **viz-architect**: Designs sheet layouts, chart selections, filter panes, and navigation flow. Surfaces expression gaps when visualizations need measures that don't yet exist.
+- **qa-reviewer**: Reviews any Qlik artifact or combination (data model, scripts, expressions, full app) against quality standards. Produces structured findings with severity and remediation guidance. Read-only by design.
+- **requirements-analyst**: Conducts structured discovery — business requirements, platform context for brownfield projects, user personas, business rules with grain.
+- **doc-writer**: Generates project documentation from whatever Qlik artifacts exist. Audience-calibrated (technical for developers, plain language for business users).
 
 ### Hook
 

@@ -552,7 +552,7 @@ Validates alignment across multiple pipeline phases and artifacts.
 
 ## 8. Blocked Dependency Audit (3 items)
 
-Validates dependency tracking and placeholder documentation per pipeline state.
+Validates that blocked dependencies are tracked and any placeholder logic in artifacts is documented.
 
 **Applicable Review Passes:** Script (light) / Expression (light) / Comprehensive
 

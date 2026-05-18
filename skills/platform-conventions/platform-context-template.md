@@ -295,6 +295,6 @@ Use this section to document any decisions made during platform context ingestio
 **Completed Example:**
 
 - **Naming Convention Reconciliation:** Platform uses `_id` suffix for keys; framework default is `_key`. Decision: Adopt platform `_id` to maintain compatibility with existing shared subroutines (MergeAndDrop, ApplyMasterCalendar). All keys in this project will use `_id` suffix.
-- **Blocked Dependency:** Platform library documentation was not provided. Assumed subroutines in `inputs/platform-libraries/` are complete. Developer to confirm subroutine inventory in platform context ingestion handoff.
-- **Greenfield Decision:** No existing applications in `inputs/existing-apps/`. This is a greenfield project. Framework defaults will be used for all conventions. Platform Context Document serves as decision record.
+- **Blocked Dependency:** Platform library documentation was not provided. Assumed the available shared subroutines are complete. Developer to confirm the subroutine inventory before downstream work depends on it.
+- **Greenfield Decision:** No existing applications were provided. This is a greenfield project. Framework defaults will be used for all conventions. The Platform Context Document serves as the decision record.
 

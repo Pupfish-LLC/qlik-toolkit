@@ -2,6 +2,33 @@
 
 All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-18
+
+### Changed
+
+Comprehensive retune of all 7 agents (and a small pass on 3 skill files) to fit the ad-hoc invocation model. Prior wording assumed a regimented multi-phase pipeline with specific upstream artifacts at each step; this release removes that scaffolding so each agent stands alone and adapts to whatever the user has shared.
+
+Per-agent changes (consistent pattern across all seven):
+
+- Replaced rigid "Inputs" sections (which named specific upstream artifacts like "Project Specification," "Data Model Specification," "Platform Context Document") with adaptive "Working from what you have" sections. The agents now expect the user to share whatever context exists — a description, a screenshot, named files, a paste — and ask for what they need rather than demanding a specific artifact format.
+- Dropped "Out of scope" sections that named other agents by role ("writing scripts is the script-developer's role"). Replaced with topic-based scope statements.
+- Reframed runbook-style "Working Procedure" sections as adaptive "Approach" sections, with steps roughly sequenced but skipped or adapted to the actual ask.
+- Dropped formal "Handoff Protocol" / "Handoff" sections that described handing off to an orchestrator. Replaced with brief "After producing X" guidance on what to summarize.
+- Reframed "Iterative Gap-Filling" / "Execution Feedback Handling" sections to describe how the agent handles follow-up requests in conversation (rather than orchestrator callbacks).
+- Removed artifact-version metadata templates (`**Artifact:** ... **Version:** 1.0 **Status:** Draft **Inputs:** ...`) from output specifications. The substance (section structures, format guidance) is preserved.
+- Output paths reframed as user-controlled with a sensible default, not as hardcoded conventions.
+
+Skill changes:
+
+- `qlik-review-checklist/checklist.md` §8: dropped "per pipeline state" framing.
+- `platform-conventions/platform-context-template.md`: dropped references to a specific `inputs/` directory structure and "platform context ingestion handoff" framing.
+
+### Why
+
+The agents were originally written for the `qlik-agents` plugin (the regimented 9-phase pipeline with orchestrator). When they were extracted to `qlik-toolkit` (intentionally ad-hoc, no orchestrator), the agents themselves weren't retuned. Heavy pipeline assumptions in the agent prompts created friction in ad-hoc use — agents would demand artifacts that didn't exist, or describe handoffs to other agents that may not even be invoked. This release brings the agent personalities in line with the toolkit's actual usage model.
+
+No changes to Qlik domain knowledge in the skills, no changes to the validation hook. Functional content is unchanged.
+
 ## [0.2.0] — 2026-05-18
 
 ### Changed
