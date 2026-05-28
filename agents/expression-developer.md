@@ -61,7 +61,7 @@ If the user just describes a measure in conversation ("I need year-over-year rev
 - **Expression:** `Sum({<[Order.Status]-={'Cancelled','Returned'}>} [Order.Amount])`
 - **Description:** Total revenue excluding cancelled and returned orders. Includes tax, excludes shipping.
 - **Null Handling:** Alt(Sum(...), 0) when used in ratios. Returns NULL for empty selections; use Alt($(vRevenue), 0) for display.
-- **Set Analysis Notes:** Excludes cancelled and returned orders via element set exclusion on Order.Status. See Set Analysis Authoring Protocol.
+- **Set Analysis Notes:** Excludes cancelled and returned orders via element set exclusion (`-=`) on Order.Status. Explain each modifier in plain language per `qlik-expressions` → `references/set-analysis.md`.
 - **Performance:** Low calculation weight
 - **Usage Context:** Revenue KPI, executive dashboard, financial summary sheet
 
@@ -78,41 +78,9 @@ If the user just describes a measure in conversation ("I need year-over-year rev
 ...
 ```
 
-## Set Analysis Authoring Protocol
+## Set Analysis
 
-Every expression using set analysis must follow this protocol. Include in the catalog's "Set Analysis Notes" field an explanation of each modifier.
-
-**Syntax structure:** `{<SetModifier1>, SetModifier2, ...>}`
-
-**Element set definitions** (value matching):
-- List values: `{<Field={'value1','value2'}>}` — matches specific values
-- Type sensitivity: `{<[Year]={'2024'}>}` — string comparison. `{<[Year]={2024}>}` — numeric comparison. These are NOT equivalent if Year contains both string and numeric encodings (e.g., Dual fields).
-- Wildcard matching: `{<Field={'value*'}>}` — uses Qlik wildcard rules (% and *)
-
-**Element set exclusion** (`-=` operator):
-- `{<Status-={'Cancelled','Returned'}>}` — includes all values EXCEPT Cancelled and Returned
-- Common in fact table filters: exclude failed transactions, exclude test records
-- Negation trap: `-=` is exclusion, not negation. `{<Status-={}>}` (empty exclusion) means "exclude nothing" = include all
-
-**Cross-selection (empty assignment ignoring current selection):**
-- `{<Region={}>}` — overrides current selection on Region. The expression evaluates with ALL Region values visible (user's Region selection is ignored).
-- Use case: show a metric for all regions while the user has filtered to one region. Common in "compare to all" patterns.
-
-**Dollar-sign expansion in set modifiers:**
-- `{<Year={$(vCurrentYear)}>}` — expands vCurrentYear variable at render time
-- Comma trap: `{<Year={$(vCurrentYear)}, Month={$(vCurrentMonth)}>}` is safe because the commas are set modifier separators, not inside $()
-- Never nest: `{<Field={$($1)}>}` is invalid. Pre-expand nested variables: `SET vFieldValue = $(vOtherVar);` then use `{<Field={$(vFieldValue)}>}`
-
-**Time intelligence patterns:**
-- **YTD (Year-to-Date):** `{<Year={$(vCurrentYear)}, Month={"<=$(vCurrentMonth)"}>}` — requires a flag field (Month) with numeric representation. The `"<=$(vCurrentMonth)"` uses range syntax with quotes around the relational operator.
-- **Prior Year:** `{<Year={$(vPriorYear)}>}` where vPriorYear is computed as Year(Today())-1
-- **Prior Year YTD:** `{<Year={$(vPriorYear)}, Month={"<=$(vCurrentMonth)"}>}` — same month range in prior year
-- **Rolling 12 Months:** Requires a flag field (e.g., MonthKey as numeric YYYYMM). `{<MonthKey={">="&$(vCurrentMonthKey)-11&"<="&$(vCurrentMonthKey)}>}` — uses range syntax with concatenation to build numeric bounds
-
-**Failure modes to document:**
-- Silent NULL when field name is from intermediate layer: `{<Account.Region={...}>}` produces NULL if DataModel renamed Account.Region to Customer.Region
-- Type sensitivity in element sets: Dual field with both string and numeric values may match only one type
-- Scope explosion in cross-selection: `{<>}` (empty braces with no modifiers) overrides ALL selections; easy to do unintentionally
+Set analysis is the primary mechanism for selection-context override in expressions. The canonical home for syntax, element sets, the negation/exclusion distinction, dollar-sign expansion inside modifiers, time intelligence patterns (YTD, prior year, rolling 12), and failure modes is `qlik-expressions` → `references/set-analysis.md`. Pull from there when authoring catalog entries and include a one-paragraph "Set Analysis Notes" entry per measure explaining each modifier in plain language.
 
 ## TOTAL Qualifier Rules
 

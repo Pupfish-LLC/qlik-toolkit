@@ -89,7 +89,7 @@ Sum({$+1} [Amount])                  // Current + all data (union)
 Sum({<Year={2024}, Month={"<=6"}>} [Amount])  // 2024 first half
 ```
 
-Reference `set-analysis-patterns.md` for complex patterns: time intelligence (YTD, prior year), cross-table filtering, and advanced scenarios.
+For the full set analysis reference — set operators, element set patterns, cross-selection (`<Field={}>`), dollar-sign expansion inside modifiers, time intelligence (YTD, prior year, rolling 12 done correctly), cross-table patterns, failure modes, and the anti-pattern catalog — see `references/set-analysis.md`.
 
 ## 3. TOTAL Qualifier
 
@@ -203,7 +203,7 @@ When a variable function cannot wrap an expression due to commas, write the equi
 - `$(=expression)` forces immediate evaluation and substitutes the result at parse time
 - This matters for dynamic labels: `=$(=Sum(Amount))` shows the evaluated sum in a text box
 
-Reference `set-analysis-patterns.md` for dynamic set modifiers and indirect references like `Year={$(=Max(Year))}`.
+Reference `references/set-analysis.md` § Dollar-Sign Expansion Inside Set Modifiers for dynamic set modifiers, the comma trap, and indirect references like `Year={$(=Max(Year))}`.
 
 ## 7. Calculation Conditions
 
@@ -370,15 +370,17 @@ The reader of the catalog should never have to guess what an aggregation does on
 | Wrong element set syntax in set analysis | Missing quotes on string values: `{<Region={East}>}` (East is a variable, not literal). Bracket confusion. | String literals need quotes: `{<Region={'East'}>}`. Use `{}` for implicit sets, `{}` shorthand for explicit. |
 | Using SET variable without understanding comma limitation | Passing expressions with commas to variable functions breaks. | Never pass expressions with commas to variable functions. Write inline instead. |
 
-For more anti-pattern details with examples, see `set-analysis-patterns.md`.
+For more anti-pattern details with examples, see `references/set-analysis.md` § Anti-Pattern Catalog.
 
 ## Supporting Files
 
-Read `set-analysis-patterns.md` for:
-- Complete set analysis syntax reference
-- Set operator patterns with business scenarios
-- Element set patterns (explicit, search strings, functions)
-- Time intelligence patterns (YTD, prior year, rolling periods)
-- Cross-table set analysis patterns
-- Advanced patterns (nested set analysis, set + TOTAL, set + Aggr)
+Read `references/set-analysis.md` for:
+- Complete set analysis syntax reference (identifiers, set operators, field modifiers, element sets, quoting rules, type sensitivity for Dual fields)
+- Set operator patterns with business scenarios — including the correct field-level exclusion (`-=`) and set-level exclusion (`{1-<...>}`)
+- Element set patterns (explicit, wildcard, search strings, variables, P()/E(), comparison operators)
+- Dollar-sign expansion inside set modifiers (the comma trap, no-nesting rule)
+- Time intelligence patterns (YTD, prior year, prior year YTD, rolling 12 done correctly — date-based and sequential-month-key forms)
+- Cross-table and alternate-state patterns
+- Advanced patterns (cross-selection / scope override, set + TOTAL, set + Aggr, Top N, conditional modifiers)
+- Failure modes (silent NULL from intermediate-layer renames, Dual-field type sensitivity, scope explosion via `<>`)
 - Anti-pattern catalog with correct expressions
