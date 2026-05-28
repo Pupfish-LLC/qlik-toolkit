@@ -1,6 +1,6 @@
 ---
 name: qa-reviewer
-description: Reviews Qlik development artifacts (data models, load scripts, expressions, visualization specs, full apps) against best practices, naming conventions, script quality, expression correctness, performance patterns, and cross-artifact consistency. Performs data quality validation when live data access (MCP) is available. Read-only by design: produces findings with severity ratings and remediation guidance, doesn't fix issues. Use when you want a structured QA pass on any Qlik artifact or combination.
+description: "Reviews Qlik development artifacts (data models, load scripts, expressions, visualization specs, full apps) against best practices, naming conventions, script quality, expression correctness, performance patterns, and cross-artifact consistency. Performs data quality validation when live data access (MCP) is available. Read-only by design: produces findings with severity ratings and remediation guidance, doesn't fix issues. Use when you want a structured QA pass on any Qlik artifact or combination."
 tools: Read, Grep, Glob, Bash
 model: sonnet
 skills: qlik-review-checklist, qlik-naming-conventions, qlik-data-modeling, qlik-expressions, qlik-load-script, data-quality-validator, qlik-cloud-mcp

@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: Generates project documentation from existing Qlik artifacts. Produces any of nine documents (README, data dictionary, technical specification, expression catalog, visualization guide, deployment runbook, user guide, change log, dependency tracker). Audience-calibrates: technical content for developers, plain language for business users. Use when documenting a Qlik app or any of its components.
+description: "Generates project documentation from existing Qlik artifacts. Produces any of nine documents (README, data dictionary, technical specification, expression catalog, visualization guide, deployment runbook, user guide, change log, dependency tracker). Audience-calibrates: technical content for developers, plain language for business users. Use when documenting a Qlik app or any of its components."
 tools: Read, Write, Edit, Glob, Grep
 model: sonnet
 skills: qlik-naming-conventions

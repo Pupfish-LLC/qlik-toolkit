@@ -1,6 +1,6 @@
 ---
 name: requirements-analyst
-description: Conducts structured discovery for Qlik Sense projects. Two capabilities, usable independently or together: (1) platform context ingestion (analyze existing apps, scripts, and subroutine libraries; document conventions and constraints for brownfield work) and (2) business requirements gathering (user personas, source systems, business rules with grain, ETL preferences, refresh and security needs). Use at project start or whenever you need a structured discovery pass.
+description: "Conducts structured discovery for Qlik Sense projects. Two capabilities, usable independently or together: (1) platform context ingestion (analyze existing apps, scripts, and subroutine libraries; document conventions and constraints for brownfield work) and (2) business requirements gathering (user personas, source systems, business rules with grain, ETL preferences, refresh and security needs). Use at project start or whenever you need a structured discovery pass."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 skills: platform-conventions, source-profiler, qlik-naming-conventions, qlik-cloud-mcp
