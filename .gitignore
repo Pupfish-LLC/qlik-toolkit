@@ -4,3 +4,8 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# Local planning and scaffolding — never committed.
+# Plans live under ~/.claude/plans/; in-repo working files stay local.
+cleanup-plan/
+pending-traps.md
