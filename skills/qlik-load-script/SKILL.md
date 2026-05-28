@@ -316,21 +316,9 @@ See `script-templates/master-calendar.qvs` for the production-ready template.
 
 ## 13. Error Handling and Logging
 
-- **TRACE:** `TRACE === Phase: Extract ===;` for milestones. `TRACE Rows loaded: $(vRowCount);` for row counts.
-  - **Semicolons inside the message text are consumed by the parser unless the whole text is quoted.** Qlik treats `;` as the statement terminator outside any quoted string, and TRACE accepts an unquoted argument by default — so a bare `;` in the message ends the statement early and the words that follow parse as an unknown statement. Two safe options: (a) use commas, periods, or dashes as in-text separators; (b) wrap the entire trace text in single quotes so the `;` sits inside a string literal. WRONG: `TRACE Loaded $(vRows); see diagnostics for detail;`. RIGHT (a): `TRACE Loaded $(vRows). See diagnostics for detail;` or `TRACE Loaded $(vRows) -- see diagnostics for detail;`. RIGHT (b): `TRACE 'Loaded $(vRows); see diagnostics for detail';`. Treat TRACE text the way you'd treat any other Qlik string argument — when in doubt, quote it.
-- **ScriptError vs ScriptErrorCount -- do not confuse these:**
-  - `ScriptError` is a **dual value** (numeric error code + text component) reflecting only the **most recent statement**. It is reset to 0 after every successfully executed statement. Because it resets, it cannot detect errors across multiple operations -- only the immediately preceding one.
-  - `ScriptErrorCount` is an **integer counter** that is **cumulative** across the entire reload. It increments with each failed statement and is never reset mid-reload.
-  - For per-operation error detection across multiple statements, snapshot the count: `LET vPreErrors = ScriptErrorCount;` before an operation and compare `IF ScriptErrorCount > $(vPreErrors)` after. A plain `IF ScriptErrorCount > 0` check after the second operation returns true even if only the first operation failed. See `script-templates/error-handling.qvs` for the correct pattern.
-- **ScriptErrorList:** Concatenated list of all errors, line-feed separated. Use for logging.
-- **ErrorMode:** `SET ErrorMode = 1;` is the default in Qlik Sense and Qlik Cloud.
-  - `ErrorMode = 0` -- ignore the failure and continue the script. Useful for non-critical fallback paths but requires careful `ScriptErrorCount` checking to detect problems.
-  - `ErrorMode = 1` (default) -- halt the script on error. In interactive QlikView this prompts the user; in Qlik Sense/Cloud batch reloads this stops the reload.
-  - `ErrorMode = 2` -- immediately trigger an "Execution of script failed" error and stop, with no user prompt even in interactive contexts. Use when you want hard-stop semantics regardless of environment.
-- **File existence:** `IF NOT IsNull(FileTime('lib://path/file.qvd')) THEN` to check before loading.
-- **Field value inspection at script time:** To get min/max of a loaded field, use a Resident LOAD: `[_Temp]: LOAD Min(Field) AS _min, Max(Field) AS _max Resident MyTable; LET vMin = Peek('_min', 0, '_Temp'); DROP TABLE [_Temp];`. For symbol table iteration, use `FieldValue('Field', n)` with `FieldValueCount('Field')`. Note: `fieldvaluelist` is a `FOR EACH` loop keyword (like `filelist` and `dirlist`), not a general-purpose function -- it cannot be used in LET assignments or as an argument to other functions.
+`TRACE` for milestone logging, `ScriptError` vs `ScriptErrorCount` for error tracking, `ErrorMode` for halt-vs-continue behavior. The single biggest gotcha is confusing `ScriptError` (resets after every successful statement, recent-statement only) with `ScriptErrorCount` (cumulative across the reload) — guarding against an error across multiple operations requires snapshotting `ScriptErrorCount` before and comparing after. Second-most-common surprise: a bare `;` inside an unquoted TRACE message terminates the statement early — use periods/dashes as in-text separators, or quote the entire message.
 
-See `script-templates/error-handling.qvs` for the error handling and logging framework (preferred for production scripts). See `diagnostic-patterns.md` for standalone TRACE templates and validation queries. **These are alternatives, not complements.** If using error-handling.qvs, use its `LogRowCount` subroutine. The standalone `LogLoadCount` in diagnostic-patterns.md is for scripts that don't include the full framework.
+Full reference: `references/error-handling.md` (TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2 semantics, file-existence guards via FileTime, field-value inspection patterns, and the relationship between the `error-handling.qvs` framework and `diagnostic-patterns.md`).
 
 ## 14. NoConcatenate and Auto-Concatenation
 
@@ -400,34 +388,11 @@ AutoNumber([%Region.Product.Key], '%Region.Product.Key');
 
 ## 18. Subroutine Integration
 
-**Include external files:** `$(Must_Include=lib://Connection/path/file.qvs);` fails the reload if the file is missing. `$(Include=...)` silently skips.
+`$(Must_Include=lib://Connection/path/file.qvs);` fails the reload if the file is missing; `$(Include=...)` silently skips. `CALL SubName(param1, param2);` invokes after the include.
 
-**Call subroutines:** `CALL SubName(param1, param2);` after the include.
+**Critical scoping rule:** `LET`/`SET` inside a SUB create GLOBAL variables that persist after the subroutine returns — they will overwrite caller variables of the same name. Only the SUB's formal parameter list is locally scoped. A bare `LET` inside a SUB leaks state to the caller. Use the parameter list (with extra params as local working variables, initialized to NULL) for anything that must not leak; use naming prefixes (`vSub_MySub_Counter`) for variables that intentionally stay global.
 
-**Variable scoping:** Qlik variables are primarily global, with one exception documented by help.qlik.com:
-- **Variables created inside a SUB with `LET` or `SET`** are global. They persist after the subroutine returns and will overwrite any caller variable of the same name.
-- **Formal parameters declared in the SUB signature** (e.g., `SUB MySub(pArg1, pArg2)`) are locally scoped to that subroutine. Extra parameters beyond the actual arguments passed are initialized to NULL and can be used as local-only working variables.
-
-Practical rule: use the SUB parameter list for anything that must not leak out, and use naming prefixes (e.g., `vSub_MySub_Counter`) for `LET`/`SET` variables that stay global. Never rely on a bare `LET` inside a SUB for local state.
-
-**FOR EACH loops:** Iterate over file lists or value lists.
-```qlik
-FOR EACH vFile IN FileList('lib://Data/*.qvd')
-    [_AllData]: LOAD * FROM [$(vFile)] (qvd);
-NEXT vFile
-```
-Note: In Qlik Cloud, wildcard file paths (`*`) may not be supported in all connection types. Use a directory listing or explicit file names if wildcards fail.
-
-**Phantom field prevention:** Some shared subroutines initialize empty inline tables. If column parameters are wildcards or improperly specified, phantom fields appear in results. Always verify subroutine output contains only expected fields. After calling a subroutine, check by iterating fields in script:
-
-```qlik
-FOR vFldIdx = 1 TO NoOfFields('$(vResultTable)')
-    LET vFldName = FieldName($(vFldIdx), '$(vResultTable)');
-    TRACE Field $(vFldIdx): $(vFldName);
-NEXT vFldIdx
-```
-
-**Composite key workaround:** When a subroutine handles only single keys but you need composite keys, concatenate key parts before calling and split after, or bypass the subroutine and implement the logic directly.
+Full reference: `references/subroutine-patterns.md` (Must_Include vs Include, CALL syntax, variable scoping rules with worked example, FOR EACH file/value iteration with Cloud wildcard caveat, phantom field detection after subroutine return, composite key concatenate-before/split-after workaround).
 
 ## 19. Synthetic Keys
 
@@ -524,8 +489,10 @@ Clean delimiters with PurgeChar before expanding.
 
 - `references/sql-constructs.md` -- SQL constructs not valid in Qlik LOAD/RESIDENT, the SQL SELECT pass-through exception, and the five most common adjacent failure modes (NoConcatenate, Count() argument requirements, QUALIFY with prefixed fields, DROP TABLE discipline, NullAsValue scope)
 - `references/qvd-operations.md` -- STORE syntax, optimized vs standard read rules, NoConcatenate around QVD loads, multi-QVD concatenation, file-list patterns, partial reload prefixes, binary load
-- `incremental-load-patterns.md` -- Complete incremental load patterns with working code
 - `references/null-handling.md` -- canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue, key-field NULL, date sentinel guards, decision framework)
+- `references/error-handling.md` -- TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2, file-existence guards, field-value inspection, framework-vs-standalone selection
+- `references/subroutine-patterns.md` -- Must_Include vs Include, CALL syntax, SUB variable scoping rules, FOR EACH iteration with Cloud wildcard caveat, phantom field detection, composite key workaround
+- `incremental-load-patterns.md` -- Complete incremental load patterns with working code
 - `diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries
 - `script-templates/master-calendar.qvs` -- Production-ready master calendar
 - `script-templates/error-handling.qvs` -- Error handling and logging framework
