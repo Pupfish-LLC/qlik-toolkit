@@ -31,14 +31,14 @@ These decisions are roughly sequenced — earlier choices constrain later ones �
 
 **1. Determine app architecture strategy (this shapes everything downstream).**
 
-Evaluate data volume, complexity, number of consumers, team structure, and refresh requirements. Decide among:
+Evaluate the performance signals — in-memory footprint vs RAM budget, reload duration vs refresh SLA, source count and speed, consumer-app count, team ownership boundaries — using the heuristics in `qlik-performance` § Architecture-Level Decisions. Then decide among:
 
-- **Single App** — Data volume under ~2GB in memory. 1–3 source systems. Monolithic analytical scope. Small co-located team. All extraction, transformation, and model loading in one app script. Simplest governance, least flexible.
-- **QVD Generator + Consumer** — Extract/Transform layer decoupled from model assembly. Generator extracts from slow or rate-limited sources, performs field transformations, persists to intermediate QVDs. Consumer(s) load from QVDs, build star schema, refresh on demand. Best when extraction is slow but transformation/modeling is iterative, or multiple analytical apps consume the same prepared data.
-- **Extract / Transform / Model / UI (Four-Layer)** — Extreme scale or organizational separation. Extract app loads raw from sources. Transform app applies business rules. Model app assembles star schema, dimensional rollups, link tables. UI apps load from model QVDs. Requires sophisticated orchestration but enables independent team ownership and scaling.
+- **Single App** — All extraction, transformation, and model loading in one app script. Monolithic analytical scope. Simplest governance, least flexible. Right starting point unless a performance signal forces a split.
+- **QVD Generator + Consumer** — Extract/Transform layer decoupled from model assembly. Generator owns slow or rate-limited sources and persists to QVDs. Consumer(s) load from QVDs, build star schema, refresh on demand. Best when extraction is slow but modeling is iterative, or multiple analytical apps consume the same prepared data.
+- **Extract / Transform / Model / UI (Four-Layer)** — Each layer is a separate app with QVDs as the contract. Justified by extreme scale or by genuine team-ownership boundaries between data engineering, analytics engineering, and BI. Requires reload coordination across layers.
 - **Hybrid** — Combination based on source heterogeneity. Fast sources load directly into model layer; slow sources go through generator. Some apps QVD-feed; others binary-load.
 
-Document: number of apps, purpose of each, data flow between apps, reload trigger strategy, **rationale explaining which drivers (volume, team structure, source speed, reusability) motivated the choice**. Reference platform context if one is provided.
+Document: number of apps, purpose of each, data flow between apps, reload trigger strategy, **rationale explaining which drivers (volume, team structure, source speed, reusability) motivated the choice**. Reference platform context if one is provided. Structural mechanics for each pattern — generator/consumer contracts, four-layer contracts, binary load syntax — live in `qlik-data-modeling` → `multi-app-architecture.md`.
 
 QVD layering choices and load-time mechanics — what preserves optimized read, when to layer for refresh independence, narrow-before-STORE rationale — live in `qlik-performance` § QVD Reads (decisions) and `qlik-load-script` → `references/qvd-operations.md` (mechanics). The architect's deliverable is the layer design and the contract between layers; the implementing developer applies the mechanics.
 

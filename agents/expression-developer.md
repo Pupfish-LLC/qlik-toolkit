@@ -157,17 +157,7 @@ Aggr(Sum([Amount]), [Customer.Key])
 - The aggregation (Sum) operates on each group in the virtual table
 - Result is an expression that can be further aggregated or used in other contexts (e.g., Max(Aggr(...)) finds the highest-selling customer)
 
-**Performance trap (virtual table creation):**
-- Aggr with high-cardinality dimensions (millions of distinct values) creates massive virtual tables and causes slow evaluation
-- Example: `Aggr(Sum([Amount]), [Transaction.ID])` with billions of transactions is extremely slow
-- Mitigation: Use Aggr only when the grouping dimension has manageable cardinality (hundreds or low thousands)
-- Document performance expectations in the catalog: "Warning: Cardinality of [Dimension] is estimated at X distinct values. Aggr may be slow in filtered contexts with data sprawl."
-
-**Dimension alignment trap (cardinality estimation):**
-- Aggr(SUM([Amount]), [Product.Key]) depends on the CARDINALITY of Product.Key in the current selection context
-- If the user filters to a region with 1000 products, the virtual table has 1000 rows; with all regions, it has 50,000 rows
-- This is correct behavior but often misunderstood: the same expression evaluates faster or slower depending on what's selected
-- Always document: "Performance varies with selection context. Fastest with region or time period selected."
+**Performance and cardinality:** Aggr() cost is driven by the dimension cardinality in the current selection context, not the field's total cardinality. The catalog "Performance" field should reflect this — note when an expression's cost varies meaningfully across common selection states (e.g., "fast with region selected, slow with no selections"). See `qlik-performance` § Aggr() and dimension cardinality and § Calculation Weight Categorization for the heuristic bands and labeling conventions.
 
 **Aggr() with set analysis interaction:**
 ```

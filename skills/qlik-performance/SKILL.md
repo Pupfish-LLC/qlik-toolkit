@@ -33,7 +33,37 @@ Qlik Sense stores all loaded data in RAM. Memory efficiency is the highest-lever
 
 ---
 
-## 1. Memory Optimization Fundamentals
+## 1. Architecture-Level Decisions
+
+Performance starts with app architecture, before any field-level optimization. The highest-leverage choices are whether to keep logic in a single app vs split into QVD generator/consumer or four-layer extract/transform/model/UI, and where incremental-load boundaries fall. These choices are driven by reload cycle time, memory pressure, and consumer count — not raw data volume alone.
+
+### A. Volume, Refresh-Time, and Team-Structure Triggers
+
+Qlik does not publish official thresholds for "this app is too big" or "this reload is too slow." The signals below are **practitioner heuristics**, calibrated against typical Qlik Cloud and Sense Enterprise deployments. They vary by environment, hardware, source connection speed, and dimension cardinality — treat them as starting points for evaluation, not hard limits.
+
+| Signal | Practitioner Threshold | What It Implies |
+|---|---|---|
+| In-memory footprint | A few GB, well inside tenant/server RAM | Single app is sustainable |
+| In-memory footprint | Approaching RAM budget per concurrent user | Memory pressure forces a split for headroom |
+| Reload duration | Fits refresh SLA with margin | Current architecture is sustainable |
+| Reload duration | Exceeds refresh SLA, or extract phase dominates | Decouple via QVD generator/consumer |
+| Sources | Many, rate-limited, or slow | Generator app owns extraction; consumers stay decoupled |
+| Consumer apps | Multiple apps sharing the same source data | Generator/consumer eliminates duplicate extract logic |
+| Team ownership | Separate data-engineering and analytics teams | Four-layer split formalizes the ownership boundary |
+
+Avoid framing reload thresholds in absolute minutes — the right number depends on whether the refresh SLA is "near-real-time" (minutes), "intraday" (hours), or "overnight" (multi-hour window). A 30-minute reload is fine overnight, problematic hourly.
+
+Investigate field-level and script-load optimization before splitting. Architecture changes carry operational cost; spend it deliberately.
+
+Structural mechanics for each pattern — generator/consumer contracts, four-layer contracts, binary load syntax — live in `qlik-data-modeling` → `multi-app-architecture.md`. This section covers WHEN to split based on performance signals; that file covers HOW the patterns work.
+
+### B. Memory Budget at Design Time
+
+Estimate per-layer memory before building. Document the estimate inline in script comments alongside the load step (see Section 2.F for the format). Headline rule: peak memory during load is typically larger than the final in-memory footprint (extract happens before filter; joins happen before drop), so size headroom for the peak, not the resting state.
+
+---
+
+## 2. Memory Optimization Fundamentals
 
 Qlik's in-memory engine loads all data at reload time and keeps it resident. Memory efficiency is critical.
 
@@ -140,7 +170,7 @@ When memory pressure arises later, this history enables targeted reduction.
 
 ---
 
-## 2. Script Load Optimization
+## 3. Script Load Optimization
 
 Script performance directly impacts reload duration and peak memory during load.
 
@@ -182,7 +212,7 @@ The mechanics — selecting fields with a RESIDENT load before STORE — are in 
 
 ---
 
-## 3. Expression Calculation Optimization
+## 4. Expression Calculation Optimization
 
 Expressions execute during user interaction (sheet opens, selections made, filters changed). Inefficient expressions degrade sheet response time from <100ms (target) to >1000ms (unusable).
 
@@ -206,12 +236,33 @@ GROUP BY product_id;
 // Execution: immediate lookup, no aggregation
 ```
 
+**Aggr() and dimension cardinality:** `Aggr()` creates a virtual table with one row per distinct combination of the specified dimensions in the current selection context. Cardinality is the primary performance driver: low-cardinality dimensions evaluate quickly; high-cardinality dimensions create massive virtual tables and slow evaluation noticeably.
+
+```qlik
+// Manageable: Aggr over a low-cardinality dimension
+Aggr(Sum([Amount]), [Customer.Region])  // tens to hundreds of regions
+
+// Slow: Aggr over a transaction-level key
+Aggr(Sum([Amount]), [Transaction.ID])  // millions of distinct values → massive virtual table
+```
+
+Practitioner cardinality bands (not Qlik-published; vary by hardware, RAM, selection state):
+- Up to roughly low-thousands of distinct values per dimension — Aggr() typically evaluates without noticeable delay.
+- Beyond hundreds of thousands — Aggr() becomes a likely bottleneck; profile at typical selection states before relying on it in interactive contexts.
+
+**Selection-context sensitivity:** the cardinality that matters is the cardinality *under the current selection*, not the field's total cardinality. The same `Aggr(Sum([Amount]), [Product.Key])` may evaluate quickly when a region is selected (filtering to ~1,000 products) and slowly with no selections (50,000+ products visible). Document this in catalog entries: "Performance varies with selection context; fastest with region or time-period selected."
+
+**Mitigation when Aggr cardinality is unavoidable:**
+- Pre-calculate the inner aggregation in the load script and reference the pre-computed field.
+- Apply a calculation condition (Section 5) to suppress evaluation when too many values are visible.
+- Combine with set analysis to constrain the cardinality before Aggr evaluates.
+
 **Count(DISTINCT ...):** `Count(DISTINCT field)` evaluates over distinct values rather than rows. Qlik's official documentation on the Count function does not characterize it as slow. Treat it as a normal aggregation in most cases.
 
 When to consider pre-calculation in the load script:
 - The same distinct count is used across many charts (caching the value avoids repeated work)
 - The expression is part of a larger `Aggr()` or set-analysis construct that is already a known bottleneck
-- Profiling (App Performance Evaluation — see Section 6) shows the specific Count(DISTINCT) expression as a hotspot
+- Profiling (App Performance Evaluation — see Section 7) shows the specific Count(DISTINCT) expression as a hotspot
 
 Do NOT reflexively replace Count(DISTINCT) with a pre-calculated field. A load-script `Count(DISTINCT)` aggregates over a single grain and is not interchangeable with chart-context distinct counts, which respect user selections.
 
@@ -249,9 +300,23 @@ String functions (SubString, Len, Upper, Lower, Trim) are expensive at query tim
 
 Pre-process strings at load time when possible.
 
+### D. Calculation Weight Categorization
+
+When documenting expressions in a catalog or reviewing performance, use a coarse calculation-weight bucket to flag attention. The categories are practitioner conventions, not Qlik-published metrics — they communicate relative cost to fellow developers, not absolute timing.
+
+| Weight | Typical Pattern | Why |
+|---|---|---|
+| **Low** | Simple Sum/Count/Avg over indexed fields; field references; basic set modifiers on small fact tables | Single-pass aggregation; engine evaluates in tens of milliseconds for typical sizes |
+| **Medium** | Set analysis with multiple modifiers; Count(DISTINCT) on high-cardinality fields; If() with simple branches; non-nested Aggr on low/medium-cardinality dimensions | Multiple passes or modifier evaluation; usually acceptable for interactive use |
+| **High** | Nested Aggr; Aggr over high-cardinality dimensions; complex string operations at query time; Rank/RankMin/Top-N inside Aggr; recursive expressions | Virtual tables, repeated aggregation passes, or string work that should ideally be precomputed in the load script |
+
+Label every catalog entry. High-weight expressions are the first place to look when sheet response time degrades, and the first candidates for pre-calculation in the load script or for calculation conditions that gate their evaluation.
+
+This labeling is a documentation convention, not an enforced check. Actual cost depends on selection state, table sizes, and hardware. Treat the bucket as a hint for "where to look first," not as a measurement.
+
 ---
 
-## 4. Calculation Conditions
+## 5. Calculation Conditions
 
 Calculation conditions prevent expensive expression evaluation when the context doesn't support the calculation. Pair every condition with a message variable explaining why the calculation is suppressed.
 
@@ -303,7 +368,7 @@ IF($(vCondition_LowCardinality),
 
 ---
 
-## 5. Data Reduction Techniques
+## 6. Data Reduction Techniques
 
 Reducing data volume at load time is always more efficient than filtering at query time.
 
@@ -324,7 +389,7 @@ Reducing data volume at load time is always more efficient than filtering at que
 
 ---
 
-## 6. Profiling and Diagnostic Approaches
+## 7. Profiling and Diagnostic Approaches
 
 Measure before optimizing. Qlik provides built-in tools.
 
