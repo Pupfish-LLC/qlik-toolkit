@@ -34,7 +34,7 @@ These SQL constructs do NOT exist in Qlik LOAD statements. Using them causes rel
 
 ### QUALIFY/UNQUALIFY
 
-`QUALIFY` prefixes field names with their table name to prevent unintended associations. It is one way to avoid synthetic keys, but aliasing fields with `AS` in the LOAD is equally valid and usually clearer. `QUALIFY` is a stateful toggle — forgetting to `UNQUALIFY` the keys you need to associate on results in a silent data model with no associations. If fields are already entity-prefixed by the naming convention, `QUALIFY *` produces double-prefixed names (`TableName.Customer.Name`) — skip `QUALIFY` entirely in that case. Full treatment with worked examples in `references/sql-constructs.md` Section 2.3.
+`QUALIFY` prefixes field names with their table name to prevent unintended associations. Aliasing fields with `AS` in the LOAD is equally valid and usually clearer. `QUALIFY` is a stateful toggle that persists across tabs until reset. Failure modes (double-prefix when combined with manual prefixing, missing UNQUALIFY producing data islands, persistent state contaminating later tabs) and the "pick one prefixing discipline" rule live in `qlik-data-modeling` → `references/anti-patterns.md` #4. Syntax detail with worked examples in `references/sql-constructs.md` Section 2.3.
 
 ## 2. SET vs LET
 
@@ -431,9 +431,7 @@ NEXT vFldIdx
 
 ## 19. Synthetic Keys
 
-Synthetic keys occur when two or more tables share multiple field names. Qlik auto-generates a composite key (prefixed with `$Syn`) linking the tables. This is usually unintentional and can cause performance issues and ambiguous associations.
-
-**Resolution strategies:** (1) Rename non-key overlapping fields with `AS` to make them unique per table. (2) Use QUALIFY/UNQUALIFY (Section 1). (3) Create an explicit composite key and remove the individual shared fields from one table. See `qlik-data-modeling` for data model design patterns that prevent synthetic keys.
+Synthetic key concepts (what they are, how Qlik detects them, prevention mechanisms, common triggers, worked fix examples) and the QUALIFY failure modes live in `qlik-data-modeling` → `references/anti-patterns.md` #1 and #4. Script-level resolution mechanics: rename overlapping non-key fields with `AS` aliases at load time, `DROP FIELDS` for unwanted metadata fields before storing QVDs, or use QUALIFY/UNQUALIFY (Section 1) on un-prefixed wildcard loads.
 
 ## 20. LIB CONNECT TO
 

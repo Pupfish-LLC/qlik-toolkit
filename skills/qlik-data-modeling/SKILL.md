@@ -35,7 +35,7 @@ Common triggers for synthetic keys: unprefixed `Status`/`Code`/`Type`/`Name`; te
 
 `QUALIFY` is one tool for preventing synthetic keys on raw loads, but **do not combine QUALIFY with a hand-maintained prefix convention** — you will end up with `Table.Entity.Field` double-prefixed names and silent expression failures. Pick one discipline.
 
-See `anti-patterns.md` (#1 and #3) for worked examples.
+See `references/anti-patterns.md` (#1, #3, #4) for synthetic-key triggers, prevention mechanisms, the circular-reference comparison, and the QUALIFY failure modes.
 
 ## 3. Star Schema
 
@@ -138,7 +138,7 @@ Pick one fix:
 
 ## 9. Supporting Files
 
-- **`anti-patterns.md`** — 12 anti-patterns with real failure modes and fixes (synthetic keys, AutoNumber in QVD layer, circular references, QUALIFY double-prefix, multiple shared fields, missing bridge tables, wide-format expansion, ignoring source architecture, data islands, over-modeling, missing "No Entry" rows, grain misalignment).
+- **`references/anti-patterns.md`** — Canonical home for data-modeling failure modes: synthetic keys (causes, detection, three prevention mechanisms), AutoNumber in QVD layer, circular references vs synthetic keys, QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state), multiple shared fields, missing bridge tables, wide-format expansion, ignoring source architecture, data islands, over-modeling, missing "No Entry" rows, grain misalignment.
 - **`star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, key-hiding mechanics (HidePrefix/HideSuffix application — naming convention itself in `qlik-naming-conventions`), SubField expansion, dimension vs fact classification.
 - **`multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload orchestration (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
 - **`source-consumption-patterns.md`** — Full per-source consumption patterns including Data Vault hub/satellite merge, OLTP denormalization (SQL-side vs Qlik-side), dimensional warehouse ingest, pre-joined view grain validation, flat-file ingestion with codepage and quote handling.

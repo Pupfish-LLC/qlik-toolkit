@@ -1,10 +1,37 @@
 # Qlik Data Modeling Anti-Patterns
 
-Common modeling mistakes, their real failure modes, and the fixes. All code samples are valid Qlik script — no SQL `ON` clauses, no `OVER (PARTITION BY)`, no SQL-style JOINs.
+Canonical catalog of data-modeling mistakes that produce silent failures or incorrect results in Qlik Sense apps. Each entry covers: how the failure forms, how Qlik signals it, what to do instead. All code samples are valid Qlik script — no SQL `ON` clauses, no `OVER (PARTITION BY)`, no SQL-style JOINs.
+
+This file is the canonical home for synthetic key, circular reference, QUALIFY discipline, and related cross-cutting data-modeling failure modes. Companion files in the same skill cover specific structural patterns (`star-schema-patterns.md`), deployment shapes (`multi-app-architecture.md`), and source-side ingestion strategy (`source-consumption-patterns.md`).
 
 ---
 
 ## 1. Synthetic Keys from Generic Field Names
+
+### What a synthetic key is
+
+When two tables share **more than one field name**, Qlik cannot pick a single join key, so it creates a hidden composite table named `$Syn 1` (then `$Syn 2`, etc.) that holds every distinct combination of the shared values. Each original table connects to the `$Syn` table by all of the shared fields collectively. In the Data Model Viewer this appears as a separate `$Syn N` node with **solid** connector lines to the contributing tables. Solid lines distinguish synthetic keys from circular references (#3), which use **dotted** lines.
+
+Synthetic keys are not always wrong — Qlik documents them as "valid composite keys" — but they are almost never what the developer intended, and they cause:
+
+- **Silent unintended filtering.** Selecting a value in one shared field filters the other table on the same value, even when that's semantically meaningless.
+- **Wrong aggregations.** Rows that happen to match on incidental fields (e.g., both rows have `Status = 'Active'`) get included in cross-table sums.
+- **Performance cost.** The `$Syn` table consumes memory and slows engine resolution as the cross-product of shared values grows.
+- **No reload error.** The script log emits a `Synthetic key for table [TableName]` line, but the reload succeeds.
+
+### Common triggers
+
+- **Unprefixed generic attribute names** — `Status`, `Code`, `Type`, `Name`, `Description`, `Category` appearing in multiple tables without entity prefixing.
+- **Technical / metadata fields** in many raw tables — `load_date`, `source_system`, `created_by`, `record_hash`. None of these carry analytical meaning but all of them associate.
+- **Wildcard loads from shared subroutines** — `LOAD *` against a source where some columns happen to share names with another table being loaded in the same script.
+- **Denormalized FKs in child tables** — a child table that carries both its own FK to the parent and a duplicate of the parent's FK (e.g., OrderDetail carrying both `order_id` and `customer_id`, when only `order_id` is needed for the relationship — see #5).
+- **Wide-format Excel imports** — month columns (`Jan`, `Feb`, `Mar`) that happen to match column names in another sheet's import.
+
+### Detection
+
+- Data Model Viewer shows a `$Syn N` table with solid connector lines.
+- Script log: `Synthetic key for table [TableName]` lines.
+- Two or more tables share more than one field name (grep the script for repeated `AS [Some.Field]` aliases or repeated unprefixed field references).
 
 ### The Wrong Way
 
@@ -16,21 +43,21 @@ LOAD product_id, Status, Code, Type FROM product.qvd (qvd);
 LOAD order_id, product_id, Status, Code, Type FROM order.qvd (qvd);
 ```
 
-### Why It's Wrong
+Both tables share `product_id`, `Status`, `Code`, and `Type`. Qlik creates a `$Syn 1` table; selecting a product `Status` silently filters orders by the same value.
 
-Both tables share `product_id`, `Status`, `Code`, and `Type`. Because Qlik associates on **every** matching field name, it creates a synthetic key composed of all four. In the data model viewer this shows up as a `$Syn 1` synthetic-key table with **solid** connector lines to Product and Order — not a dotted line (dotted lines indicate loose coupling / broken circular references, which is a different problem, see #3).
+### Prevention — Three Mechanisms
 
-**Failure mode:** selecting a product status silently filters orders by the same status value. Aggregations across both tables include rows that happen to match on incidental fields. The reload succeeds without warning.
+These are the three orthogonal disciplines for preventing synthetic keys. Apply all three at design time, not as fixes after a synthetic key has appeared.
 
-### Detection
+**(a) Distinct entity prefixes on non-key fields.** Generic attribute names like `Name`, `Status`, `Code`, `Type`, `Category` must be entity-prefixed at load time so they cannot collide across tables (`[Product.Status]`, `[Order.Status]`, `[Customer.Region]`). See `qlik-naming-conventions` for the full convention.
 
-- Data model viewer shows a `$Syn` table.
-- Script log: lines like `Synthetic key for table [Product]`.
-- Two tables share more than one field name.
+**(b) Exactly one shared field per relationship.** For Customer ↔ Order, the only shared field should be the FK (`Customer.CustomerID`). If a denormalized source ships `Customer.Name` into the Order table, Qlik sees two join paths and synthesizes a key. Resolution: rename the duplicate non-key field on the fact side (`Order.CustomerName`).
 
-### The Fix
+**(c) Drop or hide metadata fields** (`load_date`, `source_system`, `created_by`, `record_hash`) that appear in many tables but carry no analytical meaning. Either omit them from the LOAD field list or apply a hiding convention (`HidePrefix` / `HideSuffix`) so they cannot participate in associations.
 
-Entity-prefix the non-key fields so only `product_id` is shared:
+### The Fix (when one has already formed)
+
+Entity-prefix the non-key fields so only the intended FK is shared:
 
 ```qlik
 [Product]:
@@ -49,6 +76,12 @@ LOAD
     Code   AS [Order.Code],
     Type   AS [Order.Type]
 FROM order.qvd (qvd);
+```
+
+For metadata fields that crept in unintentionally, drop them before storing the QVD:
+
+```qlik
+DROP FIELDS load_date, source_system, created_by FROM [SomeStagingTable];
 ```
 
 ---
@@ -99,6 +132,26 @@ FROM [lib://QVDs/Transform_Order.qvd] (qvd);
 
 ## 3. Circular References — and How They Differ from Synthetic Keys
 
+### What a circular reference is
+
+When three or more tables form a closed loop of single-field associations (A↔B, B↔C, C↔A), Qlik cannot resolve which path a selection should take. The engine's default response is to **loosely couple** one table in the loop — meaning that table's associations no longer propagate selections in either direction.
+
+In the Data Model Viewer this appears as a **dotted** connector line on the loosely coupled table (contrast with the solid lines of a synthetic key). The script log emits a circular reference warning that names the table chosen for loose coupling.
+
+**Failure modes:**
+- Selections made elsewhere in the model don't reach the loosely coupled table.
+- Filter behavior becomes inconsistent — clicking the same value in two different tables produces different filtered counts.
+- Charts that aggregate across the broken path silently omit rows from the loosely coupled side.
+
+### Synthetic keys vs circular references — different problems, different fixes
+
+| | Synthetic Key | Circular Reference |
+|---|---|---|
+| **Cause** | Two tables share >1 field name | Closed loop of single-field associations A↔B↔C↔A |
+| **Viewer signature** | `$Syn` table with **solid** connector lines | **Dotted** connector line on a *loosely coupled* table |
+| **Failure mode** | Silent incorrect filtering; extra associations | Loosely coupled table does **not** propagate selections |
+| **Fix** | Entity-prefix non-key fields, drop redundant shared fields, or use `ApplyMap` for lookups | Consolidate redundant key paths into one dimension, or introduce a link table; do **not** leave Qlik to pick a loose-coupling victim |
+
 ### The Wrong Way
 
 ```qlik
@@ -112,18 +165,12 @@ LOAD [Customer.Key], [Region.Key], [Customer.Name] FROM customer.qvd (qvd);
 LOAD [Region.Key], [Product.Key], region_name FROM region.qvd (qvd);
 ```
 
-### Why It's Wrong
-
-There are two paths from Sales to Region: directly via `Product.Key` (Sales → Region) and indirectly via `Customer.Key` then `Region.Key` (Sales → Customer → Region). That closed loop is a **circular reference**.
-
-Qlik's default response is to "loosely couple" one of the tables in the loop — you can see this as a **dotted** connector line in the data model viewer. A loosely coupled table does **not propagate selections** through its associations: selections made elsewhere in the model no longer reach the loosely coupled table, and filtering behavior becomes inconsistent depending on which table the user clicked in.
-
-**Synthetic keys ≠ circular references.** A synthetic key (#1) is Qlik's solution to two tables sharing more than one field — represented as a `$Syn` table with solid lines. A circular reference is two or more tables forming a closed loop — represented with a dotted line on the loosely coupled table. Fixes are different.
+There are two paths from Sales to Region: directly via `Product.Key` (Sales → Region) and indirectly via `Customer.Key` then `Region.Key` (Sales → Customer → Region). That closed loop is a circular reference.
 
 ### Detection
 
 - Script log warning mentioning circular reference / loosely coupled table.
-- Data model viewer shows a dotted connector line.
+- Data Model Viewer shows a dotted connector line.
 - Selections propagate to part of the model but not the rest.
 
 ### The Fix
@@ -146,9 +193,17 @@ DROP FIELDS [Product.Key] FROM [Region];
 
 ---
 
-## 4. QUALIFY on Pre-Prefixed Fields
+## 4. QUALIFY Discipline
 
-### The Wrong Way
+### What QUALIFY does
+
+`QUALIFY [field-list]` is a stateful prefix that prepends the loaded table's label to each non-excluded field at load time. `QUALIFY *;` qualifies all fields; `UNQUALIFY [field-list]` carves out exceptions (typically the join keys you need to associate on). The state persists until the next `QUALIFY` / `UNQUALIFY` toggle — including across script tabs.
+
+QUALIFY is one valid tool for preventing synthetic keys on raw or wildcard loads, but it has two well-known failure modes.
+
+### Failure mode A — combined with manual prefixing (double-prefix bug)
+
+If fields are already entity-prefixed by the naming convention, applying `QUALIFY *;` produces double-prefixed names like `[TableName.Customer.Name]`. Expressions in the UI still reference `[Customer.Name]`, so they resolve against the original Customer table only and silently ignore the QUALIFY-loaded source.
 
 ```qlik
 // Fields already use entity-prefix notation
@@ -160,17 +215,23 @@ UNQUALIFY customer_id, order_id;
 
 [AnotherTable]:
 LOAD customer_id, [Customer.Name] FROM another.qvd (qvd);
+// Result: [Customer.Name] in AnotherTable becomes [AnotherTable.Customer.Name].
+// Dashboard cells show partial data from the original Customer table only.
 ```
-
-### Why It's Wrong
-
-`QUALIFY` prepends the **loaded table's label** to each non-excluded field at load time. If `[AnotherTable]` loads a field that is already called `[Customer.Name]`, QUALIFY turns it into `[AnotherTable.Customer.Name]`. Expressions in the UI still reference `[Customer.Name]`, so they now resolve against the original Customer table only and silently ignore the other source.
 
 **Failure mode:** dashboard cells show partial data (or `-`). No error. The divergence only becomes visible when someone reconciles totals.
 
-### The Fix
+**Fix:** don't combine QUALIFY with a hand-maintained prefix convention. Pick **one** discipline:
+- Manual prefixing with explicit `AS` aliases (preferred when the team is already aliasing fields). Skip QUALIFY entirely.
+- QUALIFY on un-prefixed raw loads. Accept the `TableName.FieldName` convention everywhere and reference fields by that name in expressions.
 
-Don't combine QUALIFY with a hand-maintained prefix convention. Pick **one** discipline: either use explicit column lists with manual prefixing (preferred when the team is already aliasing fields), or use QUALIFY on un-prefixed raw loads and accept the `TableName.FieldName` convention it produces.
+### Failure mode B — forgetting to UNQUALIFY a key
+
+`QUALIFY *;` qualifies the join keys too. Forgetting to `UNQUALIFY` them yields a silent data model with no associations — every table becomes a data island. Always pair `QUALIFY *;` with an explicit `UNQUALIFY [key-list];` listing every key that should associate.
+
+### Failure mode C — leaving QUALIFY active across tabs
+
+The QUALIFY state persists across tabs and script files until reset. A QUALIFY block in an Extract tab silently affects every subsequent LOAD in Transform and Model tabs unless explicitly reset with `UNQUALIFY *;`. Always reset at the end of the block where you turned it on.
 
 ---
 
@@ -458,7 +519,7 @@ Pick one of:
 | 1. Synthetic keys from generic names | Silent unintended filtering | `$Syn` table in viewer, solid lines | Entity-prefix non-key fields |
 | 2. AutoNumber in QVD layer | Non-deterministic surrogates break incremental | Reload twice, keys differ | Hash keys; AutoNumber only in final model |
 | 3. Circular references | Loosely coupled table, inconsistent selection propagation | Dotted connector, script log warning | Consolidate key paths or use a link table |
-| 4. QUALIFY on pre-prefixed fields | Fields double-prefixed, expressions go silent | Weird `Tbl.Entity.Field` names | Don't mix QUALIFY with manual prefixing |
+| 4. QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state) | Fields double-prefixed; data islands; cross-tab contamination | Weird `Tbl.Entity.Field` names; no associations; later loads silently qualified | Pick one prefixing discipline; always UNQUALIFY keys; reset state at block end |
 | 5. Multiple shared fields | Synthetic key between a pair of tables | `$Syn` table | Drop the redundant field |
 | 6. Missing bridge table | Users can't filter individual many-to-many values | Delimited string columns | Bridge table |
 | 7. Wide format expansion | New values silently excluded from totals | Hard-coded `Source_A/B/C` columns | Pivot to long format |

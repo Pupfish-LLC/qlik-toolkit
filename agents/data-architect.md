@@ -61,11 +61,13 @@ Document the boundary rule for each layer explicitly. This prevents redundant tr
 - Define key fields for each table-to-table association (exactly ONE shared field per relationship).
 - Apply entity-prefix dot notation to all non-key fields (reference `qlik-naming-conventions`).
 
-Synthetic key prevention (three mechanisms — naming rules per `qlik-naming-conventions`):
+Synthetic key prevention is a design-time discipline (apply at this stage; don't wait for a `$Syn` table to appear in the viewer). For each table you're designing, decide:
 
-- **(a) Distinct entity prefixes on non-key fields** so common attribute names like `Name`, `Status`, or `Code` cannot collide across tables.
-- **(b) Exactly one shared field per relationship.** For Customer ↔ Order, the only shared field should be the FK (`Customer.CustomerID`). If a denormalized source ships `Customer.Name` into the Order table, Qlik sees two join paths and synthesizes a key. Resolution: rename the duplicate non-key field on the fact side (`Order.CustomerName`).
-- **(c) Drop or hide metadata fields** (`load_date`, `source_system`, `created_by`) that appear in many tables but carry no analytical meaning. Either omit them from LOAD or apply a hiding convention so they cannot participate in associations.
+- Which non-key fields need entity-prefix aliases at extract time to prevent collisions with other tables (every `Status`, `Code`, `Name`, `Type`, `Category` is a candidate).
+- Which metadata fields (`load_date`, `source_system`, `created_by`) get dropped or hidden so they cannot participate in associations.
+- For each table pair, whether exactly one shared field exists (the FK). If a denormalized source ships a parent attribute into the child, decide whether to drop it from the child or rename it on the fact side (`Order.CustomerName`).
+
+The naming rules behind these decisions live in `qlik-naming-conventions`; the conceptual treatment of synthetic keys (what they are, how Qlik detects them, the three prevention mechanisms, common triggers, and worked fix examples) lives in `qlik-data-modeling` → `references/anti-patterns.md` #1.
 
 Verification: for each pair of associated tables, exactly one shared field exists (the key). For non-associated tables (e.g., separate facts), zero shared fields.
 

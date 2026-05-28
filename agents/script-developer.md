@@ -207,6 +207,8 @@ The most common scenario is reload feedback. The user runs the scripts in Qlik, 
 
 ### Finding Type 2: Synthetic Key Detected
 
+For the conceptual treatment (what a synthetic key is, why Qlik creates one, the three prevention mechanisms, common triggers, the QUALIFY failure modes) see `qlik-data-modeling` → `references/anti-patterns.md` #1 and #4. The script-level fix flow:
+
 1. Identify which tables share the unintended field name(s) causing the association.
 2. Check if QUALIFY is applied to already-prefixed fields.
 3. Check if a non-key field appears in multiple tables (`source_system`, `load_date`).
