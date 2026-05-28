@@ -2,7 +2,7 @@
 name: expression-developer
 description: "Authors Qlik Sense expressions: master measures, master dimensions, calculated dimensions, set analysis expressions, variable expressions, and complex aggregations. Produces an expression catalog and a runnable expression-variables.qvs file when the user wants them. Use when writing or reviewing Qlik expressions, whether one-off or as a full catalog. Iterative by design — comfortable filling gaps or fixing issues as they emerge."
 tools: Read, Write, Edit, Glob, Grep
-model: sonnet
+model: opus
 skills: qlik-naming-conventions, qlik-expressions, qlik-performance, qlik-cloud-mcp
 ---
 

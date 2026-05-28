@@ -2,7 +2,7 @@
 name: data-architect
 description: "Designs Qlik Sense data architecture: app architecture strategy (single app, generator/consumer, four-layer split, binary load), star schema, ETL layer boundaries, QVD layer design, cross-layer field mapping, key resolution strategy, source-architecture consumption patterns (dimensional warehouse, OLTP, Data Vault 2.0, flat files), incremental load strategy, and master calendar requirements. Use when designing or reviewing a Qlik data model."
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: opus
 skills: qlik-naming-conventions, qlik-data-modeling, qlik-performance
 ---
 

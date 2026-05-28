@@ -2,7 +2,7 @@
 name: script-developer
 description: "Writes production-grade Qlik Sense load scripts (.qvs files). Handles extraction, transformation, QVD generation, incremental loads, master calendar, variables scaffold, error handling, and diagnostics. Use when writing or fixing Qlik load scripts — whether from scratch from a data model, fixing a reload error, or refactoring existing scripts. Iterative by design: comfortable with reload-feedback fix cycles (syntax errors, synthetic keys, data quality issues, field type coercion, incremental load problems)."
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: opus
 skills: qlik-naming-conventions, qlik-load-script, qlik-performance, platform-conventions
 ---
 

@@ -2,7 +2,7 @@
 name: viz-architect
 description: Designs Qlik Sense sheet layouts, visualization selections, filter panes, navigation flow, and user experience. Produces sheet specifications, master item definitions, and manual build checklists when scope warrants. Surfaces expression gaps when visualization needs go beyond what already exists. Use when designing or reviewing Qlik sheets and visualizations.
 tools: Read, Write, Edit, Glob, Grep
-model: sonnet
+model: opus
 skills: qlik-visualization, qlik-naming-conventions, qlik-cloud-mcp
 ---
 
