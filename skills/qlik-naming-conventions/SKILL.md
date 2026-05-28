@@ -1,6 +1,6 @@
 ---
 name: qlik-naming-conventions
-description: "Field naming with entity-prefix dot notation, table naming, variable naming (v prefix), expression naming, file naming (.qvs, QVD), key field conventions (% prefix, HideSuffix), cross-layer field mapping from source through extract/transform/model to UI, field rename layer using Mapping RENAME, variable-to-field-name alignment, and naming anti-patterns. Load when naming, renaming, prefixing, aliasing, or mapping fields, tables, variables, or expressions in Qlik Sense."
+description: "This skill should be used when naming, renaming, prefixing, aliasing, or mapping any Qlik Sense field, table, variable, or expression. Covers entity-prefix dot notation for non-key fields, key field conventions (% prefix, _key suffix, HidePrefix, HideSuffix), table naming (dimension, fact, temp, mapping, bridge), variable naming (v prefix, field-reference vs expression variables, variable-to-expression name mirroring), expression naming (master measures, master dimensions, calculated dimensions), script and QVD file naming, the cross-layer field naming strategy from source through extract/transform/model to UI, the Mapping RENAME field-rename layer, variable-to-field-name alignment, and the most common Qlik naming anti-patterns (silent synthetic keys, inconsistent key names, double-prefix from QUALIFY)."
 user-invocable: false
 ---
 
@@ -134,6 +134,7 @@ Fix: always `DROP TABLE [_StagingProducts];` after its data has been consumed.
 ### Conventions
 
 - All variables use `v` prefix: `vTotalRevenue`, `vCustomerRegion`, `vCurrentPeriod`
+- **Variable name mirrors the expression it backs.** Master measure `Total Revenue` → variable `vTotalRevenue`. Master measure `Avg Order Value` → variable `vAvgOrderValue`. The mirror lets a reader pair a measure name in the UI with its variable definition at a glance.
 - Use `SET` for expression templates (formulas stored as text, expanded at evaluation time via dollar-sign expansion)
 - Use `LET` for computed values (evaluated once at script runtime)
 - This skill covers naming only. The `qlik-load-script` skill covers SET vs. LET behavioral mechanics.

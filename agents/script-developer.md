@@ -170,45 +170,19 @@ Write a script manifest documenting file purpose, dependencies, and run order. F
 
 ### 4. Write transformation scripts with field renaming
 
-Entity-prefix field renaming using `AS` at LOAD time:
+Apply entity-prefix dot notation to non-key fields at extract/transform time using `AS`. Keep keys unprefixed so they associate. See `qlik-naming-conventions` for the full rule set, the business-entity-vs-source-table guidance, and composite key `%` notation. Brief example:
 
 ```qlik
 [Orders_Cleaned]:
 LOAD
-    order_id AS [Order.ID],                    // key field: no prefix
-    customer_id AS [Customer.ID],              // key field: no prefix
-    order_date AS [Order.Date],                // non-key: entity prefix
-    total_amount AS [Order.Amount],            // non-key: entity prefix
-    customer_name AS [Customer.Name],          // non-key: entity prefix
-    product_category AS [Product.Category]     // non-key: entity prefix
+    order_id    AS [Order.ID],          // key — no prefix
+    customer_id AS [Customer.ID],       // key — no prefix
+    order_date  AS [Order.Date],        // non-key — entity-prefixed
+    total_amount AS [Order.Amount]      // non-key — entity-prefixed
 FROM [lib://RawData/orders.qvd] (qvd);
 ```
 
-Naming rules:
-- Key fields (used for associations): no entity prefix. `[Order.ID]`, `[Customer.ID]`.
-- Non-key fields: always prefix with entity name.
-- Prefix uses the business entity name, not the source table name (`Customer`, not `dim_customer`).
-- For composite business keys, use `%` notation: `[Order.%Key]`.
-
-Model load layer — field renaming via Mapping RENAME:
-
-```qlik
-[_FieldMap]:
-LOAD * INLINE [
-TransformName,     BusinessName
-Order.ID,          OrderID
-Order.Date,        OrderDate
-Order.Amount,      OrderAmount
-];
-
-FieldRenameMap: MAPPING LOAD TransformName, BusinessName RESIDENT [_FieldMap];
-
-[Orders]:
-LOAD * FROM [lib://Transform/orders_clean.qvd] (qvd);
-
-RENAME FIELD Using FieldRenameMap;
-DROP TABLE [_FieldMap];
-```
+When business entity names differ from internal transform names (e.g., `Account` → `Customer`), apply the change once at the DataModel layer with `Mapping LOAD` + `RENAME FIELDS USING` rather than reloading the table. See `qlik-naming-conventions` § Cross-Layer Naming Strategy for the full pattern.
 
 Other transformation tasks:
 - Data quality cleaning (`vCleanNull` for string-encoded nulls, `PurgeChar` for encoding artifacts).

@@ -317,12 +317,9 @@ LET vMapCommaChar = Chr(44);  // comma as character
 SET vMapValue = ApplyMap('MyMap', $1, 'default');  // then use outside $(vMapValue(...))
 ```
 
-## Variable Naming Rules (embedded, not delegated to skill)
+## Variable and Field Naming
 
-- `v` prefix for all variables
-- Variable name mirrors the expression name: "Total Revenue" → `vTotalRevenue`
-- Use UI field names in expressions, not intermediate layer names
-- If a field goes through Mapping RENAME (e.g., Account.Status → Customer.Status), the variable must reference `[Customer.Status]`, not `[Account.Status]`
+Follow the rules in `qlik-naming-conventions` (v prefix, variable name mirrors the master measure name, expressions reference final UI field names — never intermediate Transform-layer names that have been renamed downstream).
 
 ## MCP-Enhanced Workflow
 

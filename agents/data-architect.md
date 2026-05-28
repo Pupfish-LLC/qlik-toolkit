@@ -59,11 +59,11 @@ Document the boundary rule for each layer explicitly. This prevents redundant tr
 - Define key fields for each table-to-table association (exactly ONE shared field per relationship).
 - Apply entity-prefix dot notation to all non-key fields (reference `qlik-naming-conventions`).
 
-Synthetic key prevention (three mechanisms):
+Synthetic key prevention (three mechanisms — naming rules per `qlik-naming-conventions`):
 
-- **(a) Entity-prefix naming for unique non-key fields.** Every non-key field includes entity prefix followed by dot: `Customer.CustomerID` (key, no prefix), `Customer.Name` (field, has prefix). If two tables both have unprefixed `Name`, Qlik creates a synthetic key. By enforcing `Customer.Name` and `Order.Name` (distinct prefixes), synthetic keys cannot form unintentionally.
-- **(b) Key field consistency (exactly ONE shared field per relationship).** For a Customer–Order relationship, the only shared field should be `Customer.CustomerID` (the FK in Orders, the PK in Customers). If Orders also contains `Customer.Name` (loaded from a denormalized source), Qlik sees two possible join paths and creates a synthetic key. Resolution: rename duplicate non-key fields (`Order.CustomerName` instead of `Order.Name`).
-- **(c) Metadata field removal (`load_date`, `source_system`, `created_by`).** These fields exist in many source tables but have no meaningful association. Include them in LOAD for debugging if useful, but hide them with `HideSuffix(_Metadata)` so they don't participate in associations.
+- **(a) Distinct entity prefixes on non-key fields** so common attribute names like `Name`, `Status`, or `Code` cannot collide across tables.
+- **(b) Exactly one shared field per relationship.** For Customer ↔ Order, the only shared field should be the FK (`Customer.CustomerID`). If a denormalized source ships `Customer.Name` into the Order table, Qlik sees two join paths and synthesizes a key. Resolution: rename the duplicate non-key field on the fact side (`Order.CustomerName`).
+- **(c) Drop or hide metadata fields** (`load_date`, `source_system`, `created_by`) that appear in many tables but carry no analytical meaning. Either omit them from LOAD or apply a hiding convention so they cannot participate in associations.
 
 Verification: for each pair of associated tables, exactly one shared field exists (the key). For non-associated tables (e.g., separate facts), zero shared fields.
 

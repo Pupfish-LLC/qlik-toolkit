@@ -270,46 +270,11 @@ Result: One row per entity-source combination, normalized and ready for bridge t
 
 ---
 
-## HidePrefix and HideSuffix Conventions
+## Hiding Technical Keys from Users
 
-Use `SET HidePrefix` and `SET HideSuffix` to hide technical key fields from end users while preserving them for model associations.
+Use `SET HidePrefix = '%'` (composite keys) and `SET HideSuffix = '_key'` (source surrogate keys) to keep technical key fields out of filter panes while preserving them for associations. Both can coexist; a field matching either pattern is hidden. Apply the SET statements early (typically in `01_Config.qvs`) before any LOAD that creates hidden fields.
 
-### Setting the Hiding Rules
-
-```qlik
-SET HidePrefix = '%';     // Hides %CompositeKey, %ScopeKey, %LinkKey, etc.
-SET HideSuffix = '_key';  // Hides customer_key, order_key, product_key, etc.
-```
-
-Both can coexist. A field matching EITHER pattern is hidden.
-
-### Naming Conventions
-
-**Composite keys created in DataModel layer:** Prefix with `%`
-
-```qlik
-LOAD *,
-    [Store.Region] & '|' & [Store.District] AS [%ScopeKey]
-RESIDENT [_SomeTable];
-```
-
-Hidden from users but visible to the associative engine for linking.
-
-**Source system keys:** Use consistent suffix and hide with HideSuffix
-
-```qlik
-LOAD
-    customer_key,          // Matches HideSuffix = '_key', hidden from users
-    [Customer.Name],
-    [Customer.Region]
-FROM [raw.qvd] (qvd);
-```
-
-### When to Apply Hiding
-
-- Early in the script setup (typically in `01_Config.qvs` or first script file).
-- Apply SET statements before any LOAD that creates hidden fields.
-- Hidden fields are still available in expressions and set analysis; they're just not displayed in filter panes.
+See `qlik-naming-conventions` § Key Field Naming for the full convention (when to use `%` vs. `_key`, the composite key construction pattern, and the anti-patterns to avoid).
 
 ---
 

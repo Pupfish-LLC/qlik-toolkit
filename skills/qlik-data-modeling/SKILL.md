@@ -139,7 +139,7 @@ Pick one fix:
 ## 9. Supporting Files
 
 - **`anti-patterns.md`** — 12 anti-patterns with real failure modes and fixes (synthetic keys, AutoNumber in QVD layer, circular references, QUALIFY double-prefix, multiple shared fields, missing bridge tables, wide-format expansion, ignoring source architecture, data islands, over-modeling, missing "No Entry" rows, grain misalignment).
-- **`star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, HidePrefix/HideSuffix, SubField expansion, dimension vs fact classification.
+- **`star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, key-hiding mechanics (HidePrefix/HideSuffix application — naming convention itself in `qlik-naming-conventions`), SubField expansion, dimension vs fact classification.
 - **`multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload orchestration (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
 - **`source-consumption-patterns.md`** — Full per-source consumption patterns including Data Vault hub/satellite merge, OLTP denormalization (SQL-side vs Qlik-side), dimensional warehouse ingest, pre-joined view grain validation, flat-file ingestion with codepage and quote handling.
 
