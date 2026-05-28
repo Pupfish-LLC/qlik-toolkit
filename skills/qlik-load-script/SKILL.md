@@ -30,22 +30,11 @@ These SQL constructs do NOT exist in Qlik LOAD statements. Using them causes rel
 
 **Dollar-sign expansion safety:** Every `$(variable(...))` call must be checked for commas in arguments. Inside `$()`, commas separate parameters, not expression arguments. See Section 3 for the full rules and examples.
 
+**Deeper reference:** see `references/sql-constructs.md` for each construct's full failure mode, worked-example rewrites of the SQL→Qlik conversion, the `SQL SELECT` pass-through exception with examples, and the five most common adjacent failure modes (`NoConcatenate`, `Count()` argument requirements, `QUALIFY` with prefixed fields, `DROP TABLE` discipline, `NullAsValue` scope).
+
 ### QUALIFY/UNQUALIFY
 
-QUALIFY prefixes field names with their table name to prevent unintended associations. It is one way to avoid synthetic keys, but aliasing fields with `AS` in the LOAD statement is equally valid and often clearer since it gives you explicit control over each field name. Use whichever approach fits the situation.
-
-**If using QUALIFY:** `QUALIFY *;` qualifies ALL fields, including key fields. After QUALIFY, immediately UNQUALIFY your join keys before any LOAD statements:
-
-```qlik
-QUALIFY *;
-UNQUALIFY [%Customer.Key], [%Order.Key];  // Keep keys associating
-// ... table loads ...
-UNQUALIFY *;  // Reset after the block
-```
-
-QUALIFY and UNQUALIFY are state toggles that affect subsequent LOADs, not retroactive. Forgetting to UNQUALIFY key fields is the most common QUALIFY error. The result is silent: no error, no warning, just a data model with no associations.
-
-**Double-qualification trap:** If fields are already entity-prefixed (e.g., `Customer.Name`), QUALIFY prepends the table name, producing `TableName.Customer.Name`. This breaks all downstream field references. Skip QUALIFY entirely when the naming convention already prevents ambiguity.
+`QUALIFY` prefixes field names with their table name to prevent unintended associations. It is one way to avoid synthetic keys, but aliasing fields with `AS` in the LOAD is equally valid and usually clearer. `QUALIFY` is a stateful toggle — forgetting to `UNQUALIFY` the keys you need to associate on results in a silent data model with no associations. If fields are already entity-prefixed by the naming convention, `QUALIFY *` produces double-prefixed names (`TableName.Customer.Name`) — skip `QUALIFY` entirely in that case. Full treatment with worked examples in `references/sql-constructs.md` Section 2.3.
 
 ## 2. SET vs LET
 
@@ -346,18 +335,9 @@ See `script-templates/error-handling.qvs` for the error handling and logging fra
 
 ## 14. NoConcatenate and Auto-Concatenation
 
-When a new table has an identical field set (same names AND same count) as an existing table, Qlik **silently concatenates** rows into the existing table. The new table name is never registered. Subsequent `NoOfRows('NewTable')` returns NULL. `DROP TABLE [NewTable]` fails.
+When a new LOAD produces a field set identical to an existing table's (same names AND same count), Qlik silently concatenates the rows into the existing table — the new table name is never registered. The basic `NoConcatenate` pattern, the convention to apply it defensively on temp tables, and the broader failure-mode context live in `references/sql-constructs.md` Section 2.1.
 
-```qlik
-// BROKEN -- _Dedup merges into _Collector (identical field set: both have only key_field):
-[_Collector]: LOAD key_field FROM [source.qvd] (qvd);
-[_Dedup]: LOAD DISTINCT key_field RESIDENT [_Collector]; // auto-concatenates!
-
-// FIXED -- NoConcatenate forces a separate table:
-[_Dedup]: NoConcatenate LOAD DISTINCT key_field RESIDENT [_Collector];
-```
-
-**INLINE LOADs trigger the same rule.** Two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The second table name is silently lost; a later `RESIDENT [SecondTable]` fails with "table not found" — the typical symptom that surfaces the trap. Fix either by adding a discriminator column to differentiate the structures, or by prefixing the second LOAD with `NoConcatenate`.
+**INLINE LOADs trigger the same rule.** Two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The second table name is silently lost; a later `RESIDENT [SecondTable]` fails with "table not found" — the typical symptom that surfaces the trap. Fix either by adding a discriminator column or by prefixing the second LOAD with `NoConcatenate`.
 
 ```qlik
 // BROKEN -- both INLINE blocks share columns, [MenuB] silently merges into [MenuA]:
@@ -376,13 +356,11 @@ LOAD * INLINE [Col1, Col2
 C, D];
 ```
 
+**Explicit CONCATENATE prefix:** `CONCATENATE([TargetTable])` forces concatenation even when field sets differ. Mismatched fields get NULL in the target. Use when intentionally merging tables with partially overlapping schemas.
+
+**Mapping LOAD tables are invisible to meta-functions.** Tables created via `Mapping LOAD` are consumed at `ApplyMap()` time and do not persist as named tables in the data model. `NoOfRows('MappingTableName')`, `FieldValueCount()`, `FieldName()`, and all other table/field meta-functions return null or -1 for Mapping tables. Validate indirectly by checking the row count of the downstream table that consumes the mapping (e.g., if the target table loads 0 rows, the mapping was likely empty or misconfigured).
+
 Reference: help.qlik.com Cloud — Concatenate / NoConcatenate statements.
-
-**Explicit CONCATENATE prefix:** `CONCATENATE([TargetTable])` forces concatenation even when field sets differ. Mismatched fields get NULL in the target table. Use when intentionally merging tables with partially overlapping schemas.
-
-**Convention:** Use `NoConcatenate` whenever creating a temporary or working table that should be standalone. This is standard defensive practice when you know the table is single-purpose and should not merge with anything else, regardless of whether you've confirmed a field overlap exists.
-
-**Mapping LOAD tables are invisible to meta-functions.** Tables created via `Mapping LOAD` are consumed at `ApplyMap()` time and do not persist as named tables in the data model. `NoOfRows('MappingTableName')`, `FieldValueCount()`, `FieldName()`, and all other table/field meta-functions return null or -1 for Mapping tables. Never use these functions to validate Mapping tables. Instead, validate indirectly by checking the row count of the downstream table that consumes the mapping (e.g., if the target table loads 0 rows, the mapping was likely empty or misconfigured).
 
 ## 15. EXISTS Symbol Space Behavior
 
@@ -570,6 +548,7 @@ Clean delimiters with PurgeChar before expanding.
 
 ## Supporting Files
 
+- `references/sql-constructs.md` -- SQL constructs not valid in Qlik LOAD/RESIDENT, the SQL SELECT pass-through exception, and the five most common adjacent failure modes (NoConcatenate, Count() argument requirements, QUALIFY with prefixed fields, DROP TABLE discipline, NullAsValue scope)
 - `qvd-operations.md` -- STORE syntax, optimized vs standard read modes, map-building, binary load
 - `incremental-load-patterns.md` -- Complete incremental load patterns with working code
 - `null-handling-patterns.md` -- vCleanNull, NullAsValue, null guard patterns

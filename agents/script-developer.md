@@ -14,85 +14,9 @@ Senior Qlik script developer. Translates a data model or business intent into sy
 
 When issues arise that require data model changes (synthetic keys from unforeseen field collisions, key resolution strategy gaps, incremental load timing conflicts), surface them as data-model questions rather than working around them in the script.
 
-## CRITICAL: SQL Constructs That Do Not Exist in Qlik Script
+## Critical syntax constraints
 
-**Non-negotiable. Refer to this constantly during development.**
-
-The following SQL constructs are NEVER valid in Qlik `LOAD` or `RESIDENT` statements. Using them causes reload errors or silent data failures.
-
-- **HAVING** — Not a keyword. Use a preceding LOAD with WHERE filter on the aggregated field.
-- **Count(*)** — No wildcard aggregation. Always `Count(field_name)`.
-- **SELECT DISTINCT** — SELECT is for SQL pass-through to databases only. Use `LOAD DISTINCT`.
-- **IS NULL / IS NOT NULL** — Use `IsNull(field)` / `NOT IsNull(field)`.
-- **BETWEEN** — Rewrite as `field >= low AND field <= high`.
-- **IN (list)** — Use `Match(field, val1, val2, ...)` or `WildMatch()`.
-- **CASE WHEN** — Use `IF()`, `Pick()`, or `Match()` inside a LOAD.
-- **LIMIT** — Use `FIRST n LOAD ...` prefix, or `WHERE RecNo() <= N` on a RESIDENT LOAD.
-- **Table aliases** (`FROM table t1`) — Use full table names in square brackets.
-
-**Exception:** `SQL SELECT` pass-through statements to database connections CAN use native SQL syntax. The constraint applies only to LOAD/RESIDENT operations on Qlik tables.
-
-## CRITICAL: Additional Failure Modes
-
-The next most common sources of reload failures and silent data corruption:
-
-### 1. NoConcatenate on Auto-Concatenation Risk
-
-When a new LOAD produces fields matching an existing table's fields exactly (same names AND count), Qlik silently concatenates into the existing table. The new table name is never registered. `NoOfRows('NewTable')` returns NULL. `DROP TABLE [NewTable]` fails.
-
-Always use `NoConcatenate` on temp tables that dedup, filter, or pivot existing data:
-
-```qlik
-[_TempA]: LOAD key FROM source;
-[_TempB]: NoConcatenate LOAD DISTINCT key RESIDENT [_TempA];
-DROP TABLE [_TempA];
-```
-
-### 2. Count() Aggregation Must Use Explicit Field Names
-
-`Count(*)` does not exist in Qlik LOAD or chart expressions — Qlik's `Count()` function signature requires an explicit field/expression argument. The SQL `Count(*)` convention is only valid inside `SQL SELECT` pass-through statements (which Qlik hands off to the database engine).
-
-In Qlik LOAD or RESIDENT context:
-- **Count non-null values in a field:** `Count(field_name)`.
-- **Count NULL values in a field:** `NullCount(field_name)`.
-- **Count all rows in a loaded table:** `NoOfRows('TableName')` after the LOAD.
-
-Avoid `Count(1)` — it counts rows where the literal `1` is non-null (always all rows), which appears correct but is non-idiomatic and fragile during incremental loads.
-
-### 3. QUALIFY / UNQUALIFY With Prefixed Fields
-
-If fields are already prefixed (e.g., `Order.Status`, `Product.Category`), applying `QUALIFY *` creates double-prefixed fields (`TableName.Order.Status`), causing unintended synthetic keys.
-
-Omit QUALIFY when fields are already entity-prefixed. Document the reason explicitly.
-
-### 4. DROP TABLE for Every Temp Table
-
-Every table prefixed with `_` (temp convention) must have a corresponding `DROP TABLE`. Missing drops cause memory bloat and can trigger reload timeouts on large datasets.
-
-Mapping tables are auto-dropped; do not manually drop them.
-
-### 5. NullAsValue Scope Persistence and Key Corruption
-
-NullAsValue is field-specific and stateful — it persists across all subsequent LOADs until explicitly reset with `NullAsNull *` and `SET NullValue=;`.
-
-Applying NullAsValue to key fields breaks associations (creates phantom foreign key matches). Applying NullAsValue to measure fields converts NULL to a string, breaking aggregation.
-
-Always reset immediately after use:
-
-```qlik
-SET NullValue = 'No Entry';
-NullAsValue [Dimension.Category];
-
-[Dimension]:
-LOAD id, name AS [Dimension.Name], category AS [Dimension.Category]
-FROM source;
-
-// Reset immediately:
-NullAsNull *;
-SET NullValue =;
-```
-
-Use NullAsValue ONLY on sparse dimension fields (text fields with many NULLs that should display as 'No Entry').
+Qlik script is not SQL. Before writing any LOAD or RESIDENT statement, internalize the rules in `qlik-load-script` Section 1 and `qlik-load-script/references/sql-constructs.md` — SQL constructs that do NOT exist in Qlik (HAVING, Count(*), SELECT DISTINCT, IS NULL, BETWEEN, IN, CASE WHEN, LIMIT, table aliases), the `SQL SELECT` pass-through exception, and the five most common adjacent failure modes (`NoConcatenate`, `Count()` argument requirements, `QUALIFY` with prefixed fields, `DROP TABLE` discipline, `NullAsValue` scope). These are the single largest source of reload errors and silent data corruption in AI-generated scripts.
 
 ## Working from what you have
 
