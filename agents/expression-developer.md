@@ -183,53 +183,9 @@ Aggr(Sum({<Status={'Active'}>} [Amount]), [Customer.Key])
 - Nesting Aggr inside Aggr: `Aggr(Aggr(...), ...)` is rarely needed and causes performance issues. If you need it, document explicitly why.
 - Forgetting that Aggr result is an expression, not a field: `Aggr(...)` cannot be used as a dimension in a chart directly (it's a measure expression). Use master measures for dimensions based on Aggr.
 
-## Null Handling Patterns
+## Null Handling
 
-Every expression MUST document null handling. Include one of these patterns or document custom handling.
-
-**Alt() for fallback:**
-```
-Alt(Sum([Amount]), 0)
-```
-- If Sum([Amount]) returns NULL (no rows matching selection), use 0 instead
-- Use when NULL is semantically wrong (e.g., revenue should be 0 if no sales, not NULL)
-- Common in KPI displays and ratios
-
-**RangeSum() for null-safe addition:**
-```
-RangeSum(Sum([Q1.Amount]), Sum([Q2.Amount]), Sum([Q3.Amount]), Sum([Q4.Amount]))
-```
-- Adds multiple expressions, treating NULL as 0 in the sum
-- Use when aggregating optional or sparse data (e.g., quarterly revenue where some quarters may have no data)
-- More efficient than nested Alt() calls
-
-**Division by zero AND null guard (must check IsNull separately):**
-```
-IF(IsNull(vDenominator) OR vDenominator = 0, Null(), vNumerator / vDenominator)
-```
-- Check IsNull FIRST, before checking = 0 (because NULL = 0 evaluates to NULL, not true)
-- If vDenominator is NULL, the expression returns NULL (correct: undefined ratio)
-- If vDenominator is 0, the expression returns NULL (correct: division by zero)
-- If vDenominator is positive, perform the division
-- Common mistake: `IF(vDenominator = 0 OR IsNull(vDenominator), ...)` — the NULL check comes second and is never reached (NULL = 0 is NULL, not false)
-
-**Count behavior with nulls:**
-- `Count([Amount])` counts non-NULL values. If a field has nulls, Count returns fewer rows than RowNo().
-- `Count(*)` does NOT exist in Qlik; use `NoOfRows()` if you need a row count
-- `Count(DISTINCT [Field])` counts distinct non-NULL values. Nulls are not counted.
-- Document: "Returns NULL for empty selections (no data matching filters). Use Alt(Count(...), 0) for display."
-
-**Documentation requirement:**
-Every expression in the catalog MUST include a "Null Handling" line. Examples:
-- `Sum(...) returns NULL for empty selections. Use Alt(Sum(...), 0) in KPI displays.`
-- `Count(...) excludes NULL values. Returns 0 for empty selections (no rows to count).`
-- `If(IsNull(...), 'No Data', ...) — returns 'No Data' string when field is NULL.`
-- `IF(vDenominator = 0, Null(), ...) — returns NULL on division by zero to avoid misleading percentages.`
-
-**Failure modes:**
-- Silent NULL from using intermediate layer field names: `Sum([Account.Region])` produces NULL after DataModel layer renamed Account to Customer (field no longer exists)
-- NULL = 0 evaluates to NULL, not false: `IF(x = 0, ...)` does NOT catch NULL. Use `IF(IsNull(x) OR x = 0, ...)`
-- Null in arithmetic silently propagates: `NULL + 5 = NULL`. Guard all arithmetic with null checks or use RangeSum()
+Every expression entry in the catalog must include a "Null Handling" line. The full pattern reference — `Alt` for numeric coalescing, `Coalesce` for text, `RangeSum` for null-safe addition, the division-by-zero/null guard, the documentation requirement, and the failure modes — lives in `qlik-expressions` SKILL.md Section 9. Pull from there when authoring catalog entries.
 
 ## expression-variables.qvs Organization
 

@@ -116,21 +116,20 @@ Date(Floor(order_timestamp), 'YYYY-MM-DD') AS [Order.Date]
 
 ## 6. Null Handling (Summary)
 
-Three strategies, each for a different scenario:
+Three strategies, each for a different null shape:
 
-**vCleanNull variable function:** For string-encoded nulls ("null", "NaN", "n/a", "[null]") from ETL pipelines and data lakes. `IsNull()` does NOT catch these. See `null-handling-patterns.md` and `script-templates/clean-null-function.qvs`.
+| Field Type | Null Shape | Strategy |
+|---|---|---|
+| String dimensions from external sources | String-encoded (`"null"`, `"NaN"`, `"n/a"`) — `IsNull()` does NOT catch these | `vCleanNull` |
+| Sparse dimensions for filter pane display | Genuine SQL NULL | `NullAsValue` (with reset) |
+| Date/numeric calculations | Genuine NULL plus non-NULL sentinel dates (`1900-01-01`, epoch zero) | Explicit `IsNull` + range guards |
+| Key fields | Any null | **Never mask** — surface as data quality issue |
 
-**NullAsValue:** For sparse dimension fields where NULL should display as "No Entry" in filter panes. Field-specific and stateful (persists until reset). Field names must match OUTPUT aliases, not source names. Never use on key fields (breaks associations) or measure fields (breaks Sum/Avg). See `null-handling-patterns.md`.
+`NullAsValue` is field-specific and stateful — persists until reset with `NullAsNull *;` + `SET NullValue =;`. Never apply to key fields (creates phantom associations through the substituted string) or measure fields (breaks `Sum`/`Avg`). Full failure-mode treatment in `references/sql-constructs.md` Section 2.5.
 
-**Null guards on date arithmetic:** Genuine NULL dates propagate correctly (`Today() - NULL = NULL`), so the real threat is non-NULL sentinel dates (`1900-01-01`, `1970-01-01`, epoch zero) that upstream systems substitute for missing values -- these produce plausible-looking but wrong ages. Guard date math against BOTH null and out-of-range sentinels: `IF(IsNull(d) OR d < MakeDate(1901,1,2) OR d > Today(), Null(), ...)`. See `null-handling-patterns.md`.
+For date arithmetic, the threat is non-NULL sentinels (sources substitute `1900-01-01` for "unknown"), not genuine NULLs — those propagate to NULL correctly. Guard against both: `IF(IsNull(d) OR d < MakeDate(1901,1,2) OR d > Today(), Null(), ...)`.
 
-**Decision framework:**
-| Field Type | Strategy |
-|---|---|
-| String dimensions from external sources | vCleanNull |
-| Sparse dimensions for filter pane display | NullAsValue |
-| Date/numeric calculations | Explicit IsNull guards |
-| Key fields | Never mask nulls (they indicate data quality issues) |
+Full treatment — `Null()` / `IsNull()` / `NullCount()` constructors, the `vCleanNull` variable function with comma-trap workarounds, the `NullAsValue` scope-management pattern, the key-field NULL phantom-association risk, date-arithmetic sentinel guards, and the layered defensive-coding strategy — is in `references/null-handling.md`. For null handling in expressions (`Alt`, `Coalesce`, `RangeSum`, division guards), see `qlik-expressions` SKILL.md Section 9.
 
 ## 7. Data-Driven Patterns
 
@@ -551,7 +550,7 @@ Clean delimiters with PurgeChar before expanding.
 - `references/sql-constructs.md` -- SQL constructs not valid in Qlik LOAD/RESIDENT, the SQL SELECT pass-through exception, and the five most common adjacent failure modes (NoConcatenate, Count() argument requirements, QUALIFY with prefixed fields, DROP TABLE discipline, NullAsValue scope)
 - `qvd-operations.md` -- STORE syntax, optimized vs standard read modes, map-building, binary load
 - `incremental-load-patterns.md` -- Complete incremental load patterns with working code
-- `null-handling-patterns.md` -- vCleanNull, NullAsValue, null guard patterns
+- `references/null-handling.md` -- canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue, key-field NULL, date sentinel guards, decision framework)
 - `diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries
 - `script-templates/master-calendar.qvs` -- Production-ready master calendar
 - `script-templates/error-handling.qvs` -- Error handling and logging framework

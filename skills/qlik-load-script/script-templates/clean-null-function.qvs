@@ -59,8 +59,8 @@ SET vCleanNull = IF(IsNull($1) OR Len(Trim($1)) = 0
 // a nonsense age. The real risk is non-NULL SENTINEL dates
 // (1900-01-01, 1901-01-01, epoch zero) that upstream systems
 // substitute for missing values. Guard date math against both
-// NULL and out-of-range sentinels -- see null-handling-patterns.md
-// "Null Guards on Date Arithmetic" for the full pattern.
+// NULL and out-of-range sentinels -- see references/null-handling.md
+// Section 5 "Null Guards on Date Arithmetic" for the full pattern.
 //
 // Usage: $(vCleanDate(date_field)) AS [Output.Date]
 //

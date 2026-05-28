@@ -115,29 +115,9 @@ Other transformation tasks:
 - Bridge table construction (`SubField` expansion, "No Entry" rows).
 - Store transform QVDs.
 
-### 5. Write NullAsValue with explicit scope management
+### 5. Apply null-handling strategies per the canonical patterns
 
-```qlik
-SET NullValue = 'No Entry';
-NullAsValue [Dimension.Category], [Dimension.SubCategory];
-
-[Dimension]:
-LOAD category_id,
-     category AS [Dimension.Category],
-     subcategory AS [Dimension.SubCategory]
-FROM sparse_source;
-
-// Reset immediately after the table that needed null substitution:
-NullAsNull *;
-SET NullValue =;
-
-// Now safe to load other tables without NullAsValue interference.
-```
-
-Traps to avoid:
-1. Scope leak: NullAsValue without reset persists across LOADs, corrupting later tables.
-2. Key field corruption: applying NullAsValue to ID fields creates phantom associations.
-3. Measure field corruption: applying to fields used in `Sum()` converts nulls to strings, breaking aggregation.
+Choose the strategy per field type: `vCleanNull` for string-encoded nulls from external sources, `NullAsValue` (with explicit `NullAsNull *;` + `SET NullValue =;` reset) for sparse dimensions that should display as `'No Entry'` in filter panes, `IsNull` + sentinel range guards for date arithmetic, and never mask NULL on key fields. The full pattern catalog — including the comma-trap workarounds for `vCleanNull`, the `NullAsValue` scope/key/measure corruption modes, the date sentinel guard rationale, and the layered example combining all three — is in `qlik-load-script/references/null-handling.md`. The `NullAsValue` failure modes (scope persistence, key/measure field corruption) are detailed in `qlik-load-script/references/sql-constructs.md` Section 2.5.
 
 ### 6. Write model load scripts
 

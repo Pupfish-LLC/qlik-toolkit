@@ -161,12 +161,12 @@ SET NullValue =;
 // Now safe to load other tables without NullAsValue interference.
 ```
 
-Use `NullAsValue` ONLY on sparse dimension fields (text fields with many NULLs that should display as "No Entry" in filter panes). For string-encoded nulls ("null", "NaN", "n/a"), use `vCleanNull` instead — see `null-handling-patterns.md`.
+Use `NullAsValue` ONLY on sparse dimension fields (text fields with many NULLs that should display as "No Entry" in filter panes). For string-encoded nulls ("null", "NaN", "n/a"), use `vCleanNull` instead — see `null-handling.md`.
 
 ## See Also
 
 - `qlik-load-script` SKILL.md Section 1 — inline summary table.
 - `qlik-load-script` SKILL.md Section 14 — NoConcatenate full treatment with the INLINE auto-concat trap.
-- `null-handling-patterns.md` — vCleanNull, NullAsValue, and null guards.
+- `null-handling.md` — canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue brief, key-field NULL, date sentinel guards, decision framework).
 - `qlik-naming-conventions` — entity-prefix convention that obviates `QUALIFY`.
 - help.qlik.com Cloud — Aggregation functions (Count, NullCount), Concatenate / NoConcatenate, NullAsValue.

@@ -256,34 +256,104 @@ If a sheet condition fails, all calculations on that sheet skip. This saves proc
 
 ## 9. Null Handling in Expressions
 
-**Aggregation functions skip NULLs:** `Sum([1, NULL, 3])` = 4, not NULL.
+This is the canonical home for expression-layer null handling. For script-layer null handling (`vCleanNull`, `NullAsValue`, date sentinel guards), see `qlik-load-script/references/null-handling.md`.
 
-**Count() counts non-NULL values:** `Count([1, NULL, 3])` = 2 (not 3 rows, just 2 non-NULL values).
+### Baseline behaviors
 
-**Division by zero returns NULL:** `1/0` = NULL (not an error). `5/0` = NULL. This is safe but can hide logic errors.
+**Aggregation functions skip NULLs.** `Sum([1, NULL, 3])` = 4, not NULL. `Avg([1, NULL, 3])` = 2 (computed from two non-NULL values, not three). `Min` / `Max` ignore NULLs.
 
-**Alt() for numeric coalescing:** Per the docs, "the alt function returns the first of the parameters that has a valid number representation. If no such match is found, the last parameter will be returned." Use Alt() only for numeric fallback:
+**`Sum` of all NULLs returns NULL, not 0.** Empty selections or fully-NULL fields produce NULL. Wrap with `Alt()` or `RangeSum()` when 0 is the semantically correct display value.
+
+**`Count(field)` counts non-NULL values, not rows.** `Count([1, NULL, 3])` = 2. For total row counts, use `NoOfRows('TableName')`. `Count(*)` is not valid in Qlik chart expressions — see `qlik-load-script/references/sql-constructs.md` Section 2.2.
+
+**`Count(DISTINCT field)` counts unique non-NULL values.** NULLs are excluded from the distinct count.
+
+**`NullCount(field)` returns the count of NULL values.** Use for null-rate diagnostics in charts and scripts. Reference: help.qlik.com — NullCount script and chart functions.
+
+**Division by zero returns NULL.** `1/0` = NULL, `5/0` = NULL. Qlik does not raise an error; the NULL propagates silently. This is safe but can hide logic errors in downstream aggregations.
+
+**Comparison with NULL returns False (not NULL).** Per help.qlik.com Cloud null-value-handling: "A = NULL returns False (0)". This is true for `=`, `<>`, `<`, `>`, `<=`, `>=`. The only correct NULL test is `IsNull(field)`.
+
+**Arithmetic with NULL returns NULL.** Per help.qlik.com: "If NULL is encountered on any side of these operators NULL is returned." Applies to `+`, `-`, `*`, `/`, `%`. So `5 + NULL = NULL` and `NULL * 0 = NULL`.
+
+### `Alt()` for numeric coalescing
+
+Per help.qlik.com — Alt function: "the alt function returns the first of the parameters that has a valid number representation. If no such match is found, the last parameter will be returned."
+
+Use `Alt()` only for **numeric** fallback:
+
 ```
-Alt(Sum([Amount]), 0)        // Returns 0 when Sum produces NULL or non-numeric
+Alt(Sum([Amount]), 0)        // Returns 0 when Sum produces NULL
 Alt([Order.Year], Today())   // Returns Today() when Order.Year has no numeric representation
 ```
 
-**Coalesce() for general (text or numeric) null coalescing:** Per the docs, "the coalesce function returns the first of the parameters that has a valid non-NULL representation." Use Coalesce() when fallback values are text or when a non-numeric value (e.g., a name) needs a default:
+**Common mistake:** `Alt([Customer.Name], 'Unknown')` always returns `'Unknown'` because a name like `"Acme Corp"` has no valid numeric representation. Reach for `Coalesce()` whenever the values are text.
+
+### `Coalesce()` for general (text or numeric) null coalescing
+
+Per the docs: "the coalesce function returns the first of the parameters that has a valid non-NULL representation." Use `Coalesce()` when fallback values are text or when a non-numeric value needs a default:
+
 ```
 Coalesce([Customer.Name], 'Unknown')
 Coalesce([Product.Description], [Product.Name], [Product.Code], 'No description')
 ```
 
-Common mistake: `Alt([Customer.Name], 'Unknown')` always returns `'Unknown'` because a name like "Acme Corp" has no valid numeric representation. Reach for Coalesce() whenever the values are text.
+### `RangeSum()` for null-safe addition
 
-**RangeSum() for null-safe addition:** `RangeSum(A, B)` returns the non-null value if one is null. Unlike `A + B` which returns NULL if either is NULL.
+Per help.qlik.com — RangeSum function: "The RangeSum function treats all non-numeric values as 0," and the example `RangeSum(null())` returns 0. Use when aggregating optional or sparse columns where NULL should contribute zero:
 
-**Null() function:** Explicitly returns NULL. Useful for conditional expressions:
+```
+// Quarterly revenue where any quarter may be NULL.
+// Plain Sum(Q1+Q2+Q3+Q4) returns NULL if any quarter is NULL.
+RangeSum(Sum([Q1.Amount]), Sum([Q2.Amount]), Sum([Q3.Amount]), Sum([Q4.Amount]))
+
+// Equivalent to Alt(Sum(...), 0) for a single expression, but more efficient
+// for multi-argument null-safe addition than nested Alt() calls.
+RangeSum(Sum([Amount]), 0)
+```
+
+### `Null()` constructor
+
+Explicitly returns NULL. Useful for the NULL branch of conditional expressions where downstream logic should ignore the row:
+
 ```
 IF(IsNull(field), Null(), Sum(field))
+IF([Order.Status] = 'Cancelled', Null(), [Order.Amount])
 ```
 
-**The expression NULL gotcha:** `IF(field = 'value', ...)` when field is NULL evaluates to FALSE, not NULL. This is correct Qlik behavior but trips people up. Null comparisons never match; they're always false. Use `IF(IsNull(field), ...)` to check for nulls.
+### Division-by-zero and null guard
+
+Division by both zero and NULL produces NULL by Qlik default (silent NULL propagation for `/0` and arithmetic NULL propagation for `n / NULL`). Wrapping the division in an explicit guard documents intent and makes the NULL semantic visible to readers:
+
+```
+IF(IsNull(vDenominator) OR vDenominator = 0, Null(), vNumerator / vDenominator)
+```
+
+- If `vDenominator` is NULL: `IsNull` returns true, expression returns `Null()`.
+- If `vDenominator` is 0: `IsNull` returns false, `= 0` returns true, expression returns `Null()`.
+- If `vDenominator` is non-zero: division proceeds normally.
+
+**On clause ordering.** Both `IF(IsNull(d) OR d = 0, ...)` and `IF(d = 0 OR IsNull(d), ...)` produce the same result, because Qlik's `=` returns False (not NULL) when one side is NULL, and `IF` treats both False and NULL conditions as "go to else." The IsNull-first ordering is the convention because it documents the NULL intent before the zero intent — useful when the next reader is checking what cases the guard covers, not because the reversed order is incorrect.
+
+**Without the guard.** The unguarded `vNumerator / vDenominator` returns NULL for both the zero and NULL cases anyway (Qlik does not throw on division by zero). The guard adds value when (a) the calling context needs an explicit NULL branch (e.g., for a `Coalesce` fallback), or (b) the expression is large and a reader might assume `/0` would error.
+
+### Documentation requirement
+
+When producing a measure catalog, every measure entry must document its null handling. Examples:
+
+- `Sum(...) returns NULL for empty selections. Wrap with Alt(Sum(...), 0) in KPI displays where 0 is the desired zero-data value.`
+- `Count(...) excludes NULL values. Returns 0 for empty selections (no rows to count).`
+- `IF(IsNull(...), 'No Data', ...) — returns 'No Data' string when field is NULL.`
+- `IF(vDenominator = 0 OR IsNull(vDenominator), Null(), ...) — returns NULL on division by zero or NULL denominator.`
+
+The reader of the catalog should never have to guess what an aggregation does on empty selections, NULL fields, or division-by-zero conditions.
+
+### Failure modes
+
+- **Silent NULL from intermediate-layer field names.** `Sum([Account.Region])` produces NULL after the DataModel layer renamed `Account` to `Customer` (the field no longer exists). Symptom: a measure that was working in a prototype now returns NULL after a field rename. Fix: always reference the final UI field name; see `qlik-naming-conventions` for cross-layer naming.
+- **Comparison with NULL is False, not NULL.** `IF(field = 'value', ...)` when `field` is NULL returns the `else` branch (because `= NULL` is False, and `IF` treats False as "go to else"). Use `IF(IsNull(field), ...)` to branch on NULL specifically.
+- **Arithmetic NULL propagation in chained expressions.** `(A + B) * C` returns NULL if any of A, B, C is NULL. Wrap with `RangeSum()` for the addition step, or with `IsNull` guards for the chain.
+- **`Alt()` on text values.** `Alt([Customer.Name], 'Unknown')` returns `'Unknown'` even when `Customer.Name` is a perfectly valid non-NULL name like `"Acme Corp"`, because `"Acme Corp"` has no valid numeric representation. Use `Coalesce()` for text.
 
 ## 10. Common Anti-Patterns
 
