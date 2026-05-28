@@ -2,6 +2,19 @@
 
 All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-05-27
+
+### Added
+
+- **`qlik-visualization/SKILL.md` §8 (NEW: Dashboard Bundle Controls):** Documented the Variable Input control's Dynamic values mode. The parameter parses a pipe-delimited string (`value1|value2|...`) or value-label form (`value~label|value~label|...`), NOT a field enumeration. A bare field reference (`=[Table].[Field]`) collapses to one scalar — the dropdown breaks. Corrective pattern: materialize the pipe string in the load script (Concat-and-Peek), reference the resulting variable as `='$(vPipe)'`.
+- **`qlik-visualization/references/variable-input-control.md` (NEW):** Full walkthrough of the Variable Input pipe pattern — load-script Concat-and-Peek build, control configuration, value-only vs value-label form, chart-side double-dollar expansion (`$($(vVar))`) when the picker writes a variable name, and the slower inline-Concat alternative.
+- **`qlik-load-script/SKILL.md` §7 (Data-Driven Patterns):** New "Concat-and-Peek for UI-variable build" subsection. General script-side technique for materializing a delimited string into a variable; cross-references the qlik-visualization walkthrough for UI consumption.
+- **`qlik-load-script/SKILL.md` §14 (NoConcatenate and Auto-Concatenation):** Added an INLINE-specific paragraph and example. The same auto-concatenation rule that applies to RESIDENT also applies to LOAD INLINE — two INLINE blocks with matching column structures silently merge, the second table name is lost, and a later `RESIDENT [SecondTable]` fails with "table not found" (the typical symptom that surfaces the trap).
+
+### Changed
+
+- **TRACE semicolon rule reframed in `qlik-load-script/SKILL.md` §13 and `qlik-load-script/diagnostic-patterns.md`:** The v0.3.1 framing ("no semicolons allowed inside a TRACE message") was too absolute. Restated as the parser-level rule (`;` terminates outside any quoted string; TRACE accepts an unquoted argument by default), with two safe options now documented: (a) use commas, periods, or dashes as in-text separators (the prior advice), and (b) wrap the entire trace text in single quotes so the `;` sits inside a string literal. Added "treat TRACE text the way you'd treat any other Qlik string argument — when in doubt, quote it" as a closing note.
+
 ## [0.3.1] — 2026-05-18
 
 ### Fixed
