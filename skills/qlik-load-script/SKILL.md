@@ -175,6 +175,17 @@ FOR i = 0 TO NoOfRows('_Metadata') - 1
 NEXT i
 ```
 
+**Concat-and-Peek for UI-variable build:** Materialize a delimited string (typically `|`-separated tokens) once at reload and expose it via a variable. The common consumer is the Dashboard Bundle Variable Input control, whose Dynamic values mode parses a pipe-delimited string rather than enumerating a field — a bare field reference in that control collapses to one scalar.
+
+```qlik
+[_PipeBuild]:
+LOAD Concat([Code] & '~' & [Label], '|') AS pipe RESIDENT [Menu];
+LET vPipe = Peek('pipe', 0, '_PipeBuild');
+DROP TABLE [_PipeBuild];
+```
+
+Consume on the UI side with dollar-sign expansion (`='$(vPipe)'`). The technique generalizes beyond Variable Input — anywhere a UI control or set-analysis clause needs a delimited string of distinct values, this is the pattern. See `qlik-visualization` → `references/variable-input-control.md` for the full UI consumption walkthrough including value-label form and chart-side double-dollar dereferencing.
+
 ## 8. JOIN/KEEP Prefixes
 
 JOIN and KEEP combine two tables. **Critical difference from SQL:** Qlik joins on ALL fields with matching names between the two tables, not just the field you intend as a key. Unintended field-name overlaps produce wrong results silently.
@@ -318,7 +329,7 @@ See `script-templates/master-calendar.qvs` for the production-ready template.
 ## 13. Error Handling and Logging
 
 - **TRACE:** `TRACE === Phase: Extract ===;` for milestones. `TRACE Rows loaded: $(vRowCount);` for row counts.
-  - **Semicolons in the message text are NOT allowed.** TRACE doesn't take a quoted argument by default — the first `;` terminates the statement, and any words that follow become a syntax error at reload. Use a comma, period, or dash instead. WRONG: `TRACE Loaded $(vRows); see diagnostics for detail;` (the `;` after `$(vRows)` ends the TRACE; `see diagnostics for detail;` parses as an unknown statement). RIGHT: `TRACE Loaded $(vRows). See diagnostics for detail;` or `TRACE Loaded $(vRows) -- see diagnostics for detail;`. The terminating `;` at the very end is the only `;` allowed.
+  - **Semicolons inside the message text are consumed by the parser unless the whole text is quoted.** Qlik treats `;` as the statement terminator outside any quoted string, and TRACE accepts an unquoted argument by default — so a bare `;` in the message ends the statement early and the words that follow parse as an unknown statement. Two safe options: (a) use commas, periods, or dashes as in-text separators; (b) wrap the entire trace text in single quotes so the `;` sits inside a string literal. WRONG: `TRACE Loaded $(vRows); see diagnostics for detail;`. RIGHT (a): `TRACE Loaded $(vRows). See diagnostics for detail;` or `TRACE Loaded $(vRows) -- see diagnostics for detail;`. RIGHT (b): `TRACE 'Loaded $(vRows); see diagnostics for detail';`. Treat TRACE text the way you'd treat any other Qlik string argument — when in doubt, quote it.
 - **ScriptError vs ScriptErrorCount -- do not confuse these:**
   - `ScriptError` is a **dual value** (numeric error code + text component) reflecting only the **most recent statement**. It is reset to 0 after every successfully executed statement. Because it resets, it cannot detect errors across multiple operations -- only the immediately preceding one.
   - `ScriptErrorCount` is an **integer counter** that is **cumulative** across the entire reload. It increments with each failed statement and is never reset mid-reload.
@@ -345,6 +356,27 @@ When a new table has an identical field set (same names AND same count) as an ex
 // FIXED -- NoConcatenate forces a separate table:
 [_Dedup]: NoConcatenate LOAD DISTINCT key_field RESIDENT [_Collector];
 ```
+
+**INLINE LOADs trigger the same rule.** Two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The second table name is silently lost; a later `RESIDENT [SecondTable]` fails with "table not found" — the typical symptom that surfaces the trap. Fix either by adding a discriminator column to differentiate the structures, or by prefixing the second LOAD with `NoConcatenate`.
+
+```qlik
+// BROKEN -- both INLINE blocks share columns, [MenuB] silently merges into [MenuA]:
+[MenuA]:
+LOAD * INLINE [Col1, Col2
+A, B];
+
+[MenuB]:
+LOAD * INLINE [Col1, Col2
+C, D];
+
+// FIXED -- explicit NoConcatenate keeps them separate:
+[MenuB]:
+NoConcatenate
+LOAD * INLINE [Col1, Col2
+C, D];
+```
+
+Reference: help.qlik.com Cloud — Concatenate / NoConcatenate statements.
 
 **Explicit CONCATENATE prefix:** `CONCATENATE([TargetTable])` forces concatenation even when field sets differ. Mismatched fields get NULL in the target table. Use when intentionally merging tables with partially overlapping schemas.
 

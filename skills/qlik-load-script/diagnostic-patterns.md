@@ -8,18 +8,23 @@ TRACE statement templates, row count logging, post-load validation queries, and 
 
 TRACE writes a message to the script execution log. Use it for milestone tracking, variable inspection, and row count logging. TRACE output is visible in the reload dialog and in the script execution log file.
 
-**Critical syntax rule: no semicolons inside the TRACE message.** TRACE doesn't take a quoted argument by default — the first `;` terminates the statement. Anything after that `;` parses as a separate (and usually invalid) statement, causing a reload error. Use commas, periods, or dashes inside the message instead. The terminating `;` at the very end is the only `;` allowed in a TRACE.
+**Critical syntax rule: `;` terminates a TRACE statement unless the whole text is quoted.** Qlik treats `;` as the statement terminator outside any quoted string, and TRACE accepts an unquoted argument by default — so a bare `;` in the message ends the statement early. Anything after that `;` parses as a separate (and usually invalid) statement, causing a reload error. Two safe options: (a) use commas, periods, or dashes as in-text separators; (b) wrap the entire trace text in single quotes so the `;` sits inside a string literal.
 
 ```qlik
 // WRONG -- the embedded semicolon ends the TRACE early;
 // "See diagnostics" then parses as an unknown statement
 TRACE Loaded $(vRows); see diagnostics for detail;
 
-// RIGHT -- comma, period, or dash separator
+// RIGHT (option a) -- comma, period, or dash separator
 TRACE Loaded $(vRows). See diagnostics for detail;
 TRACE Loaded $(vRows) -- see diagnostics for detail;
 TRACE Loaded $(vRows), see diagnostics for detail;
+
+// RIGHT (option b) -- wrap the whole text in single quotes
+TRACE 'Loaded $(vRows); see diagnostics for detail';
 ```
+
+Treat TRACE text the way you'd treat any other Qlik string argument — when in doubt, quote it.
 
 ### Phase Milestone Tracing
 

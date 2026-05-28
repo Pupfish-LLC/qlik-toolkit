@@ -177,6 +177,23 @@ To replicate design patterns from existing Qlik apps, systematically examine she
 
 ---
 
+## Section 8: Dashboard Bundle Controls
+
+The Dashboard Bundle ships native-feeling controls (Variable Input, Date Picker, On-Demand Reports, etc.) that integrate via expressions and variables rather than direct field references.
+
+### Variable Input — Dynamic values takes a pipe-delimited string, not a field
+
+The Variable Input control's **Dynamic values** mode parses a pipe-delimited string (`value1|value2|...`) or pipe-tilde-delimited string (`value~label|...`) and tokenizes it into dropdown options. A bare field reference (`=[Table].[Field]`) resolves to a single scalar and the dropdown collapses — the control does NOT enumerate distinct field values for you.
+
+- **Avoid:** `=[MeasuresMenu].[%MeasureLabel]` and similar bare field references in Dynamic values.
+- **Prefer:** materialize the pipe string in the load script (Concat-and-Peek), then reference the resulting variable: `='$(vPipeMeasures)'`.
+
+For the full walkthrough — load-script build, value-label vs value-only form, chart-side double-dollar expansion (`$($(vVar))`), and the slower inline-Concat alternative — see [references/variable-input-control.md](references/variable-input-control.md). The script-side Concat-and-Peek technique is documented in `qlik-load-script` Section 7.
+
+Reference: help.qlik.com Cloud → Dashboard Bundle → Variable Input control.
+
+---
+
 ## Cross-References
 
 - **Expression authoring** — See qlik-expressions skill (measures, calculated dimensions, set analysis)
