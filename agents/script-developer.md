@@ -92,6 +92,8 @@ Write a script manifest documenting file purpose, dependencies, and run order. F
 - Store raw QVDs.
 - TRACE logging per extraction (source, row count, time range loaded).
 
+QVD syntax and mechanics — STORE, optimized vs standard read rules, NoConcatenate around QVD loads, multi-QVD concatenation, file-list patterns, partial reload prefixes — live in `qlik-load-script` → `references/qvd-operations.md`. When to optimize vs accept standard read is in `qlik-performance` § QVD Reads.
+
 ### 4. Write transformation scripts with field renaming
 
 Apply entity-prefix dot notation to non-key fields at extract/transform time using `AS`. Keep keys unprefixed so they associate. See `qlik-naming-conventions` for the full rule set, the business-entity-vs-source-table guidance, and composite key `%` notation. Brief example:

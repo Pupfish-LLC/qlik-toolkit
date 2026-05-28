@@ -262,15 +262,15 @@ The Qlik script engine does not raise an error for the broken form. Both the inp
 
 ## 10. QVD Operations (Summary)
 
-**STORE:** `STORE * FROM [TableName] INTO [lib://Connection/file.qvd] (qvd);` -- one table per STORE.
+Three things to internalize before writing QVD reads:
 
-**Optimized vs standard read:** Optimized read is ~10x faster than standard. Preserved by `LOAD *`, field subsetting, `AS` renaming, `LOAD DISTINCT`, `CONCATENATE`, and **one-parameter** `EXISTS(field)`. Forced to standard by any field transform, derived fields, two-parameter `EXISTS(field, expression)`, WHERE clauses other than one-parameter EXISTS, or `Map...Using`.
+1. **STORE writes one table per statement:** `STORE * FROM [TableName] INTO [lib://Connection/file.qvd] (qvd);`. There is no append mode — for incremental output, see `incremental-load-patterns.md`.
+2. **Optimized read** is preserved by `LOAD *`, field subsetting, `AS` renaming, `LOAD DISTINCT`, `CONCATENATE`, and single-parameter `EXISTS(field)`. It is forced to standard by any field transform, derived fields, two-parameter `EXISTS(field, expression)`, WHERE clauses other than single-parameter EXISTS, or `MAP ... USING`. Folklore correction: field renaming and reordering do NOT break optimized read.
+3. **Read each QVD from disk exactly once.** Load to a temp, serve all downstream maps and tables from RESIDENT, then DROP the temp.
 
-**Load once, map many:** Never read the same QVD from disk twice. Load to a temp table, build all MAPPING tables `RESIDENT [_Temp]`, then `DROP TABLE [_Temp]`.
+`binary [app];` is a separate mechanism for copying a whole data model — must be the first statement, one per script, loads data and section access only.
 
-**Binary load:** `binary [app];` must be the FIRST statement (before SET). Loads data tables and section access only. One per script.
-
-See `qvd-operations.md` for complete read-mode details with worked examples.
+Full reference: `references/qvd-operations.md` (STORE, optimized vs standard rules with worked examples, NoConcatenate around QVD loads, multi-QVD concatenation, file-list patterns, partial reload prefixes, binary load). Decision framing — when to optimize, when to layer, when to split a generator/consumer architecture — is in `qlik-performance`.
 
 ## 11. Incremental Load Patterns (Summary)
 
@@ -334,32 +334,9 @@ See `script-templates/error-handling.qvs` for the error handling and logging fra
 
 ## 14. NoConcatenate and Auto-Concatenation
 
-When a new LOAD produces a field set identical to an existing table's (same names AND same count), Qlik silently concatenates the rows into the existing table — the new table name is never registered. The basic `NoConcatenate` pattern, the convention to apply it defensively on temp tables, and the broader failure-mode context live in `references/sql-constructs.md` Section 2.1.
-
-**INLINE LOADs trigger the same rule.** Two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The second table name is silently lost; a later `RESIDENT [SecondTable]` fails with "table not found" — the typical symptom that surfaces the trap. Fix either by adding a discriminator column or by prefixing the second LOAD with `NoConcatenate`.
-
-```qlik
-// BROKEN -- both INLINE blocks share columns, [MenuB] silently merges into [MenuA]:
-[MenuA]:
-LOAD * INLINE [Col1, Col2
-A, B];
-
-[MenuB]:
-LOAD * INLINE [Col1, Col2
-C, D];
-
-// FIXED -- explicit NoConcatenate keeps them separate:
-[MenuB]:
-NoConcatenate
-LOAD * INLINE [Col1, Col2
-C, D];
-```
-
-**Explicit CONCATENATE prefix:** `CONCATENATE([TargetTable])` forces concatenation even when field sets differ. Mismatched fields get NULL in the target. Use when intentionally merging tables with partially overlapping schemas.
+When a new LOAD produces a field set identical to an existing table's (same names AND same count), Qlik silently concatenates the rows into the existing table — the new table name is never registered. The same rule applies to `LOAD * INLINE` blocks with matching columns and to RESIDENT loads that mirror their source. The basic NoConcatenate pattern, the INLINE auto-concat trap, the explicit `CONCATENATE([TargetTable])` prefix (which forces concatenation even when field sets differ), and the QVD-specific application live in `references/sql-constructs.md` Section 2.1 and `references/qvd-operations.md` (NoConcatenate Around QVD Loads, Multi-QVD Concatenation).
 
 **Mapping LOAD tables are invisible to meta-functions.** Tables created via `Mapping LOAD` are consumed at `ApplyMap()` time and do not persist as named tables in the data model. `NoOfRows('MappingTableName')`, `FieldValueCount()`, `FieldName()`, and all other table/field meta-functions return null or -1 for Mapping tables. Validate indirectly by checking the row count of the downstream table that consumes the mapping (e.g., if the target table loads 0 rows, the mapping was likely empty or misconfigured).
-
-Reference: help.qlik.com Cloud — Concatenate / NoConcatenate statements.
 
 ## 15. EXISTS Symbol Space Behavior
 
@@ -548,7 +525,7 @@ Clean delimiters with PurgeChar before expanding.
 ## Supporting Files
 
 - `references/sql-constructs.md` -- SQL constructs not valid in Qlik LOAD/RESIDENT, the SQL SELECT pass-through exception, and the five most common adjacent failure modes (NoConcatenate, Count() argument requirements, QUALIFY with prefixed fields, DROP TABLE discipline, NullAsValue scope)
-- `qvd-operations.md` -- STORE syntax, optimized vs standard read modes, map-building, binary load
+- `references/qvd-operations.md` -- STORE syntax, optimized vs standard read rules, NoConcatenate around QVD loads, multi-QVD concatenation, file-list patterns, partial reload prefixes, binary load
 - `incremental-load-patterns.md` -- Complete incremental load patterns with working code
 - `references/null-handling.md` -- canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue, key-field NULL, date sentinel guards, decision framework)
 - `diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries

@@ -40,6 +40,8 @@ Evaluate data volume, complexity, number of consumers, team structure, and refre
 
 Document: number of apps, purpose of each, data flow between apps, reload trigger strategy, **rationale explaining which drivers (volume, team structure, source speed, reusability) motivated the choice**. Reference platform context if one is provided.
 
+QVD layering choices and load-time mechanics — what preserves optimized read, when to layer for refresh independence, narrow-before-STORE rationale — live in `qlik-performance` § QVD Reads (decisions) and `qlik-load-script` → `references/qvd-operations.md` (mechanics). The architect's deliverable is the layer design and the contract between layers; the implementing developer applies the mechanics.
+
 **2. Design ETL layer boundaries.**
 
 Define what happens at each layer (extraction, transformation, model assembly). For multi-app: which app owns which layer. Layer boundary decisions affect where field renaming, data quality cleaning, and business rules apply.

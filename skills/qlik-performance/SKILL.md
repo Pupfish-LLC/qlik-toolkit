@@ -144,89 +144,24 @@ When memory pressure arises later, this history enables targeted reduction.
 
 Script performance directly impacts reload duration and peak memory during load.
 
-### A. QVD Optimized Load Rules
+### A. When to Optimize QVD Reads
 
-A "QVD optimized load" allows Qlik to skip decompression and deserialization—reading QVD blocks directly into memory. Optimized loads are ~100x faster than database reads and ~10x faster than standard QVD reads.
+Optimized QVD read is the highest-leverage reload-time lever. Practitioner figures: roughly an order of magnitude faster than standard QVD read, roughly two orders of magnitude faster than re-querying a database (Qlik does not publish exact numbers; ratios vary by data shape).
 
-**Requirements for optimized load (per Qlik help — only these operations disable it):**
-1. No transformations on the fields that are loaded (no expressions, no type conversions, no function calls)
-2. No WHERE clause that forces Qlik to unpack records (one exception below — WHERE EXISTS)
-3. No `Map()` applied to a loaded field
+**Decision framework:**
 
-**Explicitly allowed (does NOT break optimized load):**
-- Field renaming via `AS` (e.g., `customer_id AS [Customer.Key]`)
-- Loading a subset of the QVD's fields
-- Reordering fields in the LOAD statement relative to the QVD's stored order
-- Using `LOAD *` or an explicit field list
+| Situation | Decision |
+|---|---|
+| QVD read is the dominant phase of a slow reload | Optimize first — every other lever is smaller |
+| Need to transform fields during the QVD load | Use a preceding LOAD: inner reads QVD optimized, outer transforms in-memory |
+| Need to filter QVD rows by a key list | Use single-parameter `EXISTS(key_field)` — preserves optimization |
+| Need to filter by a value range or expression | Accept standard read; the unpack cost is unavoidable for value-based filtering |
+| Two-parameter `EXISTS(alias, field)` is needed for dedup | Accept standard read — or split: optimized load + resident dedup if QVD read dominates |
+| Same QVD consumed by many maps | Load once to temp, build all maps RESIDENT, then DROP — one disk read per QVD per reload |
 
-**What breaks optimized load:**
-- Adding a derived field: `Num(id_field) AS id` (transformation)
-- Filtering rows with a WHERE that requires unpacking: `WHERE date_field >= '2024-01-01'`
-- Applying `Map()` to any loaded field
-- Any function call on any field
+The full preservation/break rules with worked examples, the EXISTS single-vs-two-parameter mechanics, the preceding-LOAD-for-transforms pattern, and the load-once-map-many pattern are in `qlik-load-script` → `references/qvd-operations.md`. Apply the decisions above; consult the mechanics file when writing the actual LOAD statement.
 
-**Note:** Field renaming via `AS` and field reordering are explicitly allowed by Qlik. Earlier folklore that either of these breaks optimization is incorrect. Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/work-with-QVD-files.htm
-
-**Exception — WHERE EXISTS preserves optimized load:**
-
-A WHERE clause using `Exists()` against a previously loaded field is the standard pattern for filtering a QVD load while preserving optimization. The documented signature is `Exists(field_name [, expr])`:
-
-```qlik
-// Step 1: Load the set of allowed keys into a prior table
-[AllowedCustomers]: LOAD customer_id FROM [allowed_keys.qvd] (qvd);
-
-// Step 2: Optimized load that filters by membership in AllowedCustomers
-[Fact.Orders]:
-LOAD *
-FROM [orders.qvd] (qvd)
-WHERE Exists(customer_id);   // single-arg form — looks up against any prior table containing customer_id
-```
-
-Both the single-argument form `Exists(field_name)` and the two-argument form `Exists(field_name, expression)` are documented. The single-argument form is the most common QVD-filtering pattern.
-
-Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/InterRecordFunctions/Exists.htm
-
-**Pattern for optimized load:**
-```qlik
-// Optimized: No transformations, no filtering, no reordering
-[Dimension.Customer]:
-LOAD * FROM [lib://QVDs/Customer.qvd] (qvd);
-// Expected reload time: <100ms for 100M rows
-```
-
-**Pattern for transformations with preceding LOAD:**
-When you need transformations, load to temp optimized, then apply transformations in-memory via Preceding LOAD:
-```qlik
-[Dimension.Customer]:
-LOAD *, Upper([Customer.Name]) AS [Customer.Name];
-LOAD * FROM [lib://QVDs/Customer.qvd] (qvd);
-// Inner load is optimized (~100ms), outer transformation adds ~50ms
-```
-
-### B. Redundant Disk Reads
-
-**Anti-pattern:** Loading the same QVD file twice.
-```qlik
-// WRONG: Reads product.qvd from disk twice
-[Map_ProductName]: MAPPING LOAD product_id, product_name
-FROM [lib://QVDs/Product.qvd] (qvd);
-[Map_ProductCategory]: MAPPING LOAD product_id, product_category
-FROM [lib://QVDs/Product.qvd] (qvd);
-// Reload time: 2x the disk read time
-```
-
-**Right pattern:** Load once to temp, create multiple maps from resident:
-```qlik
-[_ProductTemp]: LOAD * FROM [lib://QVDs/Product.qvd] (qvd);
-[Map_ProductName]: MAPPING LOAD product_id, product_name RESIDENT [_ProductTemp];
-[Map_ProductCategory]: MAPPING LOAD product_id, product_category RESIDENT [_ProductTemp];
-DROP TABLE [_ProductTemp];
-// Reload time: 1x the disk read time (no redundant QVD read)
-```
-
-**Rule:** Every QVD should be read from disk **exactly once** in the reload script.
-
-### C. Temp Table Cleanup
+### B. Temp Table Cleanup
 
 Temporary tables (prefixed with `_`) consume memory throughout the reload. Every `_` table must be explicitly dropped after use.
 
@@ -239,25 +174,11 @@ DROP TABLE [_RawOrders];
 
 The qlik-review.md checklist requires: every `_` table must have a corresponding `DROP TABLE` before reload completes.
 
-### D. STORE Optimization
+### C. Narrow Before STORE
 
-When writing QVD files, avoid storing entire tables if only a subset is needed downstream. Narrow before storing:
-```qlik
-// WRONG: Stores all 20 fields (8 bytes overhead each)
-STORE [_AllOrderData] INTO [orders_all.qvd];
+In QVD generator/consumer architectures, the generator's output width compounds across every consumer: ten extra fields in the generator means ten extra fields loaded into each consumer's memory. Narrow the in-memory table to a downstream-only field set before STORE. This reduces QVD file size, QVD read time for every consumer, and downstream memory footprint.
 
-// RIGHT: Load only needed fields, then store
-[_OrdersSubset]:
-LOAD order_id, order_date, customer_id, amount, region
-RESIDENT [_AllOrderData];
-STORE [_OrdersSubset] INTO [orders.qvd];
-DROP TABLE [_OrdersSubset];
-```
-
-Narrowing before STORE reduces:
-- QVD file size (less disk usage)
-- QVD load time (fewer fields to decompress)
-- Downstream memory footprint
+The mechanics — selecting fields with a RESIDENT load before STORE — are in `qlik-load-script` → `references/qvd-operations.md` (Narrow Before STORE).
 
 ---
 
