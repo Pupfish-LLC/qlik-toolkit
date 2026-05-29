@@ -121,6 +121,8 @@ Sum({<Year={2024}>} TOTAL <Region> Amount) // Region-level total for 2024
 
 **Performance note:** TOTAL forces recalculation across all rows. On datasets with millions of rows, this is expensive. Consider pre-calculating in the script (a flag field) when performance matters.
 
+For the complete TOTAL reference — the field-list form `TOTAL <FieldList>`, TOTAL + set analysis combined behavior, the "Total" field-name parsing trap, performance mitigation, and failure modes — see `references/total-qualifier.md`.
+
 ## 4. Aggr() Function
 
 Aggr() creates a virtual table (temporary dimension-measure pairs) that Qlik can aggregate over. Essential for calculated dimensions and nested aggregations.
@@ -137,6 +139,8 @@ Aggr() creates a virtual table (temporary dimension-measure pairs) that Qlik can
 - Aggr's dimension must be an actual field in the data model. Calculated dimensions inside Aggr (e.g., `Aggr(..., Year & Month)`) don't work as expected.
 - Aggr creates a virtual table in memory. Nested Aggr (Aggr inside Aggr) compounds memory usage. Use sparingly on large datasets.
 - If performance is critical, pre-calculate in the script instead.
+
+For the complete Aggr() reference — virtual-table model, DISTINCT/NODISTINCT, the inner-set vs outer-set distinction, the dimension-vs-measure rule, the calculated-dimension restriction with workarounds, and failure modes — see `references/aggregation-patterns.md`. For Aggr cardinality bands and the Low/Medium/High calculation-weight labeling, see `qlik-performance` § 4.A and § 4.D.
 
 ## 5. Conditional Expressions
 
@@ -204,6 +208,8 @@ When a variable function cannot wrap an expression due to commas, write the equi
 - This matters for dynamic labels: `=$(=Sum(Amount))` shows the evaluated sum in a text box
 
 Reference `references/set-analysis.md` § Dollar-Sign Expansion Inside Set Modifiers for dynamic set modifiers, the comma trap, and indirect references like `Year={$(=Max(Year))}`.
+
+For SET vs LET decision criteria, the comma trap with workarounds, trailing-semicolon discipline, and the conventional structure of an `expression-variables.qvs` file, see `references/variable-rules.md`.
 
 ## 7. Calculation Conditions
 
@@ -374,13 +380,7 @@ For more anti-pattern details with examples, see `references/set-analysis.md` §
 
 ## Supporting Files
 
-Read `references/set-analysis.md` for:
-- Complete set analysis syntax reference (identifiers, set operators, field modifiers, element sets, quoting rules, type sensitivity for Dual fields)
-- Set operator patterns with business scenarios — including the correct field-level exclusion (`-=`) and set-level exclusion (`{1-<...>}`)
-- Element set patterns (explicit, wildcard, search strings, variables, P()/E(), comparison operators)
-- Dollar-sign expansion inside set modifiers (the comma trap, no-nesting rule)
-- Time intelligence patterns (YTD, prior year, prior year YTD, rolling 12 done correctly — date-based and sequential-month-key forms)
-- Cross-table and alternate-state patterns
-- Advanced patterns (cross-selection / scope override, set + TOTAL, set + Aggr, Top N, conditional modifiers)
-- Failure modes (silent NULL from intermediate-layer renames, Dual-field type sensitivity, scope explosion via `<>`)
-- Anti-pattern catalog with correct expressions
+- `references/set-analysis.md` — complete set analysis syntax (identifiers, operators, field modifiers, element sets, quoting), exclusion patterns (`-=` and `{1-<...>}`), dollar-sign expansion inside set modifiers (comma trap, no-nesting rule), time intelligence (YTD, prior year, rolling 12 — date-based and sequential-month-key forms), cross-table and alternate-state patterns, advanced patterns (cross-selection, set + TOTAL, set + Aggr, Top N, conditional modifiers), failure modes (silent NULL from intermediate-layer renames, Dual-field type sensitivity), and the anti-pattern catalog.
+- `references/total-qualifier.md` — TOTAL semantics, the field-list form, TOTAL + set analysis combined behavior, the percentage-of-total pattern, the "Total" field-name parsing trap, performance mitigation, failure modes, and catalog documentation conventions.
+- `references/aggregation-patterns.md` — `Aggr()` virtual-table model, DISTINCT vs NODISTINCT, multi-dimension grouping, the inner-set vs outer-set distinction, the calculated-dimension restriction, the dimension-vs-measure rule, hidden nesting via dollar-sign expansion, failure modes, and catalog conventions.
+- `references/variable-rules.md` — SET vs LET decision criteria (tier-1 `Let` semantics, the dynamic-UI rule, the SET-doesn't-evaluate-function-calls trap), dollar-sign expansion comma rules and workarounds, trailing-semicolon discipline, `expression-variables.qvs` organization with section conventions, and catalog conventions.

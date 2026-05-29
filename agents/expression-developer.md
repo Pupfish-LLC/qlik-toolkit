@@ -82,158 +82,23 @@ If the user just describes a measure in conversation ("I need year-over-year rev
 
 Set analysis is the primary mechanism for selection-context override in expressions. The canonical home for syntax, element sets, the negation/exclusion distinction, dollar-sign expansion inside modifiers, time intelligence patterns (YTD, prior year, rolling 12), and failure modes is `qlik-expressions` → `references/set-analysis.md`. Pull from there when authoring catalog entries and include a one-paragraph "Set Analysis Notes" entry per measure explaining each modifier in plain language.
 
-## TOTAL Qualifier Rules
+## TOTAL Qualifier
 
-Expressions using TOTAL must follow these rules. Include a note in the catalog if TOTAL is used.
+When an expression uses TOTAL, include a note in the catalog explaining why (percentage-of-total, ratio to subtotal), what dimension scope the TOTAL produces, and whether the chart dimensions match the TOTAL field list. The canonical reference — TOTAL semantics, the field-list form, TOTAL + set analysis combined behavior, the "Total" field-name parsing trap, performance notes, and failure modes — is `qlik-expressions` → `references/total-qualifier.md`.
 
-**Correct use (percentage-of-total):**
-```
-Sum([Amount]) / Sum({$} TOTAL [Amount])
-```
-- The `{$}` preserves all current selections but ignores dimensionality
-- Divides the dimensional subtotal by the grand total, producing the percentage contribution
-- TOTAL aggregates across ALL dimension values, not just the currently selected ones
+## Aggr() Function
 
-**Dimension specification (must match chart dimension):**
-- If the chart has dimensions [Year, Region], then `TOTAL [Year]` produces a subtotal across all regions but within each year
-- `TOTAL [Year, Region]` is redundant with TOTAL (no additional narrowing) and should be just TOTAL
-- Missing a dimension: `TOTAL` without specifying dimensions is valid (grand total) but only use when all dimensions should be aggregated away
-
-**TOTAL + set analysis interaction:**
-- Set filters first, then TOTAL aggregates: `Sum({<Status={'Active'}>} TOTAL Amount)` applies the status filter, then totals across all dimensions
-- TOTAL does NOT reset the set analysis filter
-- Order matters in readability: write `Sum({<...>} TOTAL)` (set first, then TOTAL keyword)
-
-**Performance warning for large datasets:**
-- TOTAL on very large fact tables (millions of rows) with many dimension values can trigger full table scans
-- Use only when necessary; avoid nested TOTAL expressions (e.g., `Sum(TOTAL x) / Sum(TOTAL y)` scans the data twice)
-- If performance is critical, pre-calculate totals in the load script and reference them instead
-
-**Failure modes:**
-- TOTAL without set analysis in a filtered context produces incorrect grand totals: the user's selection is applied, then TOTAL adds dimensions back (confusing)
-- Missing TOTAL when dividing by grand total produces percentage-of-filtered-subtotal, not percentage-of-all: `Sum([Amount]) / Sum([Amount])` = 100% for all rows, not their contribution
-
-## Aggr() Function Rules
-
-Expressions using Aggr() for nested aggregation must follow these rules. Include performance and cardinality notes in the catalog.
-
-**Basic nested aggregation pattern:**
-```
-Aggr(Sum([Amount]), [Customer.Key])
-```
-- Aggr creates a virtual table with one row per distinct combination of the specified dimensions
-- The aggregation (Sum) operates on each group in the virtual table
-- Result is an expression that can be further aggregated or used in other contexts (e.g., Max(Aggr(...)) finds the highest-selling customer)
-
-**Performance and cardinality:** Aggr() cost is driven by the dimension cardinality in the current selection context, not the field's total cardinality. The catalog "Performance" field should reflect this — note when an expression's cost varies meaningfully across common selection states (e.g., "fast with region selected, slow with no selections"). See `qlik-performance` § Aggr() and dimension cardinality and § Calculation Weight Categorization for the heuristic bands and labeling conventions.
-
-**Aggr() with set analysis interaction:**
-```
-Aggr(Sum({<Status={'Active'}>} [Amount]), [Customer.Key])
-```
-- The set analysis filter applies to the aggregation inside Aggr, before grouping
-- Grouping is by [Customer.Key], unmodified by the set filter
-- Result: a virtual table of Customers, each with only their Active amounts summed
-- This is correct; the dimension for grouping is never affected by set analysis inside Aggr
-
-**Failure modes:**
-- Using Aggr as a way to "sum over all rows regardless of selection" (incorrect use): `Aggr(Sum([Amount]), [Customer.Key])` DOES respect current selections. Use set analysis `{<>}` if you need to override selections.
-- Nesting Aggr inside Aggr: `Aggr(Aggr(...), ...)` is rarely needed and causes performance issues. If you need it, document explicitly why.
-- Forgetting that Aggr result is an expression, not a field: `Aggr(...)` cannot be used as a dimension in a chart directly (it's a measure expression). Use master measures for dimensions based on Aggr.
+When an expression uses Aggr(), include catalog notes for the inner aggregation, the dimension(s) of the virtual table, the set-analysis position (inside the inner aggregation vs at the Aggr level), the outer aggregation context, and selection-context performance sensitivity. The canonical reference — virtual-table model, the calculated-dimension restriction, DISTINCT/NODISTINCT, the inner-set vs outer-set distinction, the dimension-vs-measure distinction, and failure modes — is `qlik-expressions` → `references/aggregation-patterns.md`. For Aggr cardinality bands and the Low/Medium/High calculation-weight labeling, see `qlik-performance` § 4.A and § 4.D.
 
 ## Null Handling
 
 Every expression entry in the catalog must include a "Null Handling" line. The full pattern reference — `Alt` for numeric coalescing, `Coalesce` for text, `RangeSum` for null-safe addition, the division-by-zero/null guard, the documentation requirement, and the failure modes — lives in `qlik-expressions` SKILL.md Section 9. Pull from there when authoring catalog entries.
 
-## expression-variables.qvs Organization
+## Variables (SET/LET, expression-variables.qvs Organization)
 
-The expression-variables.qvs file is executable Qlik script. It must follow strict structural and naming conventions.
+When producing an `expression-variables.qvs` file, organize by section (configuration, base measures, derived measures, time intelligence, calculation conditions, field-reference variables) with comment-block headers, and define variables in dependency order within each section. Choose SET vs LET based on whether the right-hand side should expand at chart render (SET) or be evaluated once at script-load time (LET). Use SET for nearly all chart-expression variables; reserve LET for values needed as script literals (FOR loop counts, date bounds, system-state flags). Every definition ends with a semicolon. The canonical reference — SET vs LET decision criteria with the help.qlik.com Let statement semantics, the dollar-sign expansion comma trap with workarounds, trailing-semicolon discipline, file organization, and failure modes — is `qlik-expressions` → `references/variable-rules.md`.
 
-**Config variables first:**
-```qlik
-// Configuration: Load context values
-SET vCurrentYear = Year(Today());
-SET vCurrentMonth = Month(Today());
-SET vToday = Today();
-SET vDataLoadDate = Now();
-```
-These define the execution context and are referenced by downstream expressions.
-
-**Base before derived measures:**
-```qlik
-// Base Measures (no dependencies)
-SET vRevenue = Sum([OrderLine.Amount]);
-SET vOrderCount = Count(DISTINCT [Order.Key]);
-
-// Derived Measures (reference base measures)
-SET vAvgOrderValue = $(vRevenue) / $(vOrderCount);
-SET vRevenuePercentile = $(vRevenue) / Sum({$} TOTAL [OrderLine.Amount]);
-```
-Simple aggregations appear first; expressions that nest them appear after their dependencies.
-
-**Comment blocks per functional area:**
-```qlik
-// =============================================
-// --- Financial Measures ---
-// =============================================
-
-// =============================================
-// --- Customer Metrics ---
-// =============================================
-
-// =============================================
-// --- Time Intelligence ---
-// =============================================
-
-// =============================================
-// --- Calculation Conditions ---
-// =============================================
-
-// =============================================
-// --- Field References (Non-Expression Variables) ---
-// =============================================
-```
-Organize logically. Place related variables in the same section.
-
-**SET vs LET decision criteria (CRITICAL):**
-- Use SET for variable functions (contains $1, $2, $3 placeholders): `SET vDualBool = IF(Match($1, 'true') > 0, Dual('Yes', 1), Dual('No', 0));` — the Dual() and $1 placeholders remain as literal text until the variable is invoked as `$(vDualBool(some_field))`
-- Use SET for expression templates (expressions that reference other variables): `SET vRevenue = Sum([OrderLine.Amount]);` then `SET vAvgValue = $(vRevenue) / $(vOrderCount);` — the expansion happens at render time (when the expressions are evaluated in a chart), not at load time
-- Use LET for values computed once at load and never changed (no placeholders, no variable references): `LET vDataLoadDate = Today();` — the value is evaluated once at script load and stored. Subsequent references use the cached value, not re-evaluation.
-- **NEVER use LET for dynamic UI expressions:** `LET vCurrentYear = Year(Today());` evaluated at load time means the year never updates when time passes. Use SET instead (re-evaluates at each chart refresh).
-
-**Trailing semicolon verification:**
-Every variable definition MUST end with a semicolon. Missing semicolons cause script syntax errors or concatenate the next statement.
-
-```qlik
-// WRONG
-SET vRevenue = Sum([OrderLine.Amount])
-SET vOrderCount = Count(DISTINCT [Order.Key]);
-
-// The above concatenates into: SET vRevenue = Sum([OrderLine.Amount])SET vOrderCount = ...
-// Syntax error.
-
-// CORRECT
-SET vRevenue = Sum([OrderLine.Amount]);
-SET vOrderCount = Count(DISTINCT [Order.Key]);
-```
-
-**Dollar-sign expansion comma rules enforcement:**
-If a SET variable function needs to contain a comma (e.g., ApplyMap, IF), restructure:
-```qlik
-// WRONG -- ApplyMap commas break parameter parsing
-SET vMapValue = ApplyMap('MyMap', $1, 'default');
-
-// RIGHT -- write inline when used, or use LET with Chr(44)
-SET vMapValue = IF(IsNull($1), 'default', ApplyMap('MyMap', Lower($1), $1));
-
-// Or split into a LET that constructs the comma dynamically:
-LET vMapCommaChar = Chr(44);  // comma as character
-SET vMapValue = ApplyMap('MyMap', $1, 'default');  // then use outside $(vMapValue(...))
-```
-
-## Variable and Field Naming
-
-Follow the rules in `qlik-naming-conventions` (v prefix, variable name mirrors the master measure name, expressions reference final UI field names — never intermediate Transform-layer names that have been renamed downstream).
+For variable naming (the `v` prefix, variable-name-mirrors-measure-name pattern, cross-layer field-name alignment), follow `qlik-naming-conventions` § 4.
 
 ## MCP-Enhanced Workflow
 
