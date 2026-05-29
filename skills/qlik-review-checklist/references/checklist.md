@@ -1,19 +1,23 @@
-# QA Review Checklist — Detailed Items
+# Qlik Review Checklist — Detailed Failure Catalog
 
-This document contains all checklist items (1.1–9.5) organized by category. Each item specifies severity, applicable review passes, verification methods, and finding format.
+Per-item detail for the nine failure-class categories summarized in `SKILL.md`. Each item below specifies severity, the review scopes it applies to, a verification method (what to scan for and how to confirm), and a finding-format template.
+
+Use this reference when running a QA pass: pull the items for the categories in scope, scan the artifact for each pattern, and write structured findings using the format under each item. The ID prefixes (`S-`, `P-`, `D-`, `N-`, `E-`, `SC-`, `C-`, `BD-`, `DQ-`) match the corresponding category in `SKILL.md`.
+
+Where a category has a canonical Qlik-mechanics home elsewhere in the plugin (e.g., `qlik-data-modeling`, `qlik-load-script`, `qlik-expressions`), the section header points to it. This file describes *what to scan for*; the canonical homes describe *how to do it right*.
 
 ---
 
 ## 1. Script Syntax (7 items)
 
-Validates script syntax, function usage, block balance, and variable scope. Ensures scripts can execute without reload errors.
+Reload-blocking and silent-failure patterns in load scripts. Canonical home for correct script syntax: `qlik-load-script` (SKILL.md Section 1, `references/sql-constructs.md`, `references/error-handling.md`).
 
-**Applicable Review Passes:** Script / Comprehensive
+**Applicable Review Scopes:** Script / Comprehensive
 
 ### 1.1 Dollar-Sign Expansion Safety
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Every `$(variable(...))` call must have arguments that do NOT contain nested function calls with commas
 - **How to Verify:**
   - Search scripts/*.qvs for all `$(`
@@ -25,8 +29,10 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 
 ### 1.2 SQL Constructs in LOAD Statements (9 SQL patterns)
 
+> Canonical authoring reference: `qlik-load-script` → `references/sql-constructs.md`. The list below is the QA-verification enumeration (what to scan for); the canonical reference covers each pattern's Qlik alternative, the `SQL SELECT` pass-through exception, and adjacent failure modes (`NoConcatenate`, `Count()` arguments, `QUALIFY` interaction, `DROP TABLE` discipline, `NullAsValue` scope).
+
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** LOAD statements must NOT use SQL-only syntax. Qlik script is not SQL.
 - **How to Verify:**
   - Search scripts/*.qvs for LOAD statements (not `SQL SELECT` pass-through)
@@ -46,7 +52,7 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 ### 1.3 Function Argument Counts
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Three critical functions are frequently miscalled with wrong argument count
 - **How to Verify:**
   - **PurgeChar(text, chars_to_remove)**: exactly 2 arguments required. Flag `PurgeChar(field)` with only 1 arg.
@@ -59,7 +65,7 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 ### 1.4 Block Balance
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** IF/END IF, SUB/END SUB, and FOR/NEXT blocks must be balanced
 - **How to Verify:**
   - Search scripts/*.qvs for IF statements, SUB declarations, FOR loops
@@ -74,7 +80,7 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 ### 1.5 NullAsValue Scope
 
 - **Severity:** Critical (if applied to keys/measures), Warning (if scope unclear)
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** NullAsValue is field-specific and stateful, persisting until reset. Must be used carefully.
 - **How to Verify:**
   - Search scripts/*.qvs for `NullAsValue`
@@ -88,7 +94,7 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 ### 1.6 RENAME FIELD Collision
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** RENAME FIELD [X] TO [Y] fails if [Y] already exists in the data model
 - **How to Verify:**
   - Search scripts/*.qvs for `RENAME FIELD`
@@ -100,7 +106,7 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 ### 1.7 Semicolons inside TRACE Messages
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** A TRACE statement's message text must not contain a `;`. TRACE does not take a quoted argument by default, so the first `;` terminates the statement and any text after it is parsed as a separate (usually invalid) statement, causing a reload error.
 - **How to Verify:**
   - Search scripts/*.qvs for `TRACE ` (note trailing space, to avoid matching the SQL keyword `TRACE`)
@@ -116,14 +122,14 @@ Validates script syntax, function usage, block balance, and variable scope. Ensu
 
 ## 2. Performance (3 items)
 
-Validates efficient resource usage, avoiding redundant operations and temporary table cleanup.
+Inefficient script patterns that waste memory or reload time without breaking the reload. Canonical home: `qlik-performance` (SKILL.md Sections 3-4) and `qlik-load-script` → `references/qvd-operations.md` (Narrow Before STORE).
 
-**Applicable Review Passes:** Script / Comprehensive
+**Applicable Review Scopes:** Script / Comprehensive
 
 ### 2.1 Redundant Disk Reads
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** QVD files should not be loaded from disk more than once (efficiency)
 - **How to Verify:**
   - Search scripts/*.qvs for all `LOAD ... FROM *.qvd`
@@ -136,7 +142,7 @@ Validates efficient resource usage, avoiding redundant operations and temporary 
 ### 2.2 Repeated Expressions
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Identical complex expressions appearing multiple times in same LOAD (inefficient)
 - **How to Verify:**
   - Search scripts/*.qvs for complex expressions (nested IF, arithmetic combinations, function chains > 2 levels)
@@ -147,7 +153,7 @@ Validates efficient resource usage, avoiding redundant operations and temporary 
 ### 2.3 Temp Table Cleanup
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Every temp table (prefixed `_`) must have corresponding DROP; MAPPING tables auto-drop
 - **How to Verify:**
   - Search scripts/*.qvs for table creates: `[_tablename]` or `_tablename`
@@ -160,17 +166,17 @@ Validates efficient resource usage, avoiding redundant operations and temporary 
 
 ## 3. Data Model Integrity (8 items)
 
-Validates data model structure, key relationships, synthetic key prevention, null handling, and grain alignment.
+Structural defects in the loaded data model: synthetic keys, broken associations, auto-concatenation, `QUALIFY` interactions, null gaps, grain misalignment, circular references, and inconsistent key resolution. Canonical home: `qlik-data-modeling` (SKILL.md + `references/anti-patterns.md`); script-layer null handling in `qlik-load-script` → `references/null-handling.md`.
 
-**Applicable Review Passes:** Data Model / Script / Comprehensive
+**Applicable Review Scopes:** Data Model / Script / Comprehensive
 
 ### 3.1 Synthetic Key Risk
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Non-key fields appearing in multiple output tables create synthetic keys
 - **How to Verify:**
-  - After script execution (Script Review), load app in Qlik Sense, open Data Model Viewer
+  - After script execution, load app in Qlik Sense, open Data Model Viewer
   - Check for synthetic keys (fields named "$" or starting with "synthetic")
   - Search scripts/*.qvs for field names that appear in multiple LOADs (e.g., source_system, load_datetime, Status, Code)
   - If field is not intended as join key, drop before storing in QVDs
@@ -181,7 +187,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.2 Association Integrity
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Bridge tables and key fields must have correct association structure
 - **How to Verify:**
   - Identify bridge tables (one-to-many relationships)
@@ -193,7 +199,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.3 Auto-Concatenation Traps
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** When LOAD produces same field names as existing table, Qlik silently concatenates (new table name never registered)
 - **How to Verify:**
   - Search scripts/*.qvs for LOADs of temp tables whose fields might overlap with existing tables
@@ -205,11 +211,11 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.4 QUALIFY/UNQUALIFY Interaction with Prefixed Fields
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** If upstream fields already prefixed (e.g., Order.Status), QUALIFY * will double-prefix
 - **How to Verify:**
   - Search scripts/*.qvs for `QUALIFY` statements
-  - Search upstream artifacts (source profile source profile, data model data model spec) for evidence of entity-prefixed field names
+  - Search upstream artifacts (source profile, data model spec) for evidence of entity-prefixed field names
   - If prefixed fields detected, verify QUALIFY is NOT applied OR if QUALIFY is applied, verify double-prefix is intentional
   - Check for documentation explaining why QUALIFY was omitted (if applicable)
 - **Finding Format:** `[D-3.4]: QUALIFY/UNQUALIFY interaction issue / Severity: Warning / Category: Data Model Integrity / Location: [file]:[line] / Finding: [QUALIFY * applied to already-prefixed fields creating double-prefix | QUALIFY omitted, should be documented] / Impact: Field naming inconsistency, harder to manage, potential synthetic keys / Recommended Fix: [Remove QUALIFY if fields already prefixed, OR explicitly UNQUALIFY prefixed fields before QUALIFY * | Add comment documenting why QUALIFY omitted]`
@@ -217,7 +223,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.5 Null Handling Gaps
 
 - **Severity:** Warning (Critical if on key/measure fields)
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Null handling must be explicit and consistent
 - **How to Verify:**
   - Search scripts/*.qvs for date arithmetic (e.g., `today() - DateField`)
@@ -229,7 +235,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.6 Grain Alignment
 
 - **Severity:** Warning (Critical if unaligned grains cause cartesian products)
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Fact tables at different grains must be explicitly handled
 - **How to Verify:**
   - Identify all fact tables (typically large measure-containing tables)
@@ -242,7 +248,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.7 Circular Reference Detection
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Tables should not have circular join paths
 - **How to Verify:**
   - After execution, examine Data Model Viewer for circular references
@@ -253,7 +259,7 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 ### 3.8 Key Resolution Consistency
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Key fields used across multiple tables must be resolved consistently
 - **How to Verify:**
   - Identify all key fields in data model (% prefix or _key suffix per naming conventions)
@@ -266,14 +272,14 @@ Validates data model structure, key relationships, synthetic key prevention, nul
 
 ## 4. Naming Convention Compliance (5 items)
 
-Validates field naming, table naming, variable naming, and consistency across layers.
+Field naming, table naming, variable naming, and cross-layer consistency violations. Canonical home: `qlik-naming-conventions` (all sections).
 
-**Applicable Review Passes:** Data Model / Script / Expression / Comprehensive
+**Applicable Review Scopes:** Data Model / Script / Expression / Comprehensive
 
 ### 4.1 Entity-Prefix Dot Notation for Non-Key Fields
 
 - **Severity:** Warning
-- **Applicable Passes:** Data Model / Script / Expression / Comprehensive
+- **Applicable Scopes:** Data Model / Script / Expression / Comprehensive
 - **What to Check:** Non-key fields should use entity-prefix dot notation (e.g., [Customer.Name], [Order.Total])
 - **How to Verify:**
   - Load project-specification.md and data-model-specification.md for naming conventions
@@ -286,7 +292,7 @@ Validates field naming, table naming, variable naming, and consistency across la
 ### 4.2 Key Field Conventions
 
 - **Severity:** Warning
-- **Applicable Passes:** Data Model / Script / Expression / Comprehensive
+- **Applicable Scopes:** Data Model / Script / Expression / Comprehensive
 - **What to Check:** Key fields must use % prefix OR _key suffix
 - **How to Verify:**
   - Identify all key fields in data model (fields used in joins/associations)
@@ -298,7 +304,7 @@ Validates field naming, table naming, variable naming, and consistency across la
 ### 4.3 Variable Naming
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Expression / Comprehensive
+- **Applicable Scopes:** Script / Expression / Comprehensive
 - **What to Check:** Variables should use v prefix (e.g., vToday, vMaxDate)
 - **How to Verify:**
   - Search scripts/*.qvs and expression-variables.qvs for all variable declarations (SET, LET)
@@ -309,7 +315,7 @@ Validates field naming, table naming, variable naming, and consistency across la
 ### 4.4 Table Naming Conventions
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Table names should follow consistent pattern per project specification
 - **How to Verify:**
   - Load project-specification.md and data-model-specification.md for table naming rules
@@ -322,10 +328,10 @@ Validates field naming, table naming, variable naming, and consistency across la
 ### 4.5 Cross-Layer Naming Consistency
 
 - **Severity:** Warning
-- **Applicable Passes:** Data Model / Script / Expression / Comprehensive
+- **Applicable Scopes:** Data Model / Script / Expression / Comprehensive
 - **What to Check:** Field names should remain consistent across source → extract → transform → model → UI layers
 - **How to Verify:**
-  - Compare field names in: source profile source profile, Script Review scripts, data model data model, visualization specs viz specs, expression catalog expressions
+  - Compare field names in: source profile, load scripts, data model spec, expression catalog, and viz specs
   - Track field name changes through each layer (aliasing is okay if documented, but unnecessary aliasing is not)
   - Ensure UI-facing field names (in expressions, viz specs) match final data model
   - Flag unexplained renamings that could confuse developers
@@ -335,14 +341,14 @@ Validates field naming, table naming, variable naming, and consistency across la
 
 ## 5. Expression Correctness (7 items)
 
-Validates expression syntax, null handling, field references, and calculation conditions.
+Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null handling, field references, dollar-sign expansion in SET, calculation conditions, and nested-aggregation patterns. Canonical home: `qlik-expressions` (SKILL.md + `references/set-analysis.md`, `references/total-qualifier.md`, `references/aggregation-patterns.md`, `references/variable-rules.md`).
 
-**Applicable Review Passes:** Expression / Comprehensive
+**Applicable Review Scopes:** Expression / Comprehensive
 
 ### 5.1 Set Analysis Syntax Validation
 
 - **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Set analysis syntax must be valid
 - **How to Verify:**
   - Load expression-catalog.md and expression-variables.qvs
@@ -360,7 +366,7 @@ Validates expression syntax, null handling, field references, and calculation co
 ### 5.2 TOTAL Qualifier Usage
 
 - **Severity:** Warning
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** TOTAL qualifier must not be confused with set analysis
 - **How to Verify:**
   - Search expression-catalog.md for TOTAL keyword
@@ -375,7 +381,7 @@ Validates expression syntax, null handling, field references, and calculation co
 ### 5.3 Null Handling in Expressions
 
 - **Severity:** Critical (if on key measure), Warning (if UI measure)
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Every aggregation expression must handle nulls appropriately
 - **How to Verify:**
   - For each measure in expression-catalog.md, verify null handling:
@@ -391,20 +397,20 @@ Validates expression syntax, null handling, field references, and calculation co
 ### 5.4 Field References Match Data Model
 
 - **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** All field references in expressions must exist in final data model
 - **How to Verify:**
-  - For each field reference in expression-catalog.md, verify it exists in data model data model spec and Script Review final data model
-  - Use Data Model Viewer (Script Review output) to confirm field presence
+  - For each field reference in the expression catalog, verify it exists in the data model spec and the loaded data model
+  - Use Data Model Viewer (after a successful reload) to confirm field presence
   - Verify field name casing matches (case-sensitive in Qlik expressions)
-  - Flag references to intermediate layer fields (Script Review temp tables) that are not present in final model
+  - Flag references to intermediate temp-table fields that are not present in the final model
   - Check for references to fields in upstream artifacts that were dropped during transformation
 - **Finding Format:** `[E-5.4]: Field reference to non-existent field / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: Expression references [fieldname] which does not exist in data model / Impact: Expression will fail to evaluate, measure will show error / Recommended Fix: [Correct field name to match data model | Add field to data model via script modification]`
 
 ### 5.5 Dollar-Sign Expansion in SET Variables (Comma Rule)
 
 - **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** SET variables containing dollar-sign expansion with embedded commas
 - **How to Verify:**
   - Load expression-variables.qvs
@@ -417,7 +423,7 @@ Validates expression syntax, null handling, field references, and calculation co
 ### 5.6 Calculation Condition Completeness
 
 - **Severity:** Warning
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Master items or expressions with calculation conditions must have corresponding error messages
 - **How to Verify:**
   - Search expression-catalog.md for calculation conditions (IF statements used to suppress blank/zero display)
@@ -429,7 +435,7 @@ Validates expression syntax, null handling, field references, and calculation co
 ### 5.7 Structurally Invalid Aggregation
 
 - **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Aggregation functions must not be directly nested. The engine cannot resolve two aggregation scopes simultaneously.
 - **How to Verify:**
   - Search for patterns like `Avg(Sum(...))`, `Sum(Count(...))`, `Max(Sum(...))`, etc.
@@ -441,14 +447,14 @@ Validates expression syntax, null handling, field references, and calculation co
 
 ## 6. Security (5 items)
 
-Validates PII handling, Section Access correctness, and data access control.
+PII handling, Section Access correctness, and data access control. **Note:** a dedicated Section Access skill is out of scope for this plugin version pending a rewrite. The failure-class items below remain catalogued so they can be flagged during review; for current Section Access mechanics consult `help.qlik.com` directly.
 
-**Applicable Review Passes:** Script / Comprehensive
+**Applicable Review Scopes:** Script / Comprehensive
 
 ### 6.1 PII Field Exposure
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** PII fields (SSN, national ID, financial account, email, phone, address) should not be loaded without explicit justification
 - **How to Verify:**
   - Scan source-profile.md for identified PII fields
@@ -461,7 +467,7 @@ Validates PII handling, Section Access correctness, and data access control.
 ### 6.2 Section Access STAR Field Handling
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** If Section Access is present, STAR field must be handled correctly
 - **How to Verify:**
   - If Section Access table exists, verify it is loaded
@@ -473,7 +479,7 @@ Validates PII handling, Section Access correctness, and data access control.
 ### 6.3 Reduction Field Case-Sensitivity Match
 
 - **Severity:** Critical
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Section Access reduction field names must match data model field names exactly (case-sensitive)
 - **How to Verify:**
   - If Section Access present, load Section Access table and final data model
@@ -485,7 +491,7 @@ Validates PII handling, Section Access correctness, and data access control.
 ### 6.4 Section Access Table Completeness
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Section Access should cover all users/roles that need filtering
 - **How to Verify:**
   - If Section Access present, verify it is complete for all security domains
@@ -497,7 +503,7 @@ Validates PII handling, Section Access correctness, and data access control.
 ### 6.5 OMIT Field Correctness
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** If OMIT field used in Section Access, verify it is correctly applied
 - **How to Verify:**
   - Search Section Access table for OMIT field values
@@ -510,17 +516,17 @@ Validates PII handling, Section Access correctness, and data access control.
 
 ## 7. Cross-Artifact Consistency (4 items)
 
-Validates alignment across multiple pipeline phases and artifacts.
+Alignment failures between artifacts: expressions referencing missing fields, viz specs referencing missing expressions, scripts calling missing subroutines, and field-name drift across data model spec, scripts, expression catalog, and viz specs. No single canonical home — verification is done by direct cross-reference between artifacts. See `qlik-naming-conventions` (cross-layer field mapping) for the naming-drift dimension.
 
-**Applicable Review Passes:** Data Model / Script / Expression / Visualization / Comprehensive
+**Applicable Review Scopes:** Data Model / Script / Expression / Visualization / Comprehensive
 
 ### 7.1 Expressions Reference Existing Fields
 
 - **Severity:** Critical
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Every field referenced in expressions must exist in final data model
 - **How to Verify:**
-  - Load expression-catalog.md and final data model from Script Review
+  - Load expression-catalog.md and the final loaded data model
   - For each field reference in every expression, search data model for exact match
   - Flag fields that exist in intermediate scripts but were dropped before final model
   - Check for typos in field names (case-sensitive)
@@ -529,7 +535,7 @@ Validates alignment across multiple pipeline phases and artifacts.
 ### 7.2 Viz Specs Reference Existing Expressions
 
 - **Severity:** Critical
-- **Applicable Passes:** Visualization / Comprehensive
+- **Applicable Scopes:** Visualization / Comprehensive
 - **What to Check:** Every expression referenced in viz specs must exist in expression catalog
 - **How to Verify:**
   - Load viz-specifications.md and expression-catalog.md
@@ -541,7 +547,7 @@ Validates alignment across multiple pipeline phases and artifacts.
 ### 7.3 Scripts Use Correct Platform Subroutines
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** All subroutine calls in scripts should reference subroutines defined in platform libraries
 - **How to Verify:**
   - Load platform-context.md (lists available platform subroutines)
@@ -554,27 +560,27 @@ Validates alignment across multiple pipeline phases and artifacts.
 ### 7.4 Field Names Consistent Across All Artifacts
 
 - **Severity:** Warning
-- **Applicable Passes:** Data Model / Script / Expression / Visualization / Comprehensive
+- **Applicable Scopes:** Data Model / Script / Expression / Visualization / Comprehensive
 - **What to Check:** Field names should be consistent across data model spec, scripts, expressions, and viz specs
 - **How to Verify:**
-  - Compare field names in: data model data model spec, Script Review final data model, expression catalog expressions, visualization specs viz specs
+  - Compare field names in: data model spec, loaded data model (post-reload), expression catalog, and viz specs
   - Track field name through each layer
   - Flag unexplained inconsistencies (aliasing is okay if documented)
   - Ensure UI-facing field names are consistent with what developers expect
-- **Finding Format:** `[C-7.4]: Field name inconsistency across artifacts / Severity: Warning / Category: Cross-Artifact Consistency / Location: [phase X] vs [phase Y] / Finding: Field [name_in_phase_x] referred to as [name_in_phase_y] in [phase Y], inconsistent naming / Impact: Developers confused about field identity, hard to trace changes / Recommended Fix: Standardize field name to single version across all artifacts`
+- **Finding Format:** `[C-7.4]: Field name inconsistency across artifacts / Severity: Warning / Category: Cross-Artifact Consistency / Location: [artifact A] vs [artifact B] / Finding: Field [name_in_artifact_a] referred to as [name_in_artifact_b] in [artifact B], inconsistent naming / Impact: Developers confused about field identity, hard to trace changes / Recommended Fix: Standardize field name to single version across all artifacts`
 
 ---
 
 ## 8. Blocked Dependency Audit (3 items)
 
-Validates that blocked dependencies are tracked and any placeholder logic in artifacts is documented.
+Project-management discipline rather than Qlik mechanics: placeholder implementations for blocked external dependencies must be documented with `TRACE` warnings, downstream artifacts must flag their dependence, and any dependency-tracking document must stay in sync with actual artifact state. No canonical Qlik home — these patterns are catalogued here for completeness.
 
-**Applicable Review Passes:** Script (light) / Expression (light) / Comprehensive
+**Applicable Review Scopes:** Script (light) / Expression (light) / Comprehensive
 
 ### 8.1 Placeholder Implementation Documentation
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Any placeholder implementations (for blocked dependencies) must be documented with TRACE warnings
 - **How to Verify:**
   - For each blocked dependency tracked in the project's dependency notes, search `scripts/*.qvs` for placeholder implementations
@@ -585,7 +591,7 @@ Validates that blocked dependencies are tracked and any placeholder logic in art
 ### 8.2 Downstream Artifacts Flag Dependency on Placeholders
 
 - **Severity:** Warning
-- **Applicable Passes:** Expression / Comprehensive
+- **Applicable Scopes:** Expression / Comprehensive
 - **What to Check:** Any artifact downstream of a blocked dependency must be flagged as dependent on placeholder
 - **How to Verify:**
   - Identify blocked dependencies from the project's dependency tracker and their downstream impacts
@@ -597,7 +603,7 @@ Validates that blocked dependencies are tracked and any placeholder logic in art
 ### 8.3 Dependency Tracker Alignment with Artifacts
 
 - **Severity:** Warning
-- **Applicable Passes:** Comprehensive
+- **Applicable Scopes:** Comprehensive
 - **What to Check:** The project's dependency tracker (if maintained) should accurately reflect the status of all artifacts and dependencies
 - **How to Verify:**
   - For each artifact entry, verify status (draft / reviewed / approved / validated) matches the actual artifact state
@@ -609,14 +615,14 @@ Validates that blocked dependencies are tracked and any placeholder logic in art
 
 ## 9. Data Quality Validation (5 items)
 
-Validates data quality when execution environment available. Requires successful script execution and loaded data.
+Post-load checks against loaded data: null rates, referential integrity, value distributions, row counts, orphaned records. Requires a successful reload or live data access. Canonical home: `data-quality-validator` (post-load query templates and embedded-script validation patterns). When MCP-style live access is available, run the queries there; without data access, treat the category as defer-pending-data.
 
-**Applicable Review Passes:** Script / Comprehensive
+**Applicable Review Scopes:** Script / Comprehensive
 
 ### 9.1 Null Rate Analysis on Key Fields
 
 - **Severity:** Critical (if nulls on key), Warning (if high null rate on measure)
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Key fields should have zero nulls; measure fields null rate should be acceptable
 - **How to Verify:**
   - After script execution, run diagnostic query to measure null rates per field
@@ -629,7 +635,7 @@ Validates data quality when execution environment available. Requires successful
 ### 9.2 Referential Integrity Checks
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Foreign keys in fact tables should have corresponding primary keys in dimension tables
 - **How to Verify:**
   - Identify fact and dimension tables
@@ -641,7 +647,7 @@ Validates data quality when execution environment available. Requires successful
 ### 9.3 Value Distribution Analysis
 
 - **Severity:** Suggestion
-- **Applicable Passes:** Comprehensive
+- **Applicable Scopes:** Comprehensive
 - **What to Check:** Key dimensions should have reasonable value distributions (not all zeros, not single value dominating)
 - **How to Verify:**
   - For each dimension field, count distinct values and top-10 value frequencies
@@ -653,10 +659,10 @@ Validates data quality when execution environment available. Requires successful
 ### 9.4 Row Count Validation
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Table row counts should match expectations from source profile and data model spec
 - **How to Verify:**
-  - Compare final row counts to expected counts from source profile source profile
+  - Compare final row counts to expected counts from the source profile
   - Flag significant deviations (>10% difference) without explanation
   - Check for unexpectedly empty tables (0 rows)
   - Verify temp table cleanup: _ tables should be gone from final model
@@ -665,7 +671,7 @@ Validates data quality when execution environment available. Requires successful
 ### 9.5 Orphaned Record Detection
 
 - **Severity:** Warning
-- **Applicable Passes:** Script / Comprehensive
+- **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Bridge tables and many-to-many relationships should not have unexplained orphaned records
 - **How to Verify:**
   - For bridge tables, count records where parent or child key is null/missing
@@ -692,9 +698,9 @@ All findings, regardless of category, must follow this structure:
 
 ---
 
-## Review Pass Applicability Summary
+## Review Scope Applicability Summary
 
-| Category | data model Lightweight | Script Review Script | expression catalog Expressions | Comprehensive |
+| Category | Data Model | Script | Expression | Comprehensive |
 |----------|:---:|:---:|:---:|:---:|
 | Script Syntax | — | ✓ | — | ✓ |
 | Performance | — | ✓ | — | ✓ |

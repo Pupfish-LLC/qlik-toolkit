@@ -202,7 +202,7 @@ DROP TABLE [_RawOrders];
 // Frees memory immediately; peak memory reduced
 ```
 
-The qlik-review.md checklist requires: every `_` table must have a corresponding `DROP TABLE` before reload completes.
+The `qlik-review-checklist` skill (item P-2.3) flags missing `DROP TABLE` on any `_`-prefixed temp table.
 
 ### C. Narrow Before STORE
 
