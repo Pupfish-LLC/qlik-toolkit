@@ -1,7 +1,7 @@
 {
   "name": "qlik-toolkit",
   "description": "Make Claude Code fluent in Qlik Sense. 12 skills covering data modeling, load scripts, expressions, performance, visualization, QA, source profiling, and Cloud MCP integration. 7 specialist agents (data architect, script developer, expression developer, viz architect, requirements analyst, QA reviewer, doc writer) for ad-hoc invocation. No rigid workflow. Invoke skills and agents as needed.",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "author": {
     "name": "Pupfish Analytics",
     "url": "https://pupfish.io"

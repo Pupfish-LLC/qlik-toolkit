@@ -288,6 +288,6 @@ When the Qlik Cloud MCP server adds new tools:
 
 1. Test the tool against a live tenant to understand actual behavior.
 2. Add any behavioral notes not covered by the tool definition to `references/behavioral-notes.md`.
-3. Update the Tool-to-Pipeline-Phase Mapping table in this file.
+3. Update the Tool-to-Task Mapping table in this file.
 4. If the tool enables a new workflow pattern, add it to Section 5.
 5. Update affected agent definitions if the new tool changes which agents need this skill.

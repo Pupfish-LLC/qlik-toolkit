@@ -2,6 +2,74 @@
 
 All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-05-29
+
+**Production release.** The plugin now teaches Qlik Sense development as a coherent, on-demand collection of agents and skills — agents are thin entry-points, skills are the canonical Qlik teaching surface, and everything follows Anthropic's progressive-disclosure pattern for skill authoring.
+
+### Architecture
+
+- Thin agents + canonical skills. Agent system prompts hold role identity, decision-making, output format, and edge cases; Qlik syntax, anti-pattern catalogs, decision frameworks, and reference tables live in skills.
+- Progressive disclosure via `references/`: SKILL.md bodies stay ≤ 500 lines (typical 80–430), with deeper material loaded on demand from `references/` files; templates moved to `assets/`; executable scaffolders to `scripts/`.
+- All 7 agents brought within Anthropic's recommended size range (94–142 lines).
+
+### Content consolidation
+
+One canonical home per Qlik topic — cross-skill duplication eliminated:
+
+- **Naming** → `qlik-naming-conventions`
+- **SQL constructs not in Qlik** → `qlik-load-script/references/sql-constructs.md`
+- **Null handling (script layer)** → `qlik-load-script/references/null-handling.md`
+- **Null handling (expression layer)** → `qlik-expressions/SKILL.md` §9
+- **QVD operations (mechanics)** → `qlik-load-script/references/qvd-operations.md`
+- **Performance thresholds + QVD decisions** → `qlik-performance`
+- **Data modeling anti-patterns (synthetic keys, circular references, QUALIFY discipline)** → `qlik-data-modeling/references/anti-patterns.md`
+- **Set analysis** → `qlik-expressions/references/set-analysis.md`
+- **TOTAL qualifier, Aggr patterns, variable rules** → `qlik-expressions/references/{total-qualifier,aggregation-patterns,variable-rules}.md`
+- **Visualization** → `qlik-visualization`
+- **QA checklist** → `qlik-review-checklist`
+
+### Skill changes
+
+- Renamed `platform-conventions` → `qlik-platform-discovery`. Reframed from a per-agent ingestion procedure into standalone brownfield-pattern teaching (subroutine identification, naming-variation catalog, QVD storage patterns). Template moved to `references/`.
+- `qlik-project-scaffold` slimmed from 155 → 79 lines; five README templates moved to `assets/`; PowerShell + Bash scaffolders extracted to `scripts/` (idempotent, tested on Windows + POSIX).
+- `qlik-review-checklist` rewritten as standalone QA knowledge — failure-class catalog, severity model, finding format — rather than a workflow procedure tied to a specific agent. Detailed checklist moved to `references/checklist.md`.
+- W01 structural moves into `references/` (progressive-disclosure cleanup):
+  - `qlik-data-modeling/{star-schema-patterns,multi-app-architecture,source-consumption-patterns}.md`
+  - `qlik-load-script/{incremental-load-patterns,diagnostic-patterns}.md`
+  - `qlik-visualization/reference-app-patterns.md`
+
+### Agent changes
+
+- All 7 agents trimmed to target line counts (viz-architect 94, doc-writer 95, expression-developer 96, data-architect 109, script-developer 123, requirements-analyst 138, qa-reviewer 142).
+- Every agent has an explicit `## When to invoke` body section.
+- 6 agents upgraded to the Opus model (requirements-analyst, data-architect, script-developer, expression-developer, viz-architect, qa-reviewer); doc-writer remains on Sonnet.
+- Frontmatter descriptions rewritten in third-person WHAT/WHEN format per Anthropic skill-authoring guidance, wrapped in double quotes for consistency.
+
+### Accuracy fixes
+
+Seven Qlik behavior claims corrected against tier-1 sources during the cleanup:
+
+1. **`Count(1)` "fragile during incremental loads"** — claim removed. Tier-1 documentation does not characterize `Count(1)` this way; the prior assertion was unsourced. (T02)
+2. **`NULL = 0` evaluation** — corrected. The comparison returns False, not NULL, per Qlik's three-valued-logic handling for equality against a literal. (T03)
+3. **Set analysis exclusion syntax** — replaced a fabricated `-Returns` example with the documented forms (`-=` implicit set operator and `{1-<…>}` set-difference). (T07)
+4. **Rolling 12 months YYYYMM arithmetic** — replaced a broken `(Year*100 + Month) - 11` expression (which produces non-existent months like 202113) with `AddMonths(…)`-based form and a `Year*12 + Month` linear-index alternative. (T07)
+5. **`LET` "cached value" terminology** — rewritten. `LET` evaluates the right side at assignment time and stores the result; "cached" implied lazy/recomputable semantics it doesn't have. (T08)
+6. **Responsive grid "24 columns"** — debunked. Qlik's documented responsive behavior is a single 480-pixel small-screen threshold plus 300–4000px custom sheet sizing, not a column-grid system. (T09)
+7. **Filter pane mobile "drawer" behavior** — corrected. Documented behavior is dimension shrink + overflow chevron dropdown, not a slide-in drawer. (T09)
+
+### Removed
+
+- Orchestration vocabulary across all published surfaces: `phase 1/2/3`, `pipeline phase`, `orchestrator`, `orchestration`.
+- Agent-to-agent handoff language (`hand off to the X agent`, `consumed by the X agent`, `delegated to the X agent`).
+- Workflow-phase framing in skill descriptions (`Use this skill during the X phase`, `Use this skill when [phase/role]`).
+- Legacy root-level reference files now resident in `references/` per progressive disclosure.
+
+### Internal
+
+- Anthropic-aligned progressive disclosure throughout: SKILL.md bodies ≤ 500 lines (1,500–2,000 words target), deeper material in `references/`, templates in `assets/`, scripts in `scripts/`.
+- Every Qlik behavior claim newly written or substantially reworded during the cleanup was validated against `qlik-source-registry` tier sources where applicable; per-cluster validation evidence retained in cluster summaries.
+- Cleanup planning artifacts (`cleanup-plan/`, `pending-traps.md`) were `.gitignore`d throughout the cleanup and never shipped.
+
 ## [0.4.0] — 2026-05-27
 
 ### Added
