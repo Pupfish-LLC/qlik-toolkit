@@ -105,13 +105,13 @@ Two planned skills are still in development and will land in a future release:
 - **`qlik-security`**: Section Access patterns for row-level and column-level data security. Until it ships, refer to the [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm).
 - **`qlik-deploy`**: App deployment patterns: data connections, reload tasks, space management, and environment promotion. Until it ships, refer to [Managing apps in Qlik Cloud](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/managing-apps.htm).
 
-## Why No Orchestrator?
+## Why No Top-Level Coordinator?
 
-The plugin intentionally ships **without a top-level orchestrator agent** that would coordinate the other agents through a fixed pipeline.
+The plugin intentionally ships **without a top-level agent** that would run the other agents through a fixed sequence.
 
-Reason: Claude already routes naturally based on what you describe. Each skill's `description` is the trigger. Each agent declares its inputs and capability. An orchestrator would insert a layer between you and Claude's routing, and the cost is flexibility. The intended use cases for this plugin are broad: a quick syntax check, a one-off review, a full project build, a brownfield code audit, a single expression tweak. A fixed pipeline doesn't fit all of those; a fluid prompt-driven flow does.
+Reason: Claude already routes naturally based on what you describe. Each skill's `description` is the trigger. Each agent declares its inputs and capability. A coordinator layer would sit between you and Claude's routing, and the cost is flexibility. The intended use cases for this plugin are broad: a quick syntax check, a one-off review, a full project build, a brownfield code audit, a single expression tweak. A fixed sequence doesn't fit all of those; a fluid prompt-driven flow does.
 
-If a use case emerges where orchestration would clearly help, a slash command can be added in a later release. For now, agents and skills, invoked by intent.
+If a use case emerges where a coordinator would clearly help, a slash command can be added in a later release. For now, agents and skills, invoked by intent.
 
 ## Roadmap
 

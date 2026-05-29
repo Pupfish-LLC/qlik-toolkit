@@ -33,26 +33,26 @@ All notable changes to the `qlik-toolkit` plugin (formerly `pupfish-qlik`) are d
 
 ### Changed
 
-Comprehensive retune of all 7 agents (and a small pass on 3 skill files) to fit the ad-hoc invocation model. Prior wording assumed a regimented multi-phase pipeline with specific upstream artifacts at each step; this release removes that scaffolding so each agent stands alone and adapts to whatever the user has shared.
+Comprehensive retune of all 7 agents (and a small pass on 3 skill files) to fit the ad-hoc invocation model. Prior wording assumed a rigid sequenced workflow with specific upstream artifacts at each step; this release removes that scaffolding so each agent stands alone and adapts to whatever the user has shared.
 
 Per-agent changes (consistent pattern across all seven):
 
 - Replaced rigid "Inputs" sections (which named specific upstream artifacts like "Project Specification," "Data Model Specification," "Platform Context Document") with adaptive "Working from what you have" sections. The agents now expect the user to share whatever context exists — a description, a screenshot, named files, a paste — and ask for what they need rather than demanding a specific artifact format.
 - Dropped "Out of scope" sections that named other agents by role ("writing scripts is the script-developer's role"). Replaced with topic-based scope statements.
 - Reframed runbook-style "Working Procedure" sections as adaptive "Approach" sections, with steps roughly sequenced but skipped or adapted to the actual ask.
-- Dropped formal "Handoff Protocol" / "Handoff" sections that described handing off to an orchestrator. Replaced with brief "After producing X" guidance on what to summarize.
-- Reframed "Iterative Gap-Filling" / "Execution Feedback Handling" sections to describe how the agent handles follow-up requests in conversation (rather than orchestrator callbacks).
+- Dropped formal transfer-of-control sections that described passing artifacts to a coordinator. Replaced with brief "After producing X" guidance on what to summarize.
+- Reframed iterative-feedback sections to describe how the agent handles follow-up requests in conversation (rather than coordinator callbacks).
 - Removed artifact-version metadata templates (`**Artifact:** ... **Version:** 1.0 **Status:** Draft **Inputs:** ...`) from output specifications. The substance (section structures, format guidance) is preserved.
 - Output paths reframed as user-controlled with a sensible default, not as hardcoded conventions.
 
 Skill changes:
 
-- `qlik-review-checklist/checklist.md` §8: dropped "per pipeline state" framing.
-- `platform-conventions/platform-context-template.md`: dropped references to a specific `inputs/` directory structure and "platform context ingestion handoff" framing.
+- `qlik-review-checklist/checklist.md` §8: dropped sequenced-workflow-state framing.
+- `platform-conventions/platform-context-template.md`: dropped references to a specific `inputs/` directory structure and the artifact-transfer framing around platform discovery.
 
 ### Why
 
-The agents were originally written for the `qlik-agents` plugin (the regimented 9-phase pipeline with orchestrator). When they were extracted to `qlik-toolkit` (intentionally ad-hoc, no orchestrator), the agents themselves weren't retuned. Heavy pipeline assumptions in the agent prompts created friction in ad-hoc use — agents would demand artifacts that didn't exist, or describe handoffs to other agents that may not even be invoked. This release brings the agent personalities in line with the toolkit's actual usage model.
+The agents were originally written for the `qlik-agents` plugin, which used a rigid nine-step sequenced workflow driven by a top-level coordinator agent. When they were extracted to `qlik-toolkit` (intentionally ad-hoc, no top-level coordinator), the agents themselves weren't retuned. Heavy sequenced-workflow assumptions in the agent prompts created friction in ad-hoc use — agents would demand artifacts that didn't exist, or describe transferring artifacts to other agents that may not even be invoked. This release brings the agent personalities in line with the toolkit's actual usage model.
 
 No changes to Qlik domain knowledge in the skills, no changes to the validation hook. Functional content is unchanged.
 
@@ -188,7 +188,7 @@ Specific fixes:
 ### Notes
 
 - **Initial public release.** All examples use a generic sales / retail example domain (Customer, Order, Product, Region).
-- **No rigid orchestration.** The plugin intentionally ships without a top-level orchestrator agent or pipeline. The agents are designed to be invoked individually based on user intent — Claude routes naturally to the right agent based on the user's described task.
+- **No fixed workflow.** The plugin intentionally ships without a top-level coordinator agent or fixed sequence. The agents are designed to be invoked individually based on user intent — Claude routes naturally to the right agent based on the user's described task.
 - **Two skills deferred** to a future release pending content rewrites against current Qlik documentation:
   - `qlik-security` (Section Access patterns) — original draft contained foundational inaccuracies against Qlik Cloud docs.
   - `qlik-deploy` (deployment patterns) — original draft was missing critical content (data connection name binding, managed-space publish gotchas, Qlik Platform Operations and `qlik-cli` for CI/CD).

@@ -2,7 +2,7 @@
 
 This guide helps you identify the source data architecture pattern (Dimensional Warehouse, Normalized OLTP, Data Vault 2.0, flat files, etc.) and classify each table within that architecture with its architectural role, key structure, mutability, and incremental load strategy.
 
-The output of this classification is consumed by the data-architect agent in data-architecture design to design the Qlik data model and determine join strategies and key resolution approaches.
+The output of this classification informs Qlik data model design — join strategies, key resolution approaches, and consumption patterns.
 
 ---
 

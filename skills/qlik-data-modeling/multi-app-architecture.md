@@ -20,7 +20,7 @@ All extraction, transformation, and modeling in one Qlik app. The simplest archi
 ### Pros
 
 - One script, one reload, one thing to debug.
-- No orchestration.
+- No reload coordination required.
 
 ### Cons
 
@@ -62,7 +62,7 @@ Source Systems
 ### Cons
 
 - QVD files are now a managed artifact (storage, retention, backup, access).
-- You need reload orchestration — consumers must wait for the generator.
+- You need reload coordination — consumers must wait for the generator.
 - If consumers load-and-then-drop fields from a QVD, the load is no longer optimized (any field list or transform change after the QVD read unpacks the file).
 
 ### 2-layer vs. 3-layer QVDs
@@ -73,9 +73,9 @@ Source Systems
 
 Use 3-layer when the source list is long and complex, incremental extraction is sophisticated, or multiple downstream teams want to branch from the Transform layer. Use 2-layer when the transformations are straightforward and the extra layer adds no debugging value.
 
-### Reload orchestration
+### Reload coordination
 
-**Qlik Cloud** has native hub reload tasks with **event-based triggers** ("Another task succeeded" / "Another task failed"). Chain the generator's reload task to the consumers' reload tasks using the "On success" trigger. Qlik Automate (formerly Qlik Application Automation) offers a more flexible orchestration option with its "Do reload" block and richer branching logic.
+**Qlik Cloud** has native hub reload tasks with **event-based triggers** ("Another task succeeded" / "Another task failed"). Chain the generator's reload task to the consumers' reload tasks using the "On success" trigger. Qlik Automate (formerly Qlik Application Automation) offers a more flexible option with its "Do reload" block and richer branching logic.
 
 **Qlik Sense client-managed (QSEoW)** has native task chaining in the QMC via "Task event" triggers (`TaskSuccessful` / `TaskFail`). External schedulers (Windows Task Scheduler, cron, enterprise ETL tools) are an option but **not** a requirement — QMC has handled this natively for years.
 
@@ -171,7 +171,7 @@ LOAD code, description FROM [lib://QVDs/Extra_Lookup.qvd] (qvd);
 
 ### What `binary` does NOT do
 
-**It does not automatically cascade reloads.** The consumer only picks up new data when its own reload is triggered — `binary` is a load-time snapshot of the generator's last saved state, not a live link. If you want consumers to refresh after the generator, you must orchestrate that with event-based triggers (Cloud) or QMC task chains (client-managed), exactly as with the QVD pattern.
+**It does not automatically cascade reloads.** The consumer only picks up new data when its own reload is triggered — `binary` is a load-time snapshot of the generator's last saved state, not a live link. If you want consumers to refresh after the generator, you must coordinate that with event-based triggers (Cloud) or QMC task chains (client-managed), exactly as with the QVD pattern.
 
 **It does not transfer variables.** Variables defined in the generator's script are not carried over. If consumers need the same variables, re-declare them after the `binary` statement or include them via `$(Must_Include=...)`.
 
@@ -194,7 +194,7 @@ The practitioner heuristics in this table are starting points, not authoritative
 | Per-consumer model customization | n/a | yes | yes | no |
 | Incremental load support | yes | yes | yes | no (full reload) |
 | QVD storage footprint | none | medium | largest | none |
-| Orchestration complexity | none | medium | highest | low (still needs chaining for fresh data) |
+| Reload coordination complexity | none | medium | highest | low (still needs chaining for fresh data) |
 
 **Quick decision guide**
 
@@ -247,13 +247,13 @@ TRACE Transform_Product.qvd age: $(vQvdAge);
 - **Archived timestamped QVDs** (for incremental loads or audit) — retained per your reload pattern (e.g., last 30 dailies for a 30-day incremental window).
 - **Failed partial QVDs** — cleaned up so that consumers never see half-written files. Atomic write + rename is the most robust pattern.
 
-Qlik script does not have a native "delete file" statement — cleanup is handled by a scheduled OS-level task, a reload subroutine using `Execute` (client-managed only), or an external orchestrator. Do not try to fabricate a delete inside a reload script.
+Qlik script does not have a native "delete file" statement — cleanup is handled by a scheduled OS-level task, a reload subroutine using `Execute` (client-managed only), or an external scheduler. Do not try to fabricate a delete inside a reload script.
 
 ---
 
 ## Summary
 
-| Architecture | Best for | Orchestration |
+| Architecture | Best for | Reload coordination |
 |---|---|---|
 | Single App | Small data, simple models, one team | none |
 | Generator / Consumer | Multiple consumers sharing extract + transform | event-based reload chain (Cloud) or QMC task chain (client-managed) |

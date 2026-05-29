@@ -105,9 +105,9 @@ Single-app vs multi-app is a deployment decision. The real drivers are reload cy
 - **Qlik Cloud:** `binary [app_id];` — the app GUID. This is the only accepted form in cloud.
 - **Client-managed (Enterprise on Windows):** `binary [lib://Apps/Generator.qvf];` — .qvf via folder data connection.
 
-Binary load does **not** cascade reloads automatically, does **not** copy variables, sheets, visualizations, or master items. Consumer reloads must still be orchestrated (event-based triggers / Qlik Automate in cloud; QMC task chains for client-managed).
+Binary load does **not** cascade reloads automatically, does **not** copy variables, sheets, visualizations, or master items. Consumer reloads must still be coordinated (event-based triggers / Qlik Automate in cloud; QMC task chains for client-managed).
 
-See `multi-app-architecture.md` for full decision framework, orchestration patterns, and common mistakes.
+See `multi-app-architecture.md` for full decision framework, reload coordination patterns, and common mistakes.
 
 ## 7. Source Architecture Consumption
 
@@ -140,7 +140,7 @@ Pick one fix:
 
 - **`references/anti-patterns.md`** — Canonical home for data-modeling failure modes: synthetic keys (causes, detection, three prevention mechanisms), AutoNumber in QVD layer, circular references vs synthetic keys, QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state), multiple shared fields, missing bridge tables, wide-format expansion, ignoring source architecture, data islands, over-modeling, missing "No Entry" rows, grain misalignment.
 - **`star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, key-hiding mechanics (HidePrefix/HideSuffix application — naming convention itself in `qlik-naming-conventions`), SubField expansion, dimension vs fact classification.
-- **`multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload orchestration (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
+- **`multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload coordination (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
 - **`source-consumption-patterns.md`** — Full per-source consumption patterns including Data Vault hub/satellite merge, OLTP denormalization (SQL-side vs Qlik-side), dimensional warehouse ingest, pre-joined view grain validation, flat-file ingestion with codepage and quote handling.
 
 ## Key Rules

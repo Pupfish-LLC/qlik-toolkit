@@ -7,21 +7,6 @@ description: |
   calculation conditions, data reduction techniques (load-time vs runtime), and
   profiling/diagnostic approaches for Qlik Sense. Load when optimizing or reviewing
   performance-sensitive artifacts.
-contexts:
-  - data-architect (model memory decisions)
-  - script-developer (script efficiency)
-  - expression-developer (expression calculation speed)
-  - qa-reviewer (performance validation)
-triggers:
-  - "memory optimization"
-  - "QVD optimized load"
-  - "expression performance"
-  - "reload speed"
-  - "calculation condition"
-  - "data reduction"
-  - "performance profiler"
-  - "Aggr nesting"
-  - "set analysis"
 user-invocable: false
 ---
 

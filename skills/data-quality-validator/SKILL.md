@@ -1,6 +1,6 @@
 ---
 name: data-quality-validator
-description: Post-load data quality validation patterns for Qlik development. Provides query templates for null rate analysis, referential integrity checks, value distribution analysis, row count validation, orphaned record detection, sparse field identification, and duplicate detection. Usable by the qa-reviewer when MCP or post-load data access is available. Also provides patterns for embedding validation checks directly into load scripts. Load when performing data quality validation or writing diagnostic scripts.
+description: Post-load data quality validation patterns for Qlik development. Provides query templates for null rate analysis, referential integrity checks, value distribution analysis, row count validation, orphaned record detection, sparse field identification, and duplicate detection. Usable when MCP or post-load data access is available. Also provides patterns for embedding validation checks directly into load scripts. Load when performing data quality validation or writing diagnostic scripts.
 user-invocable: false
 ---
 
@@ -8,8 +8,8 @@ user-invocable: false
 
 Post-load data quality validation catches issues that successful reloads can mask. Scripts reload without errors yet contain incorrect data: synthetic keys, orphaned records, unexpected nulls, duplicate keys, or value anomalies. This skill covers two usage contexts:
 
-1. **QA Reviewer (post-load inspection)** — qa-reviewer runs validation queries against loaded data or via MCP database connections, producing a Data Quality Validation Report
-2. **Script Developer (embedded checks)** — script-developer embeds validation checks directly in load scripts, reporting issues during reload via TRACE or error-handling framework
+1. **Post-load inspection** — Run validation queries against loaded data or via MCP database connections, producing a Data Quality Validation Report.
+2. **Embedded script checks** — Embed validation checks directly in load scripts, reporting issues during reload via TRACE or the error-handling framework.
 
 The skill provides actionable query templates and patterns for both contexts.
 
@@ -115,13 +115,13 @@ END IF
 
 When MCP database connectivity or post-load data access is available, deeper analysis is possible. See `validation-queries.md` for complete query templates.
 
-Queries run against the loaded Qlik data model (via engine API or diagnostic scripts) or against source databases (via MCP) to compare source vs. loaded data. Output is a Data Quality Validation Report consumed by the qa-reviewer.
+Queries run against the loaded Qlik data model (via engine API or diagnostic scripts) or against source databases (via MCP) to compare source vs. loaded data. The output is the Data Quality Validation Report defined below.
 
 ---
 
 ## Section 4: Data Quality Validation Report Format
 
-This output format is the contract between qa-reviewer and data validators:
+This output format standardizes how validation findings are reported:
 
 ```markdown
 # Data Quality Validation Report

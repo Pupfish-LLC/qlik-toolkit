@@ -8,12 +8,12 @@ user-invocable: false
 
 Before designing a Qlik data model, you must understand the source data: what tables exist, what fields are in each table, what data types they use, how many distinct values exist in each field, whether null values are present, and what the source system's architecture pattern is (dimensional warehouse, normalized OLTP, Data Vault 2.0, flat files, etc.). Building a data model on incorrect assumptions about cardinality, key uniqueness, or data types produces models that fail on reload or produce silent data errors.
 
-Source profiling is source profiling of the pipeline. The requirements-analyst invokes this skill with a **two-path design:**
+Source profiling supports a **two-path design:**
 
-- **Path A (MCP Available):** The requirements-analyst uses MCP database connections to run profiling queries directly against the source, automatically discovering schema metadata, cardinality, null rates, and sample values.
-- **Path B (MCP Unavailable):** The requirements-analyst generates a structured **Source Profile Template** (see `profile-template.md`) for the developer to fill from their database tools (SQL Server Management Studio, pgAdmin, DBeaver, etc.).
+- **Path A (MCP Available):** Use MCP database connections to run profiling queries directly against the source, automatically discovering schema metadata, cardinality, null rates, and sample values.
+- **Path B (MCP Unavailable):** Generate a structured **Source Profile Template** (see `profile-template.md`) for the developer to fill from their database tools (SQL Server Management Studio, pgAdmin, DBeaver, etc.).
 
-Both paths produce the same standardized **Source Profile Report** that the data-architect uses in data-architecture design to design the Qlik data model.
+Both paths produce the same standardized **Source Profile Report**, which is the input for Qlik data model design.
 
 The skill also includes **source architecture classification**, which annotates each table with its architectural role (Dimension, Fact, Lookup, Hub, Link, Satellite, etc.) and consumption implications (how Qlik should load and associate this table).
 
@@ -297,7 +297,7 @@ If a table is supposed to have a unique primary key but the profiling query show
 
 ## Source Profile Report Format
 
-This is the standardized output format produced by both Path A (MCP) and Path B (manual template). The data-architect agent in data-architecture design consumes this format directly.
+This is the standardized output format produced by both Path A (MCP) and Path B (manual template). It is the input for data model design.
 
 ```markdown
 # Source Profile Report

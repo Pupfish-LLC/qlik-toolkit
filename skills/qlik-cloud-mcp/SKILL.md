@@ -1,6 +1,6 @@
 ---
 name: qlik-cloud-mcp
-description: Capability registry for the Qlik Cloud MCP server. Maps MCP tools to pipeline phases, provides MCP detection patterns, documents behavioral gotchas not covered by tool definitions, and defines multi-step workflows for expression validation, reference app analysis, visualization scaffolding, and data quality checks. Load whenever an agent needs to interact with a live Qlik Cloud tenant. The tool definitions themselves document parameters, response structures, and basic usage -- this skill covers framework integration, sequencing, and pitfalls discovered through live testing.
+description: Capability registry for the Qlik Cloud MCP server. Maps MCP tools to development tasks, provides MCP detection patterns, documents behavioral gotchas not covered by tool definitions, and defines multi-step workflows for expression validation, reference app analysis, visualization scaffolding, and data quality checks. Load whenever an agent needs to interact with a live Qlik Cloud tenant. The tool definitions themselves document parameters, response structures, and basic usage -- this skill covers framework integration, sequencing, and pitfalls discovered through live testing.
 user-invocable: false
 ---
 
@@ -13,7 +13,7 @@ The MCP tool definitions (visible to every agent at invocation time) already doc
 This skill covers:
 
 - **MCP detection** — how agents determine MCP availability and branch
-- **Pipeline phase mapping** — which tools are relevant at which phase
+- **Tool-to-task mapping** — which tools are relevant for which development task
 - **Behavioral gotchas** — issues discovered through live testing that go beyond the tool definitions (see `references/behavioral-notes.md` for the full list)
 - **Workflow patterns** — multi-step tool call sequences for common operations
 - **Framing** — what the MCP server can and cannot do, to prevent incorrect assumptions
@@ -268,7 +268,7 @@ Quick validation that data loaded correctly after a Qlik reload.
 
 ## Governance Tools
 
-The MCP server includes tools for Qlik Cloud governance features (business glossaries and data products). These don't have a mandatory pipeline phase but provide value for organizations using Qlik's governance capabilities.
+The MCP server includes tools for Qlik Cloud governance features (business glossaries and data products). These aren't tied to any specific development task but provide value for organizations using Qlik's governance capabilities.
 
 **Business Glossary tools** (`create_glossary`, `create_glossary_term`, `create_glossary_category`, `search_glossary_terms`, `get_glossary_term`, `update_glossary_term`, `update_term_status`, `delete_glossary_term`, `get_glossary_categories`, `get_glossary_term_links`, `create_glossary_term_links`, `get_full_glossary_export`): Create and manage governed business term definitions. Terms can be linked to apps, datasets, fields, master dimensions, and master measures via `create_glossary_term_links`. Term status follows a `draft → verified → deprecated` lifecycle where only stewards can verify or modify verified terms. Linking glossary terms to master items brings business context into the app for end users. As a best practice, place glossaries in a shared space where all tenant users have Can view access.
 
