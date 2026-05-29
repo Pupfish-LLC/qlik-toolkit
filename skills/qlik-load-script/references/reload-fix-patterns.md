@@ -30,7 +30,7 @@ Qlik created a `$Syn` synthetic key table because two or more tables share more 
 
 Reload succeeded but data looks wrong — high null rates, duplicates, unexpected aggregations, unexpected row counts.
 
-1. Run diagnostic queries from `references/diagnostic-patterns.md` to pinpoint the issue.
+1. Run diagnostic queries from `diagnostic-patterns.md` (sibling reference file) to pinpoint the issue.
 2. Trace the value back through the transform layer.
 3. High null rate in a key field? Source may be incomplete — surface as a data question.
 4. Duplicates in a key field? Verify deduplication logic (`DISTINCT`, `WHERE NOT EXISTS`).
@@ -61,8 +61,8 @@ Incremental loads missing rows, double-loading rows, or not picking up changes.
 
 ## Cross-References
 
-- SQL-construct rewrites: `references/sql-constructs.md`
+- SQL-construct rewrites: `sql-constructs.md` (sibling reference file)
 - Synthetic key diagnosis: `qlik-data-modeling` → `references/anti-patterns.md`
-- Diagnostic queries: `diagnostic-patterns.md` (post-load validation templates)
-- Incremental load patterns: `incremental-load-patterns.md`
-- Null handling: `references/null-handling.md`
+- Diagnostic queries: `diagnostic-patterns.md` (sibling reference file — post-load validation templates)
+- Incremental load patterns: `incremental-load-patterns.md` (sibling reference file)
+- Null handling: `null-handling.md` (sibling reference file)

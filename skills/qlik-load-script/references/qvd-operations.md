@@ -25,7 +25,7 @@ Rules:
 - One table per STORE. To write two tables, write two STORE statements.
 - The `(qvd)` format specifier is required for QVD output.
 - The target connection (`lib://...`) must be writable from the reload context.
-- If the file already exists, STORE overwrites it. There is no append mode; for append-style incremental output, see the patterns in `incremental-load-patterns.md`.
+- If the file already exists, STORE overwrites it. There is no append mode; for append-style incremental output, see the patterns in `incremental-load-patterns.md` (sibling reference file).
 
 Reference: help.qlik.com Cloud — Store statement.
 
@@ -314,7 +314,7 @@ binary [a1b2c3d4-5e6f-7890-abcd-ef1234567890];
 binary [lib://Apps/Generator.qvf];
 ```
 
-Decision framing — when binary load is the right choice versus generator/consumer with QVDs — is in `qlik-data-modeling` → `multi-app-architecture.md`.
+Decision framing — when binary load is the right choice versus generator/consumer with QVDs — is in `qlik-data-modeling` → `references/multi-app-architecture.md`.
 
 Reference: help.qlik.com Cloud — Binary statement.
 
@@ -322,10 +322,10 @@ Reference: help.qlik.com Cloud — Binary statement.
 
 ## Cross-References
 
-- **`incremental-load-patterns.md`** — full working code for insert-only, insert/update, insert/update/delete, and dual-timestamp SCD2 patterns; all use the QVD mechanics described here.
+- **`incremental-load-patterns.md`** (sibling reference file) — full working code for insert-only, insert/update, insert/update/delete, and dual-timestamp SCD2 patterns; all use the QVD mechanics described here.
 - **`references/sql-constructs.md` Section 2.1** — NoConcatenate failure modes including the INLINE auto-concatenation trap.
 - **`qlik-performance` SKILL.md** — decision framing for optimized load, redundant-disk-read elimination, narrow-before-STORE rationale, memory-aware QVD layer design.
-- **`qlik-data-modeling` → `multi-app-architecture.md`** — when to split a single app into generator/consumer (or further), reload chaining between apps, binary load tradeoffs.
+- **`qlik-data-modeling` → `references/multi-app-architecture.md`** — when to split a single app into generator/consumer (or further), reload chaining between apps, binary load tradeoffs.
 - **`SKILL.md` Section 15** — EXISTS symbol-space behavior (cross-table contamination, self-referencing dedup) with worked examples.
 
 ---

@@ -190,7 +190,7 @@ To validate responsive behavior, resize the browser window in the Qlik Cloud she
 
 To replicate design patterns from existing Qlik apps, systematically examine sheet structure, object types, filter strategy, colors, layout, and responsive behavior. Document findings in a pattern catalog for reuse in new projects.
 
-**See `reference-app-patterns.md` for the detailed 9-step reverse-engineering procedure, pattern catalog template, and replication checklist.**
+**See `references/reference-app-patterns.md` for the detailed 9-step reverse-engineering procedure, pattern catalog template, and replication checklist.**
 
 ---
 

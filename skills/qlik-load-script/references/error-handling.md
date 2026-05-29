@@ -111,12 +111,12 @@ For symbol table iteration, use `FieldValue('Field', n)` with `FieldValueCount('
 
 ## Framework vs Standalone — Pick One
 
-See `script-templates/error-handling.qvs` for the error handling and logging framework (preferred for production scripts). See `../diagnostic-patterns.md` for standalone TRACE templates and validation queries.
+See `script-templates/error-handling.qvs` for the error handling and logging framework (preferred for production scripts). See `diagnostic-patterns.md` (sibling reference file) for standalone TRACE templates and validation queries.
 
 **These are alternatives, not complements.** If using `error-handling.qvs`, use its `LogRowCount` subroutine. The standalone `LogLoadCount` in `diagnostic-patterns.md` is for scripts that don't include the full framework. Mixing them duplicates milestone logs and obscures which subroutine actually fired.
 
 ## See Also
 
 - `script-templates/error-handling.qvs` — production framework with `LogRowCount`, error checking, and standard milestone logging
-- `../diagnostic-patterns.md` § ScriptError Handling — standalone error-check pattern with worked example
+- `diagnostic-patterns.md` § ScriptError Handling — standalone error-check pattern with worked example
 - `../SKILL.md` § 13 — overview entry point that links here

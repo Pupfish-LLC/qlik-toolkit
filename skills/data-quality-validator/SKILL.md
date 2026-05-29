@@ -158,13 +158,13 @@ This output format standardizes how validation findings are reported:
 
 ## Section 5: Cross-Reference to Diagnostic Patterns
 
-The qlik-load-script skill includes `diagnostic-patterns.md`, which documents TRACE-based logging and basic row count checks during reload. The data-quality-validator extends beyond those basic patterns with deeper analysis queries.
+The qlik-load-script skill includes `references/diagnostic-patterns.md`, which documents TRACE-based logging and basic row count checks during reload. The data-quality-validator extends beyond those basic patterns with deeper analysis queries.
 
 **Distinction:**
-- **diagnostic-patterns.md** — Lightweight TRACE milestone tracking, row count logging, file existence checks, error capture during reload. Use for real-time reload monitoring.
+- **`qlik-load-script` → `references/diagnostic-patterns.md`** — Lightweight TRACE milestone tracking, row count logging, file existence checks, error capture during reload. Use for real-time reload monitoring.
 - **data-quality-validator** — Comprehensive post-load validation (null rates, referential integrity, value distributions, duplicates). Use for detailed data quality inspection after reload completes.
 
-Cross-reference diagnostic-patterns.md when embedding simple row count checks; use data-quality-validator when performing detailed QA analysis.
+Cross-reference `qlik-load-script` → `references/diagnostic-patterns.md` when embedding simple row count checks; use data-quality-validator when performing detailed QA analysis.
 
 ---
 
@@ -186,7 +186,7 @@ All queries in `validation-queries.md` follow these conventions:
 - **Every query is reusable** — Parameterized for any table/field combination
 - **Thresholds are configurable** — Alerts fire based on project-specific rules (null rate %, sparsity %, cardinality range)
 - **Output is structured** — Validation report format is consistent and machine-parseable
-- **No duplication with diagnostic-patterns.md** — Cross-reference instead of repeating TRACE patterns
+- **No duplication with `qlik-load-script` → `references/diagnostic-patterns.md`** — Cross-reference instead of repeating TRACE patterns
 
 ---
 

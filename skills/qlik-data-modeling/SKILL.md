@@ -49,7 +49,7 @@ For one-to-many dimension attributes (product → multiple categories), use a **
 
 Flattening via `LEFT JOIN` prefix is only appropriate for genuinely 1:1 relationships with a well-defined dedup rule. Default to bridge tables for many-to-many.
 
-See `star-schema-patterns.md` for bridge-table construction, link tables, and `ApplyMap` patterns.
+See `references/star-schema-patterns.md` for bridge-table construction, link tables, and `ApplyMap` patterns.
 
 ## 4. Key Resolution Strategy
 
@@ -107,7 +107,7 @@ Single-app vs multi-app is a deployment decision. The real drivers are reload cy
 
 Binary load does **not** cascade reloads automatically, does **not** copy variables, sheets, visualizations, or master items. Consumer reloads must still be coordinated (event-based triggers / Qlik Automate in cloud; QMC task chains for client-managed).
 
-See `multi-app-architecture.md` for full decision framework, reload coordination patterns, and common mistakes.
+See `references/multi-app-architecture.md` for full decision framework, reload coordination patterns, and common mistakes.
 
 ## 7. Source Architecture Consumption
 
@@ -121,7 +121,7 @@ Different upstream systems require fundamentally different consumption patterns.
 | **Pre-joined views** | Validate grain before consuming — a "one row per customer" view often isn't; deduplicate if needed |
 | **Flat files / CSV** | Set codepage, quote handling (`msq`), delimiter, validate headers; watch for file rotation |
 
-Full patterns and worked examples are in `source-consumption-patterns.md`.
+Full patterns and worked examples are in `references/source-consumption-patterns.md`.
 
 ## 8. Grain Alignment Across Multiple Facts
 
@@ -139,9 +139,9 @@ Pick one fix:
 ## 9. Supporting Files
 
 - **`references/anti-patterns.md`** — Canonical home for data-modeling failure modes: synthetic keys (causes, detection, three prevention mechanisms), AutoNumber in QVD layer, circular references vs synthetic keys, QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state), multiple shared fields, missing bridge tables, wide-format expansion, ignoring source architecture, data islands, over-modeling, missing "No Entry" rows, grain misalignment.
-- **`star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, key-hiding mechanics (HidePrefix/HideSuffix application — naming convention itself in `qlik-naming-conventions`), SubField expansion, dimension vs fact classification.
-- **`multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload coordination (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
-- **`source-consumption-patterns.md`** — Full per-source consumption patterns including Data Vault hub/satellite merge, OLTP denormalization (SQL-side vs Qlik-side), dimensional warehouse ingest, pre-joined view grain validation, flat-file ingestion with codepage and quote handling.
+- **`references/star-schema-patterns.md`** — Bridge tables with aliased EXISTS, link table construction, `ApplyMap` lookups, normalized-over-wide, key-hiding mechanics (HidePrefix/HideSuffix application — naming convention itself in `qlik-naming-conventions`), SubField expansion, dimension vs fact classification.
+- **`references/multi-app-architecture.md`** — Single-app, generator/consumer, four-layer split, binary load (both platforms), reload coordination (Cloud events/Automate, QMC task chaining), common multi-app mistakes.
+- **`references/source-consumption-patterns.md`** — Full per-source consumption patterns including Data Vault hub/satellite merge, OLTP denormalization (SQL-side vs Qlik-side), dimensional warehouse ingest, pre-joined view grain validation, flat-file ingestion with codepage and quote handling.
 
 ## Key Rules
 

@@ -78,7 +78,7 @@ Other transformation tasks: data quality cleaning (`vCleanNull`, `PurgeChar`), `
 
 **10. Section Access scaffold.** Placeholder structure with comments. Section Access teaching is out of scope for this plugin version — refer the user to `help.qlik.com` Section Access docs.
 
-**11. Diagnostic queries.** Reference `diagnostic-patterns.md` for row count validation per table, key uniqueness checks, null rate checks, post-load summary.
+**11. Diagnostic queries.** Reference `qlik-load-script` → `references/diagnostic-patterns.md` for row count validation per table, key uniqueness checks, null rate checks, post-load summary.
 
 **12. Script manifest.** Document each file: purpose, dependencies, run order. For multi-app: inter-app dependencies and QVD contracts.
 
@@ -113,7 +113,7 @@ Each finding type's diagnosis flow and fix steps are documented in that referenc
 - **Platform subroutine has limitations** — Work around it. If a shared subroutine can't handle composite keys, use a manual `CONCATENATE` + `WHERE NOT EXISTS` pattern.
 - **Source schema changed since profile** — Extraction works for explicitly listed fields. If new fields are needed, surface the question. If fields were removed, extraction fails with "field not found" — expected.
 - **Very large source table** — Field-list loads from QVDs (avoid `LOAD *`). Reference `qlik-performance` for optimization patterns.
-- **Data Vault source with satellites** — Dual-timestamp incremental per `incremental-load-patterns.md`.
+- **Data Vault source with satellites** — Dual-timestamp incremental per `qlik-load-script` → `references/incremental-load-patterns.md`.
 - **Subroutine output has phantom fields** — Inspect the field list after subroutine execution. Drop unwanted fields explicitly and document the workaround.
 
 ## After producing scripts

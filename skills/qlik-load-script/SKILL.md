@@ -264,7 +264,7 @@ The Qlik script engine does not raise an error for the broken form. Both the inp
 
 Three things to internalize before writing QVD reads:
 
-1. **STORE writes one table per statement:** `STORE * FROM [TableName] INTO [lib://Connection/file.qvd] (qvd);`. There is no append mode — for incremental output, see `incremental-load-patterns.md`.
+1. **STORE writes one table per statement:** `STORE * FROM [TableName] INTO [lib://Connection/file.qvd] (qvd);`. There is no append mode — for incremental output, see `references/incremental-load-patterns.md`.
 2. **Optimized read** is preserved by `LOAD *`, field subsetting, `AS` renaming, `LOAD DISTINCT`, `CONCATENATE`, and single-parameter `EXISTS(field)`. It is forced to standard by any field transform, derived fields, two-parameter `EXISTS(field, expression)`, WHERE clauses other than single-parameter EXISTS, or `MAP ... USING`. Folklore correction: field renaming and reordering do NOT break optimized read.
 3. **Read each QVD from disk exactly once.** Load to a temp, serve all downstream maps and tables from RESIDENT, then DROP the temp.
 
@@ -282,7 +282,7 @@ Full reference: `references/qvd-operations.md` (STORE, optimized vs standard rul
 | SCD Type 2 dimension | **Dual-timestamp** (effective_from + effective_to) | Both timestamps tracked |
 | Mutable with deletes | Insert/update/delete | Change detection + deletion flag or full-key comparison |
 
-**Critical:** The dual-timestamp SCD Type 2 pattern must capture BOTH newly created records AND records whose effective_to changed (previously current records that were closed). Missing the closure condition = silent data loss. See `incremental-load-patterns.md` for complete working code and `script-templates/dual-timestamp-incremental.qvs` for the ready-to-use template.
+**Critical:** The dual-timestamp SCD Type 2 pattern must capture BOTH newly created records AND records whose effective_to changed (previously current records that were closed). Missing the closure condition = silent data loss. See `references/incremental-load-patterns.md` for complete working code and `script-templates/dual-timestamp-incremental.qvs` for the ready-to-use template.
 
 ## 12. Master Calendar
 
@@ -318,7 +318,7 @@ See `script-templates/master-calendar.qvs` for the production-ready template.
 
 `TRACE` for milestone logging, `ScriptError` vs `ScriptErrorCount` for error tracking, `ErrorMode` for halt-vs-continue behavior. The single biggest gotcha is confusing `ScriptError` (resets after every successful statement, recent-statement only) with `ScriptErrorCount` (cumulative across the reload) — guarding against an error across multiple operations requires snapshotting `ScriptErrorCount` before and comparing after. Second-most-common surprise: a bare `;` inside an unquoted TRACE message terminates the statement early — use periods/dashes as in-text separators, or quote the entire message.
 
-Full reference: `references/error-handling.md` (TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2 semantics, file-existence guards via FileTime, field-value inspection patterns, and the relationship between the `error-handling.qvs` framework and `diagnostic-patterns.md`).
+Full reference: `references/error-handling.md` (TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2 semantics, file-existence guards via FileTime, field-value inspection patterns, and the relationship between the `error-handling.qvs` framework and `references/diagnostic-patterns.md`).
 
 ## 14. NoConcatenate and Auto-Concatenation
 
@@ -492,8 +492,8 @@ Clean delimiters with PurgeChar before expanding.
 - `references/null-handling.md` -- canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue, key-field NULL, date sentinel guards, decision framework)
 - `references/error-handling.md` -- TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2, file-existence guards, field-value inspection, framework-vs-standalone selection
 - `references/subroutine-patterns.md` -- Must_Include vs Include, CALL syntax, SUB variable scoping rules, FOR EACH iteration with Cloud wildcard caveat, phantom field detection, composite key workaround
-- `incremental-load-patterns.md` -- Complete incremental load patterns with working code
-- `diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries
+- `references/incremental-load-patterns.md` -- Complete incremental load patterns with working code
+- `references/diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries
 - `script-templates/master-calendar.qvs` -- Production-ready master calendar
 - `script-templates/error-handling.qvs` -- Error handling and logging framework
 - `script-templates/clean-null-function.qvs` -- Null-cleaning variable functions

@@ -85,7 +85,7 @@ Script structure reveals the app-architecture pattern. Look for:
 - **Four-layer (extract / transform / model / UI)** — each layer is its own app with QVDs as the contract. Indicated by clearly named app suffixes (`OrderExtract`, `OrderTransform`, `OrderModel`, `OrderAnalytics`).
 - **Binary load** — a downstream app reloads an upstream app's full data model via `Binary lib://...`. Indicated by a `Binary` statement at the top of the script with no other LOAD/SELECT before it.
 
-The structural mechanics for each architecture pattern live in `qlik-data-modeling` → `multi-app-architecture.md`.
+The structural mechanics for each architecture pattern live in `qlik-data-modeling` → `references/multi-app-architecture.md`.
 
 **Incremental load patterns** appear as:
 

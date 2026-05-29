@@ -34,7 +34,7 @@ Avoid framing reload thresholds in absolute minutes — the right number depends
 
 Investigate field-level and script-load optimization before splitting. Architecture changes carry operational cost; spend it deliberately.
 
-Structural mechanics for each pattern — generator/consumer contracts, four-layer contracts, binary load syntax — live in `qlik-data-modeling` → `multi-app-architecture.md`. This section covers WHEN to split based on performance signals; that file covers HOW the patterns work.
+Structural mechanics for each pattern — generator/consumer contracts, four-layer contracts, binary load syntax — live in `qlik-data-modeling` → `references/multi-app-architecture.md`. This section covers WHEN to split based on performance signals; that file covers HOW the patterns work.
 
 ### B. Memory Budget at Design Time
 
