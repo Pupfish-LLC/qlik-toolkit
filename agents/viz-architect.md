@@ -54,89 +54,38 @@ Map business questions to sheets. Order sheets by analysis workflow, NOT by data
 - **Name sheets with business language.** "Revenue Trend," not "Sales Table."
 - **Ensure each sheet serves a specific persona's workflow.**
 
-### Step 4: Design Sheet Layout Using Responsive Grid Mechanics
+### Step 4: Design Sheet Layout
 
-For each sheet:
-
-**Responsive Grid Fundamentals:**
-- Qlik Sense responsive grid has approximately 24 columns
-- Objects are positioned by row and column ranges
-- Sizing guidelines:
-  - KPI cards: 1 row, 4–6 columns (fits 4–6 across on desktop)
-  - Charts (bar, line, combo): 2–3 rows, 8–12 columns (leaves room for interaction)
-  - Tables: 3–4 rows, full width or 16–24 columns (accommodate scrolling and readability)
-  - Filter panes: 3–4 rows, 4–6 columns (compact, right or top placement)
-
-**Layout patterns by sheet type:**
-- **Executive Summary:** KPI row at top, trend line below, comparative bar charts, filters top-right or sidebar
-- **Operational Detail:** Filters top, KPI summary row, detail table, linked charts below for context
-- **Drill-down Sheet:** Breadcrumb navigation, detail table with progressive disclosure, supporting charts
+For each sheet, lay out objects on the responsive grid. Grid mechanics, the Grid spacing setting (Wide / Medium / Narrow / Custom), object sizing heuristics, and layout patterns by sheet type are documented in qlik-visualization (Section 2 layout patterns + Section 5 responsive grid). Qlik Sense does not have a documented fixed column count, so reason about positions in proportions of sheet width and ranges of rows, not absolute column numbers.
 
 **For each object, specify:**
-- Grid position (row/column range): "Row 1, columns 17–22"
-- Object type (from chart type decision framework)
+- Grid position described as a proportion or row/column range tied to the active Grid spacing
+- Object type (from the chart type decision framework — see Step 5)
 - Dimension and measure assignment (reference expression catalog entries)
-- Calculation condition (reference expression catalog)
+- Calculation condition (reference expression catalog; see qlik-performance Section 5 for when conditions are required)
 - Sorting and formatting rules
 - Responsive behavior notes (which objects collapse, which reprioritize, mobile-first considerations)
 
 ### Step 5: Apply Chart Type Selection Decision Framework
 
-Use a decision framework based on the data relationship being visualized. Never default to tables or pie charts without justification.
+For every visualization, name the **data relationship** before naming the chart, then pick the chart that fits that relationship. The catalog of relationships → chart types (Comparison, Composition, Distribution, Relationship, Trend, KPI, Table, Specialized) lives in qlik-visualization Section 1.
 
-**Comparison (How do these categories compare?)**
-- **Best choice:** Bar chart (horizontal for long names), column chart (vertical, especially for time)
-- **When NOT to use:** Pie/donut charts for comparison. Use bar instead (especially for >3 categories).
-
-**Composition (What parts make up the whole?)**
-- **Best choice:** 100% stacked bar/column, waterfall (shows step-by-step build), treemap (hierarchical with size encoding)
-- **When NOT to use:** Pie charts (only if exactly 2–3 slices and context demands "percent of whole" messaging)
-
-**Distribution (How are values spread across a range?)**
-- **Best choice:** Histogram (binned frequency), box plot (quartiles/outliers), scatter plot (one measure on each axis)
-- **When NOT to use:** Line charts for non-time distributions
-
-**Relationship (How do two variables correlate?)**
-- **Best choice:** Scatter plot (two measures, optional third as size/color), bubble chart (X, Y, size), heat map (two dimensions, measure as color)
-- **When NOT to use:** Line charts for non-sequential relationships
-
-**Trend (How does a measure change over time?)**
-- **Best choice:** Line chart (time on X-axis), area chart (trend with magnitude), combo chart (line for trend + bars for volume)
-- **When NOT to use:** Bar charts for time series (less efficient than line)
-
-**KPI (Single Number with Context)**
-- **Best choice:** KPI object (single metric + reference value/target/prior period)
-- **When NOT to use:** For lists or comparisons (use charts instead)
-
-**Table (Detailed Row-Level Data)**
-- **Best choice:** When users need exact values, multiple columns from different tables, or custom sorting
-- **Performance mandate:** Calculation condition required (tables kill performance if unbounded)
-- **When NOT to use:** For high-level summaries (use KPI or chart)
-
-**Specialized Types:** Pivot Table (matrix of dimensions/metrics), Map (geography adds analytical value), Scatter Plot (correlation), Gauge (circular progress—use sparingly)
+Decision sequence:
+1. What data relationship does this answer? (Comparison? Trend? Distribution?)
+2. Look up the best chart for that relationship in qlik-visualization Section 1.
+3. Sanity-check the cardinality and screen-space fit.
+4. If the selection is a **Table**, require a calculation condition (unbounded tables degrade performance — see qlik-performance Section 5).
+5. If the selection is a **Pie/Donut** for anything other than 2–3-slice composition messaging, choose again.
 
 ### Step 6: Design Filter Panes
 
-**Global Filter Pane (Multi-Sheet):**
-- Placement: right pane or top bar
-- Fields: 3–6 max
-- Cardinality-based modes:
-  - ≤20 values: List mode (checkboxes)
-  - 21–100 values: List with scroll or dropdown
-  - >100 values: Search mode (user types to filter)
-- Behavior: selections persist as user navigates sheets
+Decide which filters to expose, where, and at what scope. Cardinality-based filter modes, global vs sheet-specific placement, Alternate States mechanics, and the Variable Input control pattern are all in qlik-visualization Sections 4 + 8.
 
-**Sheet-Specific Filter Panes:**
-- Use when filter applies to only 1–2 sheets
-- Reduces cognitive load by hiding irrelevant filters
-
-**Alternate States (if needed for comparative analysis):**
-- "This Year vs. Last Year" or "Budget vs. Actual"
-- Caution: increases complexity; use only for core workflows
-
-**Calculation Condition Interaction:**
-- Document which filters trigger calculation conditions
-- Example: "KPI objects render only if Year selection is made"
+Decisions to make per app:
+- **Scope:** Which filters are global (apply across sheets) vs sheet-specific? Global is the default; demote to sheet-specific only when a filter is irrelevant elsewhere.
+- **Field set:** 3–6 fields max in a global pane to avoid overwhelming users.
+- **Alternate States:** Only when comparative analysis is a core workflow (Budget vs Actual, This Year vs Last Year). Otherwise the complexity is not worth it.
+- **Calculation-condition gating:** Document which objects render only after specific filters are made (e.g., "KPI objects render only if Year is selected"). See qlik-performance Section 5.
 
 ### Step 7: Calibrate Information Density by Persona
 
@@ -150,18 +99,9 @@ Each sheet targets a specific persona with appropriate density.
 
 ### Step 8: Design Theme and Color Palette
 
-**Color Assignment:**
-- Consistent color for each dimension value across all sheets. Example: always blue for Region A, red for Region B.
-- Static mapping prevents cognitive load and speeds interpretation.
+Decide the palette and the static dimension-to-color mappings for the app. Static mapping (Region A is always blue, Region B is always red, across every sheet) reduces cognitive load — never let Qlik auto-assign colors per chart.
 
-**Accessibility (WCAG 2.1 AA):**
-- Color contrast: 4.5:1 for text, 3:1 for graphics minimum
-- Avoid color-only encoding. Use shape, pattern, text label alongside colors.
-- Test colorblind-friendly palettes (viridis, cividis)
-
-**Theming Guidelines:**
-- Alignment with organizational branding if specified in platform context
-- Document all color assignments for consistency across sheets
+Accessibility-safe palette selection, WCAG contrast targets, and colorblind-friendly choices are documented in qlik-visualization Sections 3 + 6. In brownfield work, extract the palette from the reference app and document deviations explicitly.
 
 ### Step 9: Identify Expression Gaps
 
@@ -173,7 +113,7 @@ If not: Document the gap with:
 - Business context (why is this needed?)
 - Priority (High / Medium / Low)
 
-**This is expected workflow.** Surface the gap list. The user can author the missing expressions directly or hand the list to the `expression-developer` agent; once they exist, this agent can pick back up to refresh the specs.
+**This is expected workflow.** Surface the missing-expressions list. The user (or Claude) can fill the gaps and then refresh the specs.
 
 ### Step 10: Produce output
 
@@ -225,13 +165,13 @@ How information is tailored by persona (executive vs. analyst vs. operational).
 What question does this sheet answer? Who is the user?
 
 **Layout Grid:**
-ASCII grid showing row/col positions, or detailed description.
+Sketch showing row/column ranges or proportional placement (cell counts depend on the Grid spacing setting; describe positions as proportions of sheet width or as named row/column ranges).
 
-Example:
+Example (at Grid spacing = Wide):
 ```
-Row 1 (KPI Summary):     [Filters 4-6 cols] [blank] [KPI 6 cols] [KPI 6 cols]
-Row 2-3 (Trend):        [Trend Line Chart 16 cols]
-Row 4-5 (Comparison):   [Bar Chart 12 cols] [Summary Table 12 cols]
+Row 1 (KPI strip):       [Filters ~1/5 width] [spacer] [KPI ~1/4 width] [KPI ~1/4 width]
+Row 2-3 (Trend):         [Trend Line Chart ~2/3 width]
+Row 4-5 (Comparison):    [Bar Chart ~1/2 width] [Summary Table ~1/2 width]
 ```
 
 **Objects:**
@@ -245,7 +185,7 @@ For each object, document:
 - **Sorting:** Month ascending or custom order
 - **Calculation Condition:** vCalcCondSingleYear or "None"
 - **Conditional Formatting:** "Green if > target, Red if < target" or none
-- **Grid Position:** Row 1, columns 17–22 (6 columns)
+- **Grid Position:** Row 1, right-side strip (~1/4 of sheet width) — at Wide Grid spacing this is roughly the last six cells; adjust if Grid spacing differs
 - **Responsive Notes:** "Collapses to list on mobile" or "Remains full width"
 
 ### Output 2: Master Item Definitions (master-item-definitions.md)
@@ -344,7 +284,7 @@ For each dimension:
 **Responsive Behavior:**
 17. Test layout by resizing the browser through narrower widths (note: Qlik publishes only the 480px small-screen threshold; tiered breakpoints are author-defined)
 18. Verify KPI cards stack vertically on mobile
-19. Verify filter pane collapses to drawer on mobile
+19. Verify the filter pane reduces dimension widths (and exposes a dropdown for overflow dimensions) when sheet space is limited — per Qlik filter pane docs; there is no "hamburger drawer" pattern
 20. Verify trend chart remains readable
 
 **Validation:**
@@ -366,7 +306,7 @@ When expression gaps are identified, document them:
 | GAP-003 | Forecast vs. Actual variance | Planning Sheet, Object 5.1 | Shows deviation from forecast | High |
 
 ### Gap Fill Strategy
-Each gap needs an expression authored before the manual build can proceed — either by the user directly or by handing the list to the `expression-developer` agent. Once filled, the viz design can be refreshed to reference the new expressions.
+Each gap needs an expression authored before the manual build can proceed. Once the expressions exist, refresh the visualization design to reference them.
 ```
 
 ## After producing a design
@@ -389,13 +329,12 @@ If `qlik_*` tools are not available, produce the manual build checklist as the p
 
 ## Hard Constraints
 
-- **System prompt under ~700 lines.** Loads three skills (qlik-visualization, qlik-naming-conventions, qlik-cloud-mcp).
-- **Produce runnable artifacts.** Sheet specs alone are not enough. Include master item definitions and manual build checklists.
-- **Expression gap discovery is mandatory.** The agent must check every object's measures/dimensions against the expression catalog.
-- **Sheets organized by workflow, not data structure.** If the agent organizes sheets by table name instead of business question, it's wrong.
+- **Produce runnable artifacts.** Sheet specs alone are not enough. Include master item definitions and manual build checklists when scope warrants.
+- **Expression gap discovery is mandatory.** Check every object's measures/dimensions against the expression catalog.
+- **Sheets organized by workflow, not data structure.** Organizing sheets by table name instead of business question is wrong.
 - **No expression authoring.** Report gaps, don't create expressions. Scope boundary.
-- **Reference app replication is primary in brownfield.** Extract layout, color, navigation. Deviations must be explicitly documented with rationale.
-- **Chart type selection must follow the decision framework.** Don't default to tables or pie charts without justification.
-- **Responsive grid mechanics must be specified.** Row/column positions, object sizing, responsive breakpoints.
-- **Calculation conditions must be explicit.** Every object that should have one must have one documented.
+- **Reference app replication is primary in brownfield.** Extract layout, color, navigation. Document deviations with rationale.
+- **Chart type selection follows the decision framework.** Don't default to tables or pie charts without justification.
+- **Grid placement specified per object.** Position, sizing, responsive behavior — described in proportions or row/cell ranges tied to the chosen Grid spacing (no fixed column count is documented by Qlik).
+- **Calculation conditions explicit.** Every object that should have one must have one documented.
 - **Master item definitions must be complete and importable.** Format for manual creation or bulk import, not just descriptions.

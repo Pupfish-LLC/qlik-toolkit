@@ -75,6 +75,21 @@ Qlik Sense responsive mode stacks objects vertically on smaller screens. Objects
 
 **Detail Analysis Sheet** — Filters on left side (global or sheet-specific), visualization grid on right. Top-right: high-level overview chart. Bottom-right: drill-down table. Users filter left side and see impact across visualizations.
 
+**Drill-down Sheet** — Breadcrumb navigation at top, detail table with progressive disclosure, supporting charts below for context.
+
+### Object Sizing Heuristics (relative to sheet width)
+
+Since the responsive grid has no documented fixed column count, size objects in proportions rather than absolute columns:
+
+| Object | Typical width | Typical height |
+|---|---|---|
+| KPI card | ~1/4–1/6 of sheet width (4–6 across a row) | 1 row strip |
+| Bar/line/combo chart | ~1/3–1/2 of sheet width | 2–3 rows (leaves room for legend + interaction) |
+| Table | full or near-full width | 3–4 rows (accommodate scrolling) |
+| Filter pane | thin column (~1/5–1/4 of sheet width) | 3–4 rows |
+
+Reduce Grid spacing (Wide → Narrow) when more granular placement is needed.
+
 ---
 
 ## Section 3: Color and Formatting Standards
@@ -131,7 +146,9 @@ Allow multiple independent filter contexts on the same sheet. Use for "Budget vs
 
 ### Qlik Sense Responsive Grid
 
-By default, Qlik Sense applies a responsive layout that "adjusts the sheet to the dimensions of the user's screen" (Qlik docs). Layout is fluid rather than tiered: there is no Qlik-documented Desktop/Tablet/Mobile breakpoint scheme. The one documented threshold is the 480-pixel "small screen" mode, in which web-browser users can navigate and select but cannot create or edit content. Authors can override responsive layout per sheet by switching Sheet size from Responsive to Custom (Sheet properties → Sheet size), with custom widths and heights between 300 and 4,000 pixels.
+By default, Qlik Sense applies a responsive layout that "adjusts the sheet to the dimensions of the user's screen" (Qlik docs). Layout is fluid rather than tiered: there is no Qlik-documented Desktop/Tablet/Mobile breakpoint scheme, and no Qlik-documented fixed column count (community claims of "24 columns" are not tier-1). The one documented threshold is the 480-pixel "small screen" mode, in which web-browser users can navigate and select but cannot create or edit content. Authors can override responsive layout per sheet by switching Sheet size from Responsive to Custom (Sheet properties → Sheet size), with custom widths and heights between 300 and 4,000 pixels.
+
+**Grid spacing** (Sheet properties → Grid spacing) controls cell density on the responsive sheet — settings are **Wide** (default), **Medium**, **Narrow**, or **Custom** (slider; higher = narrower spacing = more cells per sheet width). The actual cell count varies with the spacing setting, so positions should be reasoned about in proportions of sheet width rather than absolute column numbers.
 
 ### Design for Responsive
 
