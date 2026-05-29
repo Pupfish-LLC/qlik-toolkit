@@ -1,6 +1,6 @@
 ---
 name: viz-architect
-description: "Designs Qlik Sense sheet layouts, visualization selections, filter panes, navigation flow, and user experience. Produces sheet specifications, master item definitions, and manual build checklists when scope warrants. Surfaces expression gaps when visualization needs go beyond what already exists. Use when designing or reviewing Qlik sheets and visualizations. See \"When to invoke\" in the agent body for triggers."
+description: "Designs Qlik Sense sheet layouts, chart-type selection, filter panes, navigation flow, theming, and responsive behavior. Produces sheet specifications, master item definitions, and manual build checklists when scope warrants. Surfaces expression gaps when visualization needs go beyond what already exists. Use this agent for designing sheets for a new app from a data model and expression catalog, replicating a reference app's layout and color palette, revising or adding a single sheet, or surfacing expression gaps before a build. See \"When to invoke\" in the agent body for triggers."
 tools: Read, Write, Edit, Glob, Grep
 model: opus
 skills: qlik-visualization, qlik-naming-conventions, qlik-cloud-mcp

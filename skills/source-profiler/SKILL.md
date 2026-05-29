@@ -1,6 +1,6 @@
 ---
 name: source-profiler
-description: Data source profiling capability for Qlik development. When MCP connections are available, provides query templates and profiling procedures to assess source schemas, field types, cardinality, null rates, sample values, and data quality indicators. When MCP is unavailable, generates a structured Source Profile Template for manual completion. Includes source architecture classification (annotating tables with architectural role, key structure, mutability, incremental load pattern, and consumption implications). Load during requirements gathering or source profiling phases.
+description: "Data source profiling for Qlik development. When MCP or direct database access is available, provides query templates and procedures to assess source schemas, field types, cardinality, null rates, sample values, and data quality indicators. When live access is unavailable, generates a structured Source Profile Template for manual completion. Includes source architecture classification — annotating tables with architectural role, key structure, mutability, incremental load pattern, and consumption implications (dimensional warehouse, OLTP, Data Vault 2.0, flat files). Load when profiling source schemas before data-model design, assessing source data quality, classifying source architecture, or filling in a Source Profile Template by hand."
 user-invocable: false
 ---
 

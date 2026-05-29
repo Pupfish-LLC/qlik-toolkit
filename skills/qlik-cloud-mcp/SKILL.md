@@ -1,6 +1,6 @@
 ---
 name: qlik-cloud-mcp
-description: Capability registry for the Qlik Cloud MCP server. Maps MCP tools to development tasks, provides MCP detection patterns, documents behavioral gotchas not covered by tool definitions, and defines multi-step workflows for expression validation, reference app analysis, visualization scaffolding, and data quality checks. Load whenever an agent needs to interact with a live Qlik Cloud tenant. The tool definitions themselves document parameters, response structures, and basic usage -- this skill covers framework integration, sequencing, and pitfalls discovered through live testing.
+description: "Capability registry for the Qlik Cloud MCP server: maps MCP tools to development tasks, provides MCP detection patterns, documents behavioral gotchas not covered by tool definitions, and defines multi-step workflows for expression validation, reference app analysis, visualization scaffolding, and data quality checks against a live tenant. The MCP tool definitions themselves document parameters and response structure; this skill covers framework integration, sequencing, and pitfalls discovered through live testing. Load when interacting with a live Qlik Cloud tenant via MCP, validating an expression against real data, analyzing a reference app, or running post-load data quality checks."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: qa-reviewer
-description: "Reviews Qlik development artifacts (data models, load scripts, expressions, visualization specs, full apps) against best practices, naming conventions, script quality, expression correctness, performance patterns, and cross-artifact consistency. Performs data quality validation when live data access (MCP) is available. Read-only by design: produces findings with severity ratings and remediation guidance, doesn't fix issues. Use when you want a structured QA pass on any Qlik artifact or combination. See \"When to invoke\" in the agent body for triggers."
+description: "Reviews Qlik Sense development artifacts (data models, load scripts, expressions, viz specs, full apps) against best practices, naming conventions, expression correctness, performance patterns, and cross-artifact consistency. Performs post-load data quality validation against a live tenant when MCP access is available. Read-only by design — produces severity-rated findings with remediation guidance, doesn't fix issues. Use this agent for a focused review of a single artifact, a comprehensive cross-artifact QA pass, verifying fixes from a prior review, or running post-load data quality checks. See \"When to invoke\" in the agent body for triggers."
 tools: Read, Grep, Glob, Bash
 model: opus
 skills: qlik-review-checklist, qlik-naming-conventions, qlik-data-modeling, qlik-expressions, qlik-load-script, data-quality-validator, qlik-cloud-mcp

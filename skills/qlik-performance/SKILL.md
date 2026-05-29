@@ -1,12 +1,6 @@
 ---
 name: qlik-performance
-description: |
-  Memory optimization (field types, dual values, symbolic keys, data volume estimation),
-  script load optimization (QVD optimized load rules, preceding LOAD, redundant disk reads),
-  expression calculation optimization (Aggr nesting, set analysis complexity, pre-calculated flags),
-  calculation conditions, data reduction techniques (load-time vs runtime), and
-  profiling/diagnostic approaches for Qlik Sense. Load when optimizing or reviewing
-  performance-sensitive artifacts.
+description: "Performance optimization for Qlik Sense: memory optimization (field types, dual values, symbolic keys, data volume estimation), script load optimization (QVD optimized load rules, preceding LOAD, redundant disk reads), expression calculation optimization (Aggr nesting, set analysis complexity, pre-calculated flags), calculation conditions, data reduction techniques (load-time vs runtime), and profiling/diagnostic approaches. Load when optimizing reload time, reducing app memory footprint, speeding up a slow chart, choosing between load-time vs expression-time computation, evaluating Aggr() cardinality, or diagnosing why an app feels slow."
 user-invocable: false
 ---
 

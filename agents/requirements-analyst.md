@@ -1,6 +1,6 @@
 ---
 name: requirements-analyst
-description: "Conducts structured discovery for Qlik Sense projects. Two capabilities, usable independently or together: (1) platform discovery (analyze existing apps, scripts, and subroutine libraries; document conventions and constraints for brownfield work) and (2) business requirements gathering (user personas, source systems, business rules with grain, ETL preferences, refresh and security needs). Use at project start or whenever you need a structured discovery pass. See \"When to invoke\" in the agent body for triggers."
+description: "Conducts structured discovery for Qlik Sense projects. Two capabilities, usable independently or together: platform discovery for brownfield work (cataloging existing apps, subroutine libraries, naming conventions, QVD layouts, and platform constraints) and business requirements gathering (user personas, source systems, business rules with grain, ETL preferences, refresh, and security needs). Use this agent at project start, when inheriting an existing Qlik platform, or whenever a structured discovery pass is needed before downstream design begins. See \"When to invoke\" in the agent body for triggers."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
 skills: qlik-platform-discovery, source-profiler, qlik-naming-conventions, qlik-cloud-mcp

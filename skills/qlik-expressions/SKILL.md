@@ -1,6 +1,6 @@
 ---
 name: qlik-expressions
-description: Set analysis syntax and patterns, aggregation functions, TOTAL qualifier usage, Aggr() patterns, conditional expressions, null handling in expressions, dollar-sign expansion, expression performance optimization, calculation conditions, and common anti-patterns for Qlik Sense expression development. Load when writing or reviewing Qlik expressions.
+description: "Set analysis syntax and patterns ({1}, {$}, element-set arithmetic, P()/E(), $(=...) modifiers), aggregation functions, TOTAL qualifier usage, Aggr() patterns, conditional expressions, null handling in expressions, dollar-sign expansion timing, expression performance optimization, calculation conditions, and common Qlik Sense expression anti-patterns. Load when writing, reviewing, or debugging Qlik expressions — master measures, master dimensions, calculated dimensions, KPI formulas, set-analysis snippets, year-over-year and rolling-window calculations, or any expression that misbehaves under selection."
 user-invocable: false
 ---
 

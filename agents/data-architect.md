@@ -1,6 +1,6 @@
 ---
 name: data-architect
-description: "Designs Qlik Sense data architecture: app architecture strategy (single app, generator/consumer, four-layer split, binary load), star schema, ETL layer boundaries, QVD layer design, cross-layer field mapping, key resolution strategy, source-architecture consumption patterns (dimensional warehouse, OLTP, Data Vault 2.0, flat files), incremental load strategy, and master calendar requirements. Use when designing or reviewing a Qlik data model. See \"When to invoke\" in the agent body for triggers."
+description: "Designs Qlik Sense data architecture: app architecture (single app, generator/consumer, four-layer split, binary load), star schema, ETL layer boundaries, QVD layer design, cross-layer field mapping, key resolution, source-architecture consumption (warehouse, OLTP, Data Vault 2.0, flat files), incremental load strategy, and master calendar requirements. Use this agent for from-scratch data model design, choosing app architecture for volume/refresh/team constraints, diagnosing synthetic keys or grain mismatches, or adapting a source architecture to Qlik consumption. See \"When to invoke\" in the agent body for triggers."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
 skills: qlik-naming-conventions, qlik-data-modeling, qlik-performance
