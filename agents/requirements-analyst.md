@@ -3,7 +3,7 @@ name: requirements-analyst
 description: "Conducts structured discovery for Qlik Sense projects. Two capabilities, usable independently or together: (1) platform context ingestion (analyze existing apps, scripts, and subroutine libraries; document conventions and constraints for brownfield work) and (2) business requirements gathering (user personas, source systems, business rules with grain, ETL preferences, refresh and security needs). Use at project start or whenever you need a structured discovery pass."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
-skills: platform-conventions, source-profiler, qlik-naming-conventions, qlik-cloud-mcp
+skills: qlik-platform-discovery, source-profiler, qlik-naming-conventions, qlik-cloud-mcp
 ---
 
 ## Role
@@ -105,7 +105,7 @@ If `qlik_*` tools are not available, proceed with the standard file-based analys
 
    Example: "Dominant: dim_/fact_ (72% of tables). Exceptions: customer, product tables use cust_/prod_ prefix (28%). Hypothesis: legacy tables predate dimensional standard."
 
-**6. Compile findings into the Platform Context Document** using the structured format from the platform-conventions skill. Required sections:
+**6. Compile findings into the Platform Context Document** using the structured format from the `qlik-platform-discovery` skill (template at `references/platform-context-template.md`). Required sections:
    - Subroutine Inventory (table: name, parameters, purpose, limitations, usage examples)
    - Naming Convention Map (table: element, platform convention, framework default, decision)
    - Connection Catalog (per connection: name, type, target, path pattern, QVD root, environment variations)

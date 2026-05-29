@@ -3,7 +3,7 @@
 **Project:** [project name from requirements gathering specification]
 **Date:** [completion date]
 **Status:** [Draft | Confirmed]
-**Source Materials:** [list of files from inputs/ that were analyzed: inputs/existing-apps/, inputs/platform-libraries/, inputs/upstream-architecture/]
+**Source Materials:** [list of artifacts analyzed — for example, reference app scripts (`.qvs`), shared subroutine libraries, source-system documentation, ERDs]
 
 ---
 
@@ -172,7 +172,7 @@ Classification of the source data architecture (if profiled in source profiling)
 |---|---|---|---|---|---|
 | [source table] | [Dimension \| Fact \| Lookup \| Staging \| Hub \| Link \| Satellite \| Bridge \| Snapshot] | [Natural key \| Surrogate key \| Composite key \| Hash key \| No key] | [Immutable \| Mutable \| SCD Type 1 \| SCD Type 2 \| Temporal] | [Full refresh \| Insert-by-timestamp \| Insert/Update-by-timestamp \| Dual-timestamp \| File-level detection \| Not applicable] | [One sentence describing how Qlik should consume this table] |
 
-**Status:** [Completed (source profiling source profiling done) | Pending source profiling (source profiling not yet executed)]
+**Status:** [Completed (source profiling done) | Pending source profiling]
 
 **Completed Example:**
 
@@ -285,12 +285,12 @@ Platform-level limits, deployment model, security model, and other constraints t
 
 ## Notes and Reconciliation Decisions
 
-Use this section to document any decisions made during platform context ingestion that affect downstream development:
+Use this section to document any decisions made during platform discovery that affect downstream development:
 
-- [Decision 1]: [Reasoning and impact on Phases 1-8]
+- [Decision 1]: [Reasoning and downstream impact]
 - [Decision 2]: [Reasoning and impact]
 - [Convention conflict resolutions]: [Which convention was chosen and why]
-- [Blocked dependencies]: [If any platform context was unavailable, note it here and plan for platform context ingestion revisit]
+- [Blocked dependencies]: [If any platform context was unavailable, note it here and plan to revisit when materials become available]
 
 **Completed Example:**
 
