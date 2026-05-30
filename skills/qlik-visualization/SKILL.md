@@ -27,7 +27,7 @@ Do not choose chart types by guess. Use a decision framework based on the data r
 - **Example:** "What departments contribute to total headcount?" → 100% stacked bar chart
 
 **Distribution (How are values spread across a range?)**
-- **Best choice:** Histogram (binned frequency distribution), box plot (quartiles and outliers), scatter plot (one measure on each axis showing density)
+- **Best choice:** Histogram (binned frequency distribution), box plot (quartiles and outliers — part of the Visualization Bundle, verify it is enabled), scatter plot (one measure on each axis showing density)
 - **Avoid:** Line charts for non-time distributions
 - **Example:** "How are employee salaries distributed across ranges?" → Histogram showing salary buckets and frequency
 
@@ -208,6 +208,8 @@ The Variable Input control's **Dynamic values** mode parses a pipe-delimited str
 For the full walkthrough — load-script build, value-label vs value-only form, chart-side double-dollar expansion (`$($(vVar))`), and the slower inline-Concat alternative — see [references/variable-input-control.md](references/variable-input-control.md). The script-side Concat-and-Peek technique is documented in `qlik-load-script` Section 7.
 
 Reference: help.qlik.com Cloud → Dashboard Bundle → Variable Input control.
+
+Reference: help.qlik.com Cloud → Visualization Bundle (https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Visualizations/visualization-bundle.htm).
 
 ---
 
