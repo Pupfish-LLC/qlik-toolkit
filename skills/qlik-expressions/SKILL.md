@@ -42,8 +42,9 @@ The curly braces `{}` are required. Everything inside is the set modifier.
 **Set identifier (optional, default `$`):**
 - `$` — Current selection in the default state (default if omitted)
 - `1` — All records in the app, ignoring all selections
-- `$1` — Previous selection in the default state (one step back in selection history). `$2` is two back, and so on.
-- `$_1` — Next (forward) selection in the default state. `$_2` is two forward, and so on.
+- `$_1` — Previous selection in the default state (back button; one step back in selection history). `$_2` is two steps back, and so on. (Source: help.qlik.com — Set analysis identifiers)
+- `$1` — Next (forward) selection in the default state (forward button; one step forward in selection history). `$2` is two steps forward, and so on. (Source: help.qlik.com — Set analysis identifiers)
+<!-- Cross-reference: see references/set-analysis.md Section 1 "Set Identifier" for the canonical definition. Fix: SPEC-04-01 / SPEC-10-01. -->
 - `BookmarkName` (or bookmark ID) — Selections saved in a named bookmark
 - `StateName` — Selections in a named alternate state. Referenced by state name, no `$` prefix: `Sum({MyState} [Amount])`. Bookmarks scoped to a state use `StateName::BookmarkName`.
 

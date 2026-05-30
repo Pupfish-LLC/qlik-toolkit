@@ -15,8 +15,9 @@ Every component is optional. The default set is the current selection (`$`), so 
 ### Set Identifier
 - `$` — Current selection in the default state (default if omitted)
 - `1` — All records in the app, ignoring all selections
-- `$1` — Previous selection in the default state (back-button history). `$2` is two back, and so on.
-- `$_1` — Next (forward) selection in the default state. `$_2` is two forward.
+- `$_1` — Previous selection in the default state (back button; one step back in selection history). `$_2` is two steps back, and so on. (Source: help.qlik.com — Set analysis identifiers)
+- `$1` — Next (forward) selection in the default state (forward button; one step forward in selection history). `$2` is two steps forward, and so on. (Source: help.qlik.com — Set analysis identifiers)
+<!-- Cross-reference: introductory summary in qlik-expressions/SKILL.md Section 2 "Set identifier". Fix: SPEC-04-02 / SPEC-10-01. -->
 - `BookmarkName` (or bookmark ID) — Selections from a saved bookmark
 - `StateName` — Selections in a named alternate state (referenced by state name, no `$` prefix). Use `StateName::BookmarkName` for a bookmark scoped to a state.
 - Omitted — Defaults to `$` (current selection)
