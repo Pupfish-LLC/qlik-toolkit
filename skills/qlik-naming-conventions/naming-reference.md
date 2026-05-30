@@ -163,7 +163,7 @@ Same rules as field names. Table names with spaces or special characters require
 - Must start with a letter or underscore
 - Can contain letters, numbers, underscores, and periods
 - **Cannot contain spaces** (unlike field names)
-- Period in variable names is allowed by the parser (standard `$(variablename)` expansion treats the dot as a literal character — `$(v.MyVar)` simply expands the variable named `v.MyVar`). It is discouraged for stylistic reasons: it complicates regex-based search/replace when refactoring variable references, and visually it resembles property access from other languages, which can mislead readers. Standard convention is camelCase with the `v` prefix: `vMyVar`, not `v.MyVar`.
+- Period in variable names is allowed by the parser (standard `$(variablename)` expansion treats the dot as a literal character — `$(v.MyVar)` simply expands the variable named `v.MyVar`). It is discouraged for stylistic reasons: it complicates regex-based search/replace when refactoring variable references, and visually it resembles property access from other languages, which can mislead readers, and a dotted variable name is visually indistinguishable from an entity-prefixed field reference, which is the dominant naming convention in this skill. Standard convention is camelCase with the `v` prefix: `vMyVar`, not `v.MyVar`.
 - Convention: camelCase with `v` prefix: `vTotalRevenue`, `vCurrentPeriod`
 
 ### QVD File Names

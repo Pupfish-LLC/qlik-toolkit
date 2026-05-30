@@ -6,4 +6,4 @@ Qlik load scripts (.qvs files):
 - Shared subroutine libraries that are `$(Must_Include=...)`-ed by app scripts.
 - A `script-manifest.md` documenting file purposes, dependencies, and run order if scripts are non-trivial.
 
-The Qlik app's script editor pulls these in via include statements or copy-paste.
+The Qlik app's script editor pulls these in via `$(Include=lib://...)` / `$(Must_Include=lib://...)` from a DATA FILES space, or by copy-paste.

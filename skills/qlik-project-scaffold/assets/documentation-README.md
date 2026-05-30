@@ -9,4 +9,4 @@ Project documentation:
 - User guide (for business audience)
 - Change log
 
-Use audience-calibrated writing: technical docs for developers, plain language for business users. Never mix audiences within a single document.
+Use audience-calibrated writing: technical docs for developers, plain language for business users. Prefer single-audience documents. When you must address both, separate by clearly labeled sections.
