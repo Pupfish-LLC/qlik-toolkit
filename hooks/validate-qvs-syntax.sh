@@ -252,7 +252,7 @@ process_file() {
         if echo "$scan_line" | grep -iqE '^\s*TRACE\s'; then
             semi_count=$(echo "$line" | tr -cd ';' | wc -c)
             if [ "$semi_count" -gt 1 ]; then
-                add_finding "$file" "$line_num" "TRACE statement contains $semi_count semicolons; the first ';' terminates the statement and anything after parses as an invalid statement. Replace embedded semicolons with commas, periods, or dashes."
+                add_finding "$file" "$line_num" "TRACE statement contains $semi_count semicolons (count includes any inside quoted strings); if any are outside the quoted text, the first such ';' terminates the statement and anything after parses as an invalid statement. Replace embedded unquoted semicolons with commas, periods, or dashes."
             fi
         fi
 
