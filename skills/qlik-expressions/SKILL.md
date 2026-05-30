@@ -86,7 +86,7 @@ Sum({$} [Amount])                    // Current selection (explicit $, same as o
 Sum({1} [Amount])                    // All data, no selection
 Sum({<Year={2024}>} [Amount])        // 2024 only, ignoring current year selection
 Sum({<Region={'East','West'}>} [Amount])  // East and West regions
-Sum({$+1} [Amount])                  // Current + all data (union)
+Sum({$+BMK_LastYear} [Amount])       // Union of current selection with a bookmark's selection
 Sum({<Year={2024}, Month={"<=6"}>} [Amount])  // 2024 first half
 ```
 
@@ -257,9 +257,6 @@ Aggr creates virtual tables in memory. Each level of nesting multiplies memory u
 **TOTAL is expensive:**
 TOTAL forces row-by-row recalculation. Pre-calculate totals as a script field when used repeatedly.
 
-**Set analysis is generally faster than flag multiplication for large datasets:**
-For large fact tables, prefer `Sum({<Flag={1}>} Amount)` over `Sum([Flag] * [Amount])`. Set analysis can use index optimization and shrinks the aggregation footprint; multiplication forces a per-row scan. The two are roughly equivalent on small datasets (Henric Cronström, "Performance of Conditional Aggregations," Qlik Design Blog).
-
 **Calculation conditions prevent unnecessary heavy calculations:**
 If a sheet condition fails, all calculations on that sheet skip. This saves processing time.
 
@@ -376,7 +373,7 @@ The reader of the catalog should never have to guess what an aggregation does on
 | Hardcoded year values in set analysis | `{<Year={2024}>}` is brittle. If you need current year dynamic, use variable. | Use variables: `{<Year={$(vCurrentYear)}>}` |
 | Aggr() with calculated dimensions | Aggr expects field names, not expressions. Calculated dimensions don't work. | Use only actual fields in Aggr dimension list. Pre-calculate in script if needed. |
 | Missing DISTINCT in Count | Count([field]) counts non-NULL rows. If duplicates exist and you want unique, you miss DISTINCT. | Use `Count(DISTINCT field)` when uniqueness matters. |
-| Wrong element set syntax in set analysis | Missing quotes on string values: `{<Region={East}>}` (East is a variable, not literal). Bracket confusion. | String literals need quotes: `{<Region={'East'}>}`. Use `{}` for implicit sets, `{}` shorthand for explicit. |
+| Wrong element set syntax in set analysis | Missing quotes on string values: `{<Region={East}>}` (East is a variable, not literal). Bracket confusion. | String literals need quotes: `{<Region={'East'}>}`. Use `<>` to override selections, `{}` for element sets. |
 | Using SET variable without understanding comma limitation | Passing expressions with commas to variable functions breaks. | Never pass expressions with commas to variable functions. Write inline instead. |
 
 For more anti-pattern details with examples, see `references/set-analysis.md` § Anti-Pattern Catalog.

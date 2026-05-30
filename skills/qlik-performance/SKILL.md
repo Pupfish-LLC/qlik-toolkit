@@ -308,6 +308,8 @@ Label every catalog entry. High-weight expressions are the first place to look w
 
 This labeling is a documentation convention, not an enforced check. Actual cost depends on selection state, table sizes, and hardware. Treat the bucket as a hint for "where to look first," not as a measurement.
 
+For the set-analysis-vs-flag-multiplication comparison referenced by Medium- and High-weight set-modifier patterns, see `qlik-expressions` § 8.
+
 ---
 
 ## 5. Calculation Conditions
