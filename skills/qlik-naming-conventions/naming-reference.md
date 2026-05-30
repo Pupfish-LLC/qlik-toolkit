@@ -41,7 +41,9 @@ This walkthrough traces 10 fields from a generic relational source (dimension an
 
 **Structural transformations change cardinality, not just names.** The `tags` field (a delimited string like `"electronics,sale,featured"`) is expanded via SubField at the Transform layer into a bridge table `ProductTag` with fields `product_key` and `Product.Tag`. One source field becomes two tables. The bridge table naming (`ProductTag`) follows the convention for bridge tables: descriptive of the relationship, no prefix.
 
-### Mapping RENAME for the DataModel Layer
+### Mapping LOAD + RENAME FIELDS USING for the DataModel Layer
+
+The pattern is two statements working together: a `Mapping LOAD` that builds the old-name → new-name lookup table, then `Rename Fields using <MapName>;` that applies the rename. "Mapping RENAME" is shorthand for this two-statement pair.
 
 ```qlik
 // This runs AFTER all tables are loaded and joined in the DataModel layer.

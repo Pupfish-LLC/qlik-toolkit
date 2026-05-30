@@ -249,9 +249,9 @@ What these examples show:
 - **Not every field changes at every layer.** `Product.Category` passes through DataModel unchanged because the business already calls it "Product."
 - **Structural transformations** can change cardinality, not just names. A delimited `tags` field expands via SubField into a bridge table `ProductTag` with fields `product_key` and `Product.Tag`. One source field becomes two tables.
 
-### The Field Rename Layer (Mapping RENAME)
+### The Field Rename Layer (Mapping LOAD + RENAME FIELDS USING)
 
-When business entity names differ from internal names, use `Mapping RENAME` at the DataModel layer boundary:
+When business entity names differ from internal names, apply the rename at the DataModel layer boundary using the **Mapping LOAD + RENAME FIELDS USING** pattern. The construct is two statements: a `Mapping LOAD` that builds the lookup table, then `Rename Fields using <MapName>;` that performs the rename. (There is no single `MAPPING RENAME` keyword in Qlik; "Mapping RENAME" is shorthand for the two-statement pair.)
 
 ```qlik
 FieldMap:
@@ -268,7 +268,7 @@ Rename Fields using FieldMap;
 
 > **Scope-wide rename:** `Rename Fields using` renames every loaded table that contains the old field name — not just the table you intend. If `Account.Email` also exists in a separate Lead extract that was not yet entity-prefixed, both occurrences are renamed to `Customer.Email`, silently creating an unintended link. Confirm the old name is unique across all loaded tables before running the rename. (Source: [help.qlik.com — Rename Field statement](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Rename-Field.htm))
 
-**When to use Mapping RENAME:**
+**When to use Mapping LOAD + RENAME FIELDS USING:**
 - The business calls the entity something different than the technical model (`Account` vs. `Customer`)
 - You need to align field names with an existing app's conventions in a brownfield project
 

@@ -431,7 +431,7 @@ Three mechanisms for renaming fields in scripts, from simple to systematic:
 
 - **Aliasing in LOAD:** `source_field AS [UI.Field.Name]` -- use for per-field transforms during extraction or model load.
 - **RENAME FIELD:** `RENAME FIELD old_name TO [New.Name];` -- use for individual post-load renames. **Collision warning:** RENAME FIELD affects ALL tables containing that field name. If `region` exists in both `[Customers]` and `[Products]`, `RENAME FIELD region TO [Customer.Region]` renames it in both tables. Use Mapping RENAME or aliasing in LOAD when you need table-specific renames.
-- **Mapping RENAME:** Bulk rename from a mapping table. Use for systematic cross-layer renaming (e.g., all raw extract names to model-layer names in one operation). Same cross-table behavior as RENAME FIELD, so ensure source field names are unique across tables before applying.
+- **Mapping LOAD + RENAME FIELDS USING** (shorthand: "Mapping RENAME"): Bulk rename from a mapping table — two statements working together, a `Mapping LOAD` that builds the lookup table and `RENAME FIELDS USING <MapName>;` that applies the rename. Use for systematic cross-layer renaming (e.g., all raw extract names to model-layer names in one operation). Same cross-table behavior as RENAME FIELD, so ensure source field names are unique across tables before applying.
 
 ```qlik
 [_RenameMap]: MAPPING LOAD old_name, new_name INLINE [
