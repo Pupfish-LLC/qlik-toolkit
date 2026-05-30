@@ -83,9 +83,9 @@ Canonical homes:
 
 ### 6. Security (5 items)
 
-What fails: PII fields loaded without governance documentation, missing STAR field in Section Access, reduction field name case-sensitivity mismatches between Section Access and the data model, incomplete Section Access coverage (orphaned users/roles, test entries left in production), and OMIT field misuse.
+What fails: PII fields loaded without governance documentation. Section Access failure classes (STAR statement declaration, reduction-field case alignment, table completeness, OMIT correctness) are deferred to `help.qlik.com` — see `references/checklist.md` items 6.2-6.5 for the deferral pointers.
 
-Severity: PII exposure, STAR field issues, and reduction field case mismatches are Critical. Coverage gaps and OMIT misuse are Warning.
+Severity: PII exposure flagging remains in scope at the project-governance level. Per-failure-class severity for Section Access items is not asserted here — consult `help.qlik.com` directly for current mechanics.
 
 Canonical home: A dedicated Section Access skill is **out of scope for this plugin version** pending a rewrite against current Qlik Cloud documentation. For active Section Access work, consult `help.qlik.com` directly. The checklist still catalogs the failure classes so reviewers can flag them.
 
