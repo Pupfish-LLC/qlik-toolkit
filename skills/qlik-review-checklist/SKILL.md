@@ -23,7 +23,7 @@ Severity is a **field-experience classification**, not a Qlik-documented hierarc
 **Severity escalation rules:**
 
 - **Null handling on a key field** escalates from Warning to Critical, because nulls in associations break the data model rather than displaying as blanks.
-- **TOTAL qualifier placed inside set-analysis braces** (e.g., `Sum({TOTAL <Year={2024}>} Sales)`) escalates from Warning to Critical, because the expression is structurally invalid and will not produce intended results. See `qlik-expressions` → `references/total-qualifier.md` for the correct placement (TOTAL outside the braces).
+- **TOTAL qualifier placed inside set-analysis braces** escalates from Warning to Critical, because the expression is structurally invalid and will not produce intended results. See `qlik-expressions/references/total-qualifier.md` for the canonical placement rules.
 - **Synthetic keys** are always Critical regardless of size, because they indicate the model intent has diverged from the loaded structure.
 
 ## Failure Class Catalog (9 categories)

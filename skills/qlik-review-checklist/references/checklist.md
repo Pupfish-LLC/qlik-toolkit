@@ -391,36 +391,40 @@ Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null
 
 ### 5.1 Set Analysis Syntax Validation
 
+> Canonical authoring reference: `qlik-expressions/references/set-analysis.md` (modifier syntax, element-set forms, wildcard vs empty-modifier distinction, operator composition) and `qlik-expressions/SKILL.md` Section 2. The list below is the QA-verification enumeration of failure classes to scan for.
+
 - **Severity:** Critical
 - **Applicable Scopes:** Expression / Comprehensive
-- **What to Check:** Set analysis syntax must be valid
+- **What to Check:** Set analysis syntax must be valid.
 - **How to Verify:**
   - Load expression-catalog.md and expression-variables.qvs
-  - For each expression containing set analysis (curly braces `{}`), verify syntax:
-    - Modifiers: `<Field = {value}>`, `<Field = {>10}>` syntax correct
-    - Wildcard `{*}`: selects all NON-NULL values. `<Field={*}>` excludes nulls for that field. Do NOT confuse with `<Field=>` which ignores selections (includes nulls).
-    - Empty modifier `<Field=>`: clears/ignores user selections on that field. Does NOT exclude nulls. This is fundamentally different from `{*}`.
-    - Operators: `{1,2}` (OR), `{1}-{2}` (difference), `{1}*{2}` (intersection)
-    - Dollar-sign expansion: `<Field = {$(varname)}>` (verify varname is simple)
-    - Set modifiers inside set modifiers (recursive nesting of `<...>` inside element-set values) are not supported. Use `Aggr()` for nested-scope aggregation, or compose multiple set identifiers via operators (e.g., `{$<Year={2024}>}*{$<Region={'East'}>}`). See `qlik-expressions` Section 2 (set operators) and Section 4 (Aggr())
-  - Check for typos in field names (case-sensitive)
-  - Verify set analysis is applied to correct aggregation function
+  - For each expression containing set analysis (curly braces `{}`), scan for these failure classes:
+    - Modifier-syntax errors (malformed `<Field = {value}>` or comparison-operator forms)
+    - Wildcard vs empty-modifier confusion (`{*}` and `<Field=>` are not interchangeable — see canonical reference)
+    - Operator misuse (intersection / union / difference / symmetric difference)
+    - Dollar-sign expansion inside element sets with comma-containing variable arguments
+    - Recursive `<...>` nesting inside element-set values (not supported — use `Aggr()` or compose via operators)
+    - Field-name typos (case-sensitive)
+    - Set analysis applied to the wrong aggregation function
 - **Finding Format:** `[E-5.1]: Set analysis syntax error / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: Set analysis [set_expression] has invalid syntax: [error detail] / Impact: Expression will fail to evaluate or return incorrect results / Recommended Fix: Correct syntax to [corrected_expression]`
 
 ### 5.2 TOTAL Qualifier Usage
 
-- **Severity:** Warning
+> Canonical authoring reference: `qlik-expressions/references/total-qualifier.md` (placement rules, field-list form, TOTAL + set analysis composition, the "Total" field-name parsing trap, failure modes). The list below is the QA-verification enumeration of failure classes to scan for.
+
+- **Severity:** Warning (escalates to Critical — see Severity Escalation below)
 - **Applicable Scopes:** Expression / Comprehensive
-- **What to Check:** TOTAL qualifier must not be confused with set analysis
+- **What to Check:** TOTAL qualifier used incorrectly or confused with set analysis.
 - **How to Verify:**
   - Search expression-catalog.md for TOTAL keyword
-  - Verify TOTAL is used correctly: `Sum(TOTAL Measure)` removes current dimension filtering
-  - Flag invalid TOTAL placement: `Sum(TOTAL <field={value}> Measure)` — the angle brackets after `TOTAL` may contain a list of **field names only** (no `=` and no value lists). For value filtering, use set analysis inside `{...}` braces. Valid: `Sum(TOTAL <Region> Amount)` (percent-within-region) and `Sum({<Year={2024}>} TOTAL <Region> Amount)` (set analysis + TOTAL field list). Set analysis first, then TOTAL qualifier — do not confuse these patterns.
-  - Watch for TOTAL parsing ambiguity: `Sum({<...>}Total Field)` — Qlik parses `Total` as the TOTAL qualifier keyword (case-insensitive), NOT as part of a field name "Total Field." If a field is genuinely named "Total Something," it must be in square brackets: `[Total Something]`.
-  - Verify TOTAL is only used when totaling across ALL dimension context is intended
-  - Check expressions for cases where set analysis `{...}` should be used instead of TOTAL
-- **Severity Escalation:** Escalate to **Critical** when TOTAL is placed inside set analysis braces (e.g., `Sum({TOTAL <Year={2024}>} Sales)`). This is structurally invalid. TOTAL must be outside the braces: `Sum({<Year={2024}>} TOTAL Sales)` or `Sum(TOTAL {<Year={2024}>} Sales)`.
-- **Finding Format:** `[E-5.2]: TOTAL qualifier misuse / Severity: Warning / Category: Expression Correctness / Location: [artifact]:[line] / Finding: [Expression using TOTAL appears to intend set analysis | TOTAL used but alternative clearer] / Impact: [Incorrect totaling behavior | Hard to understand intent] / Recommended Fix: [Replace with set analysis {value} OR clarify why TOTAL necessary]`
+  - Scan for these failure classes (see canonical reference for the correct patterns):
+    - TOTAL placed inside set analysis braces (structurally invalid — see Severity Escalation)
+    - TOTAL field list containing `=` or value expressions (TOTAL's `<...>` takes field names only; for value filtering use set analysis braces)
+    - TOTAL field list referencing a dimension not on the chart (silent unexpected behavior)
+    - TOTAL used when set analysis is the right tool (selection-scope vs dimension-scope confusion)
+    - "Total" parsing ambiguity on field names beginning with "Total" (must use square brackets)
+- **Severity Escalation:** Escalate to **Critical** when TOTAL is placed inside set analysis braces. See `qlik-expressions/references/total-qualifier.md` for the canonical placement rules.
+- **Finding Format:** `[E-5.2]: TOTAL qualifier misuse / Severity: [Warning | Critical] / Category: Expression Correctness / Location: [artifact]:[line] / Finding: [Expression using TOTAL appears to intend set analysis | TOTAL placed inside set analysis braces | TOTAL field list contains value expression | Parsing ambiguity on field name beginning with "Total"] / Impact: [Incorrect totaling behavior | Structurally invalid expression | Silent misinterpretation of field reference] / Recommended Fix: See qlik-expressions/references/total-qualifier.md for the canonical placement rules.`
 
 ### 5.3 Null Handling in Expressions
 
