@@ -145,7 +145,7 @@ Contracts make schema drift visible: if the Extract team renames a column, the T
 - `binary` must be the **very first statement** of the script, before any `SET`, `LET`, or `LOAD`.
 - Only **one** `binary` statement per script.
 - Reference syntax depends on the platform:
-  - **Qlik Cloud (SaaS):** reference the source app by its **app ID** — `binary [app_id];`. This is the only accepted form in cloud; `lib://` file paths are not used for `binary` there.
+  - **Qlik Cloud (SaaS):** two accepted forms — reference the source app by its **app ID** from a tenant space (`binary [app_id];`, the most common cloud-native form), **or** reference a **.qvf / .qvw file path** via a data connection to a file share such as AWS S3 or Google Drive (`binary [lib://DataConnection/path/Generator.qvf];`).
   - **Client-managed (Qlik Sense Enterprise on Windows):** reference a **.qvf file path**, typically via a folder data connection, e.g. `binary [lib://Apps/Generator.qvf];`.
 - Loads: data tables **and section access data**.
 - Does **not** load: sheets, stories, visualizations, bookmarks, master items, variables, or the script itself.

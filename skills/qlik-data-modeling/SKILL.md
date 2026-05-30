@@ -102,7 +102,7 @@ Single-app vs multi-app is a deployment decision. The real drivers are reload cy
 
 **Binary Load** copies the entire data model (and section access) from another app. Must be the **first statement** in the script. Syntax depends on platform:
 
-- **Qlik Cloud:** `binary [app_id];` — the app GUID. This is the only accepted form in cloud.
+- **Qlik Cloud:** accepts either an **app ID** from a tenant space — `binary [app_id];` (the most common cloud-native form) — or a **file path** to a .qvf/.qvw via a data connection to a file share — `binary [lib://DataConnection/path/Generator.qvf];`.
 - **Client-managed (Enterprise on Windows):** `binary [lib://Apps/Generator.qvf];` — .qvf via folder data connection.
 
 Binary load does **not** cascade reloads automatically, does **not** copy variables, sheets, visualizations, or master items. Consumer reloads must still be coordinated (event-based triggers / Qlik Automate in cloud; QMC task chains for client-managed).
