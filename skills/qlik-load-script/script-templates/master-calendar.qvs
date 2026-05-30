@@ -171,8 +171,13 @@ ELSE
 END IF
 
 // --- Cleanup configuration variables ---
-LET vMinDate = ;
-LET vMaxDate = ;
-LET vCalendarRows = ;
+// Clear scratch values. Use SET (not LET) for variable clearing:
+// LET evaluates the RHS as an expression -- an empty RHS produces
+// undefined/null behavior. SET preserves the RHS as literal text,
+// so SET vVar = ; correctly assigns the empty string.
+// Per help.qlik.com -- SET statement / LET statement.
+SET vMinDate = ;
+SET vMaxDate = ;
+SET vCalendarRows = ;
 // Keep vCalendarDateField, vCalendarSourceTable, vFiscalYearStartMonth
 // for documentation purposes

@@ -98,8 +98,29 @@ IF NOT IsNull(FileTime('$(vSCD2_QvdPath)')) THEN
     //   old version with effective_to = NULL, making it appear
     //   "current" alongside the new version.
     //
-    // DO NOT MODIFY THIS WHERE CLAUSE unless your SCD2 implementation
-    // uses different column semantics.
+    // DO NOT MODIFY THE BOOLEAN LOGIC of this WHERE clause (the two
+    // conditions joined by OR) unless your SCD2 implementation uses
+    // different column semantics. The timestamp LITERAL FORMATTING
+    // around $(vLastExecTime) and $(vThisExecTime), however, is
+    // database-dialect-specific and you MAY need to adjust it:
+    //
+    //   PostgreSQL / MySQL / MariaDB:
+    //     Bare quoted string works: WHERE col >= '2026-01-15 00:00:00'
+    //   Microsoft SQL Server (with strict ANSI date settings):
+    //     May require explicit cast:
+    //       WHERE col >= CAST('$(vLastExecTime)' AS DATETIME2)
+    //       WHERE col >= CONVERT(DATETIME, '$(vLastExecTime)', 120)
+    //   BigQuery:
+    //     Requires TIMESTAMP keyword: WHERE col >= TIMESTAMP '$(vLastExecTime)'
+    //   Snowflake:
+    //     Bare string usually coerces, but TIMESTAMP '...' is most explicit.
+    //   Oracle:
+    //     Use TO_TIMESTAMP: WHERE col >= TO_TIMESTAMP('$(vLastExecTime)', 'YYYY-MM-DD HH24:MI:SS')
+    //
+    // vLastExecTime is a Qlik timestamp string ('YYYY-MM-DD HH:MM:SS' by
+    // default per SET TimestampFormat). If your source database needs a
+    // different literal format, also confirm vLastExecTime's serialized
+    // format matches what the cast/convert expects.
 
     [$(vSCD2_TableLabel)]:
     SQL SELECT *
@@ -172,8 +193,13 @@ ELSE
 END IF
 
 // --- Cleanup ---
-LET vChangedRows = ;
-LET vTotalRows = ;
+// Clear scratch counters. Use SET (not LET) for variable clearing:
+// LET evaluates the RHS as an expression -- an empty RHS produces
+// undefined/null behavior. SET preserves the RHS as literal text,
+// so SET vVar = ; correctly assigns the empty string.
+// Per help.qlik.com -- SET statement / LET statement.
+SET vChangedRows = ;
+SET vTotalRows = ;
 
 // ============================================================
 // VERIFICATION CHECKLIST (for developer during execution gate):
