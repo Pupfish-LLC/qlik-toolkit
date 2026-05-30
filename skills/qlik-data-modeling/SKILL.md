@@ -148,6 +148,6 @@ Pick one fix:
 3. `$Syn` table with solid lines ≠ dotted loose-coupling line. Synthetic keys and circular references are different problems with different fixes.
 4. Hash keys for anything persisted to a QVD. `AutoNumber` only in the final in-memory model.
 5. Optimized QVD read is preserved by single-param `EXISTS` but broken by any function applied to a field.
-6. `binary` syntax differs between Cloud (app ID) and client-managed (`lib://` .qvf path). It does not cascade reloads.
+6. `binary` accepts an app ID or `lib://` .qvf path on Cloud; client-managed requires the `lib://` .qvf path. It does not cascade reloads.
 7. Pick the consumption pattern to match the source architecture — DV satellites must be merged, OLTP must be denormalized, pre-joined views must have their grain validated.
 8. Two facts at different grains sharing dimensions → synthetic key + double-counting. Concatenate with a type discriminator, use a link table, or drop the redundant grain.
