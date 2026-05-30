@@ -464,17 +464,9 @@ PII handling, Section Access correctness, and data access control. **Note:** a d
   - Check for accidental PII in field names or metadata
 - **Finding Format:** `[SC-6.1]: PII exposure without justification / Severity: Critical / Category: Security / Location: [file]:[line] / Finding: PII field [fieldname] (e.g., [SSN | email | phone]) loaded into [table] without documented justification / Impact: Compliance violation, data breach risk, regulatory exposure / Recommended Fix: [Remove PII field OR add Section Access row-level filtering OR document business justification and retention policy]`
 
-### 6.2 Section Access STAR Field Handling
+### 6.2 Section Access STAR Statement Handling
 
-- **Severity:** Critical
-- **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** If Section Access is present, STAR field must be handled correctly
-- **How to Verify:**
-  - If Section Access table exists, verify it is loaded
-  - Check for STAR field in Section Access table (STAR indicates full access)
-  - Verify STAR values are present for roles requiring full access
-  - Verify row-level filters (reduction fields) are properly mapped to data model fields
-- **Finding Format:** `[SC-6.2]: Section Access STAR field issue / Severity: Critical / Category: Security / Location: [scripts/section-access.qvs] / Finding: [STAR field missing from Section Access table | STAR field values incorrect | Reduction fields not properly mapped] / Impact: Section Access will not function correctly, data visibility not restricted as intended / Recommended Fix: [Add STAR field to Section Access | Correct STAR values | Map reduction fields to data model fields]`
+- **Note:** Detailed Section Access mechanics (including the STAR statement syntax, reduction-field value semantics, and full-access patterns) are deferred to a future version of this toolkit. For current Section Access requirements, refer to `help.qlik.com` Cloud Section Access docs: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm
 
 ### 6.3 Section Access Reduction Fields
 
