@@ -67,7 +67,7 @@ Detailed procedures live in `qlik-review-checklist` items 5.1 through 5.4.
 
 When `qlik_*` MCP tools are available, run live checks alongside the `data-quality-validator` skill per `qlik-cloud-mcp` workflow patterns 5.4 (Data Quality) and 5.5 (Post-Reload Spot Checks):
 
-- `qlik_clear_selections` first.
+- `qlik_clear_selections` first — data quality counts must reflect the full unfiltered model. Selections persist across MCP calls within the same session; an inherited selection from a previous interaction will silently filter every subsequent count, producing under-counts that look like passes.
 - `qlik_create_data_object` with `Count([Field])` / `NullCount([Field])` for null rates; `Count([Key])` vs `Count(DISTINCT [Key])` for duplicate detection.
 - `qlik_search_field_values` for encoded null scans ("N/A", "NULL", "TBD", "-", "Unknown").
 - For Qlik-managed datasets, augment with `qlik_get_dataset_profile`, `qlik_get_dataset_freshness`, `qlik_get_dataset_trust_score` (trust score errors when absent — handle gracefully).
