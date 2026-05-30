@@ -222,7 +222,7 @@ GROUP BY customer_region;
 ### Qlik Resident Query
 
 ```qlik
-// Expected counts from source profile (set during configuration phase)
+// Expected counts from source profile (set during configuration step)
 SET vExpectedCustomers = 150000;
 SET vExpectedOrders = 2500000;
 

@@ -79,7 +79,7 @@ NEXT vFile
 **Cloud caveat:** Two specific behaviors in Qlik Cloud differ from on-prem:
 
 1. **Connection type.** `FileList()` in Cloud must target a Data Files connection (`lib://<Space>:DataFiles/...`). Web storage and some third-party connectors do not support wildcard filter masks, so the function returns only individually addressable files or fails outright on those connections.
-2. **Recursion semantics.** Cloud `FileList('lib://Space:Folder/*.qvd')` includes files in subfolders of the named folder, not only the immediate folder — the opposite of on-prem behavior, where the wildcard matches only the immediate folder. This is a documented behavioral difference (community-confirmed, undocumented as of mid-2026) and routinely surprises scripts ported from Qlik Sense on Windows.
+2. **Recursion semantics.** Cloud `FileList('lib://Space:Folder/*.qvd')` includes files in subfolders of the named folder, not only the immediate folder — the opposite of on-prem behavior, where the wildcard matches only the immediate folder. This is a documented behavioral difference (community-confirmed, undocumented as of mid-2026) and routinely surprises scripts ported from Qlik Sense on Windows. Reference: https://community.qlik.com/t5/Move-to-Qlik-Cloud-Analytics/FileList-works-differently-between-Sense-and-Cloud/td-p/2520108
 
 If you need immediate-folder-only iteration in Cloud, either filter the returned paths (count `/` separators in the returned filename and skip any beyond the expected depth) or maintain an explicit file manifest. For nested directory trees, iterate one level at a time with `DirList` plus `FileList`, recursing explicitly rather than relying on a single wildcard.
 
