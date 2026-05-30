@@ -40,9 +40,24 @@
 #   4. PurgeChar() argument count validation
 #
 # Exit Codes:
-#   0 = No findings (file is clean)
-#   1 = Findings present (warnings generated)
-#   2 = Error (file not found, unreadable, or script error)
+#   0 = Normal completion (always, whether findings present or not). When run
+#       as a PostToolUse hook, findings surface to Claude as advisory context
+#       via a JSON object on stdout (hookSpecificOutput.additionalContext).
+#       When run from the command line with file arguments, findings print as
+#       plain text to stderr for human readers.
+#   2 = Script-internal error (reserved; not currently emitted by main flow)
+#
+# Hook Output Protocol (PostToolUse):
+#   Per https://code.claude.com/docs/en/hooks, PostToolUse hooks surface
+#   advisory information to Claude via a JSON object on stdout with exit 0:
+#     {
+#       "hookSpecificOutput": {
+#         "hookEventName": "PostToolUse",
+#         "additionalContext": "<findings text>"
+#       },
+#       "systemMessage": "<short user-facing summary>"
+#     }
+#   No "decision" field is emitted — findings are advisory, never blocking.
 #
 # Usage:
 #   ./validate-qvs-syntax.sh file.qvs
@@ -56,7 +71,13 @@ WARN_PREFIX="[WARN]"
 
 # Accumulate findings
 findings=""
-exit_code=0
+finding_count=0
+
+# Track whether we were invoked as a PostToolUse hook (JSON on stdin) vs
+# direct command-line invocation with file arguments. This determines the
+# output format: structured JSON to stdout for hooks, plain text to stderr
+# for humans.
+invoked_as_hook=0
 
 # Function to add a finding
 add_finding() {
@@ -69,7 +90,36 @@ add_finding() {
     else
         findings="${findings}${WARN_PREFIX} ${file}:${line}: ${message}"$'\n'
     fi
-    exit_code=1
+    finding_count=$((finding_count + 1))
+}
+
+# JSON-escape a string for safe embedding in a JSON string literal.
+# Handles backslash, double quote, newline, carriage return, tab, and
+# other ASCII control chars (escaped as \uXXXX). Uses jq when available
+# for correctness; falls back to a sed pipeline that covers the same
+# control characters when jq is not on PATH.
+json_escape() {
+    local raw="$1"
+    if command -v jq &>/dev/null; then
+        # -R reads raw input, -s slurps the whole stream, then encode as JSON.
+        # Strip the surrounding quotes that jq adds so the caller controls placement.
+        local encoded
+        encoded=$(printf '%s' "$raw" | jq -Rs .)
+        # Drop the leading and trailing double-quote that jq -Rs adds
+        encoded="${encoded#\"}"
+        encoded="${encoded%\"}"
+        printf '%s' "$encoded"
+    else
+        # Fallback: escape the JSON-significant characters by hand.
+        # Order matters: backslash MUST be escaped first.
+        local s="$raw"
+        s="${s//\\/\\\\}"      # \  -> \\
+        s="${s//\"/\\\"}"      # "  -> \"
+        s="${s//$'\n'/\\n}"    # LF -> \n
+        s="${s//$'\r'/\\r}"    # CR -> \r
+        s="${s//$'\t'/\\t}"    # TAB -> \t
+        printf '%s' "$s"
+    fi
 }
 
 # Process a single file
@@ -250,6 +300,7 @@ if [ $# -gt 0 ]; then
 else
     # PostToolUse hook invocation: file path arrives as JSON on stdin.
     # Extract tool_input.file_path using jq (or grep fallback).
+    invoked_as_hook=1
     hook_input=$(cat)
     if command -v jq &>/dev/null; then
         hook_file=$(echo "$hook_input" | jq -r '.tool_input.file_path // empty')
@@ -259,7 +310,9 @@ else
     fi
 
     if [ -z "${hook_file:-}" ]; then
-        # No file path found in stdin or args; nothing to do
+        # No file path found in stdin or args; nothing to do.
+        # Emit empty JSON object so Claude Code sees valid (no-op) hook output.
+        echo '{}'
         exit 0
     fi
     files=("$hook_file")
@@ -273,9 +326,33 @@ for file in "${files[@]}"; do
     esac
 done
 
-# Output all findings
-if [ -n "$findings" ]; then
-    echo -n "$findings"
+# Emit findings using the format that matches the invocation context.
+if [ "$invoked_as_hook" -eq 1 ]; then
+    # PostToolUse hook output: structured JSON on stdout, exit 0.
+    # Per https://code.claude.com/docs/en/hooks, advisory findings surface
+    # to Claude via hookSpecificOutput.additionalContext. A short
+    # user-facing summary goes in the top-level systemMessage. No
+    # "decision" field is emitted; findings are advisory, not blocking.
+    if [ -n "$findings" ]; then
+        # Strip any trailing newline so the rendered context is tight.
+        findings_text="${findings%$'\n'}"
+        escaped_findings=$(json_escape "$findings_text")
+        summary="Qlik script validator flagged ${finding_count} finding(s); see additional context."
+        escaped_summary=$(json_escape "$summary")
+        printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"},"systemMessage":"%s"}\n' \
+            "$escaped_findings" "$escaped_summary"
+    else
+        # Clean run — emit empty JSON object so Claude Code parses cleanly.
+        echo '{}'
+    fi
+    exit 0
+else
+    # Direct command-line invocation: print findings to stderr for humans
+    # so they surface in the terminal even when stdout is redirected, and
+    # return a non-zero exit code so shell pipelines can detect findings.
+    if [ -n "$findings" ]; then
+        printf '%s' "$findings" >&2
+        exit 1
+    fi
+    exit 0
 fi
-
-exit "$exit_code"
