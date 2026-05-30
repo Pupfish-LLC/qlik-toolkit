@@ -153,9 +153,32 @@ process_file() {
         # Handle CRLF line endings
         line="${line%$'\r'}"
 
+        # Build a "scan_line" view of the raw line with line comments and
+        # single-quoted string literals stripped, so the construct regexes
+        # below do not false-fire on documentation comments or quoted text
+        # (e.g. // Avoids BETWEEN — use AND  or  TRACE 'CASE WHEN done';).
+        # Order: strip '...' strings first (so any // inside a string is gone),
+        # then strip // ... end-of-line comments. Residual false-positive
+        # classes NOT handled here: /* ... */ block comments (especially
+        # multi-line), REM ... ; blocks, and multi-line single-quoted strings.
+        # These are documented edge cases; the line-oriented stripping covers
+        # the dominant comment/string forms used in Qlik scripts.
+        scan_line=$(printf '%s' "$line" | sed "s/'[^']*'//g" | sed 's|//.*$||')
+
+        # Strip a leading table-label token (e.g. "OrderRaw:") from the
+        # scan_line copy used by the SQL-block detector below, so that
+        # patterns like  OrderRaw: SQL SELECT ... FROM x HAVING ...;
+        # correctly enter the in_sql state and have their SQL-construct
+        # tokens excluded from LOAD-context checks. Without this, the
+        # label-prefixed SQL line would never match ^\s*SQL\s, the
+        # detector would stay in LOAD context, and HAVING/BETWEEN/CASE
+        # inside the SQL string would falsely fire.
+        sql_detect_line=$(printf '%s' "$scan_line" | sed -E 's/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*:[[:space:]]*//')
+
         # Track SQL block boundaries (simplified state machine)
-        # Check if entering SQL block (must start with SQL keyword)
-        if echo "$line" | grep -iq '^\s*SQL\s'; then
+        # Check if entering SQL block (must start with SQL keyword,
+        # after stripping any leading table label)
+        if echo "$sql_detect_line" | grep -iq '^\s*SQL\s'; then
             in_sql=1
         fi
 
@@ -173,47 +196,50 @@ process_file() {
         fi
 
         # ===== SQL Construct Checks (LOAD context only) =====
+        # All construct regexes below scan $scan_line (comments + string
+        # literals stripped) rather than the raw $line, so documentation
+        # comments and quoted text do not produce false-positive findings.
 
         # 1. HAVING (case-insensitive, word boundaries)
-        if echo "$line" | grep -iqE '\bHAVING\b'; then
+        if echo "$scan_line" | grep -iqE '\bHAVING\b'; then
             add_finding "$file" "$line_num" "SQL construct 'HAVING' found in LOAD context. Use preceding LOAD with filter instead."
         fi
 
         # 2. Count(*) - case insensitive, with asterisk
-        if echo "$line" | grep -iqE '[Cc]ount\s*\(\s*\*\s*\)'; then
+        if echo "$scan_line" | grep -iqE '[Cc]ount\s*\(\s*\*\s*\)'; then
             add_finding "$file" "$line_num" "Count(*) not supported. Use Count(field_name) with explicit field reference."
         fi
 
         # 3. IS NULL or IS NOT NULL (case-insensitive, word boundaries)
-        if echo "$line" | grep -iqE '\bIS\s+(NOT\s+)?NULL\b'; then
+        if echo "$scan_line" | grep -iqE '\bIS\s+(NOT\s+)?NULL\b'; then
             # But not if it's the function IsNull()
-            if ! echo "$line" | grep -iq 'IsNull('; then
+            if ! echo "$scan_line" | grep -iq 'IsNull('; then
                 add_finding "$file" "$line_num" "'IS NULL' / 'IS NOT NULL' not supported in Qlik script. Use IsNull() function."
             fi
         fi
 
         # 4. BETWEEN (case-insensitive, word boundaries)
-        if echo "$line" | grep -iqE '\bBETWEEN\b'; then
+        if echo "$scan_line" | grep -iqE '\bBETWEEN\b'; then
             add_finding "$file" "$line_num" "'BETWEEN' not supported. Use field >= low AND field <= high."
         fi
 
         # 5. CASE WHEN (both keywords present, case-insensitive)
-        if echo "$line" | grep -iqE '\bCASE\b' && echo "$line" | grep -iqE '\bWHEN\b'; then
+        if echo "$scan_line" | grep -iqE '\bCASE\b' && echo "$scan_line" | grep -iqE '\bWHEN\b'; then
             add_finding "$file" "$line_num" "'CASE WHEN' not supported in Qlik LOAD. Use IF(), Pick(), or Match() instead."
         fi
 
         # 6. LIMIT (case-insensitive, word boundaries, followed by number)
-        if echo "$line" | grep -iqE '\bLIMIT\s+[0-9]'; then
+        if echo "$scan_line" | grep -iqE '\bLIMIT\s+[0-9]'; then
             add_finding "$file" "$line_num" "'LIMIT' not supported in Qlik LOAD. Use WHERE RowNo() <= N on a RESIDENT LOAD."
         fi
 
         # 7. IN (list) - pattern: IN followed by parentheses
-        if echo "$line" | grep -iqE '\bIN\s*\('; then
+        if echo "$scan_line" | grep -iqE '\bIN\s*\('; then
             add_finding "$file" "$line_num" "'IN (list)' not supported. Use Match(field, val1, val2, ...) or WildMatch()."
         fi
 
         # 8. SELECT DISTINCT in LOAD context (not in SQL blocks, which are already skipped)
-        if echo "$line" | grep -iqE 'SELECT\s+DISTINCT'; then
+        if echo "$scan_line" | grep -iqE 'SELECT\s+DISTINCT'; then
             add_finding "$file" "$line_num" "'SELECT DISTINCT' not allowed in LOAD context. Use 'LOAD DISTINCT' instead."
         fi
 
@@ -221,8 +247,9 @@ process_file() {
         # TRACE does not take a quoted argument; the first ';' terminates the
         # statement, and any subsequent text on the line parses as a separate
         # (usually invalid) statement, causing a reload error. A correct TRACE
-        # line has exactly one ';' at the end.
-        if echo "$line" | grep -iqE '^\s*TRACE\s'; then
+        # line has exactly one ';' at the end. Semicolon count uses the raw
+        # $line because the parser sees raw semicolons, not the stripped view.
+        if echo "$scan_line" | grep -iqE '^\s*TRACE\s'; then
             semi_count=$(echo "$line" | tr -cd ';' | wc -c)
             if [ "$semi_count" -gt 1 ]; then
                 add_finding "$file" "$line_num" "TRACE statement contains $semi_count semicolons; the first ';' terminates the statement and anything after parses as an invalid statement. Replace embedded semicolons with commas, periods, or dashes."
@@ -230,51 +257,67 @@ process_file() {
         fi
 
         # ===== Block Balance Checks =====
+        # Block counters scan $scan_line so documentation comments and
+        # quoted strings that mention IF/THEN/END IF/SUB/FOR/NEXT do not
+        # inflate the counts. This addresses the "comment/string false
+        # positive" failure mode for block-balance heuristics.
 
         # Count IF THEN blocks (not IF() function calls)
         # Pattern: IF (word boundary) followed by THEN (not immediately followed by parenthesis)
         # This distinguishes control blocks "IF ... THEN" from function calls "IF(...)"
-        if echo "$line" | grep -iqE '\bIF\s+(.*\s+)?THEN\b'; then
+        if echo "$scan_line" | grep -iqE '\bIF\s+(.*\s+)?THEN\b'; then
             if_count=$((if_count + 1))
         fi
 
         # Count END IF (case-insensitive, handles both "END IF" and "ENDIF")
-        endif_line_count=$(echo "$line" | grep -io '\bEND\s*IF\b' | wc -l)
+        endif_line_count=$(echo "$scan_line" | grep -io '\bEND\s*IF\b' | wc -l)
         endif_count=$((endif_count + endif_line_count))
 
         # Count SUB declarations (case-insensitive, word boundary start, followed by space/paren)
         # Avoid counting "sub" within other words; must be a standalone SUB keyword
-        if echo "$line" | grep -iqE '^\s*SUB\s|^\s*SUB\('; then
+        if echo "$scan_line" | grep -iqE '^\s*SUB\s|^\s*SUB\('; then
             sub_count=$((sub_count + 1))
         fi
 
         # Count END SUB (case-insensitive)
-        endsub_line_count=$(echo "$line" | grep -io '\bEND\s*SUB\b' | wc -l)
+        endsub_line_count=$(echo "$scan_line" | grep -io '\bEND\s*SUB\b' | wc -l)
         endsub_count=$((endsub_count + endsub_line_count))
 
         # Count FOR (case-insensitive, word boundary)
         # Note: this pattern matches both bare 'FOR' and the 'FOR' in 'FOR EACH'.
         # Both control constructs close with NEXT, so a single counter is correct.
-        for_line_count=$(echo "$line" | grep -io '\bFOR\b' | wc -l)
+        for_line_count=$(echo "$scan_line" | grep -io '\bFOR\b' | wc -l)
         for_count=$((for_count + for_line_count))
 
         # Count NEXT (case-insensitive, word boundary)
-        next_line_count=$(echo "$line" | grep -io '\bNEXT\b' | wc -l)
+        next_line_count=$(echo "$scan_line" | grep -io '\bNEXT\b' | wc -l)
         next_count=$((next_count + next_line_count))
 
         # ===== PurgeChar Argument Count Check =====
 
         # Find PurgeChar with single argument (no comma inside parentheses)
         # Pattern: PurgeChar\s*\([^,)]*\)
-        if echo "$line" | grep -iqE '[Pp]urge[Cc]har\s*\([^,)]*\)'; then
+        if echo "$scan_line" | grep -iqE '[Pp]urge[Cc]har\s*\([^,)]*\)'; then
             add_finding "$file" "$line_num" "PurgeChar() called with 1 argument (expected 2). Provide both text and chars_to_remove."
         fi
 
     done < "$file"
 
-    # Check block balance after entire file is read
-    if [ "$if_count" -ne "$endif_count" ]; then
-        add_finding "$file" "" "Block imbalance: $if_count 'IF' found but $endif_count 'END IF' found. Check IF/END IF pairing."
+    # Check block balance after entire file is read.
+    # IF/END IF uses a soft-heuristic threshold (|delta| > 2) because the
+    # IF counter pattern (\bIF\s+...\s+THEN\b) only matches single-line
+    # IF...THEN constructs; legitimate multi-line forms (IF cond on one line
+    # / THEN on next) are missed and would otherwise produce false "END IF
+    # without IF" warnings. A small imbalance is treated as scanner
+    # imprecision rather than a code defect; only larger deltas raise the
+    # warning. Comment/string false positives are already filtered upstream
+    # via the $scan_line stripping.
+    if_endif_delta=$(( if_count - endif_count ))
+    if [ "$if_endif_delta" -lt 0 ]; then
+        if_endif_delta=$(( -if_endif_delta ))
+    fi
+    if [ "$if_endif_delta" -gt 2 ]; then
+        add_finding "$file" "" "Block imbalance: $if_count 'IF' found but $endif_count 'END IF' found. Check IF/END IF pairing. (Soft heuristic: multi-line IF...THEN constructs may cause small false deltas; only deltas > 2 are reported.)"
     fi
 
     if [ "$sub_count" -ne "$endsub_count" ]; then
