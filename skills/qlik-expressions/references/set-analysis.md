@@ -662,8 +662,12 @@ Sum({<Region={'East', 'West'}>} [Amount])
 SET vRegionList = 'East', 'West';
 SET vCleanRegion = Trim($1);
 Sum({<Region={$(vCleanRegion($(vRegionList)))}>} [Amount])
-// vRegionList expansion injects a comma into the $() parameter list
-// $1 = 'East', $2 = 'West' — parameter parsing breaks
+// vRegionList expands to 'East', 'West' inside the $() parameter list.
+// Because vCleanRegion is defined with only $1, the engine assigns
+// $1 = 'East' and silently discards 'West' — no error is raised.
+// The expression evaluates as {<Region={Trim('East')}>}, so 'West' rows
+// are excluded from the aggregation with no warning.
+// Reference: help.qlik.com — Dollar-sign expansion using parameters.
 ```
 
 **Correct (drop the wrapping variable function):**
