@@ -180,11 +180,13 @@ Dollar-sign expansion substitutes variable text into expressions at evaluation t
 
 **Variable references:** `$(vMyVariable)` expands the variable's text content.
 
-**Parameterized expressions:** `$(vCalc(Field1))` where vCalc is a SET variable function:
+**Parameterized expressions:** `$(vCalc(arg1, ...))` where vCalc is a SET variable function. Inside the variable body, `$1`, `$2`, ... are textual placeholders that the engine substitutes BEFORE the surrounding expression parses. Example — a year-over-year delta where the caller supplies the field and an offset:
 ```
-SET vDualBool = IF(Match($1, 'true') > 0, Dual('$2', 1), Dual('$3', 0));
-Sum({<Status={$(vDualBool(Status, 'Active', 'Inactive'))}>} Amount)
+SET vYearOverYear = (Sum({<Year={$(=Max(Year))}>} $1) - Sum({<Year={$(=Max(Year)-$2)}>} $1));
+$(vYearOverYear([Amount], 1))
+// Expands to: (Sum({<Year={$(=Max(Year))}>} [Amount]) - Sum({<Year={$(=Max(Year)-1)}>} [Amount]))
 ```
+Per help.qlik.com Cloud — Dollar-sign expansion using parameters, the `$1`, `$2` placeholders are text substitution: the caller's argument is dropped into the variable body verbatim before parsing continues.
 
 **The comma limitation (critical):** Expressions with commas cannot be passed as arguments to variable functions. Commas are interpreted as parameter delimiters:
 ```
