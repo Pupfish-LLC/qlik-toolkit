@@ -554,8 +554,10 @@ Sum({$*<Year={2024}>} [Amount])
 **Wrong (intersection when union needed):**
 ```
 Sum({<Status={'Active'}, Status={'Inactive'}>} [Amount])
-// Same field with two modifiers — Qlik applies the last one (Inactive)
-// Result: only Inactive rows, not both
+// Same field repeated in one modifier — behavior is engine-defined and not
+// documented on help.qlik.com. May produce empty results, the last modifier's
+// values, or other unexpected outcomes. Never repeat the same field name
+// inside a single set modifier.
 ```
 
 **Correct (single modifier with comma-separated values is implicit union for the same field):**
