@@ -74,6 +74,10 @@ Sum({<
 
 > **Common bug:** Inverting these operators returns zero rows. The effective row is the one whose validity window *contains* the as-of-date.
 
+### SCD Type 2: load-time effective-date join
+
+The set-analysis pattern above works **at query time** against an SCD2 dimension that is associated to a fact by business key. When you instead need to **resolve each fact row to its in-force dimension version at load time** — flattening the SCD2 history onto the fact — use the `IntervalMatch` prefix with the N-key form on `(transaction_date, business_key)`. Full pattern (one-key + N-key syntax, the standard `LEFT JOIN` + `DROP TABLE` resolution for the structural `$Syn`, NULL upper-bound handling for still-current rows, performance notes, and a worked SCD2 example) lives in `qlik-load-script` → `references/interval-match.md`.
+
 ### Pitfalls
 
 - **Treating Type 2 as Type 1.** Dropping `effective_to` or taking only "current" rows throws away history the warehouse paid to maintain.
@@ -230,6 +234,8 @@ FROM [lib://QVDs/dv_sat_customer.qvd] (qvd);
 ```
 
 If multiple satellites share a hub, each is a separate `LEFT JOIN` step. Pick the "current" row per hub before joining using a preceding LOAD with `FirstSortedValue` or an aggregated `LOAD … RESIDENT … GROUP BY hub_key`.
+
+For **point-in-time** satellite lookup (resolve each fact row to the satellite version in force on its transaction date, rather than always taking the current row), use the `IntervalMatch` prefix on `(transaction_date, hub_key)` against the satellite's `load_date` / `load_end_date` (end-dated variant) or a derived effective window (canonical insert-only variant). See `qlik-load-script` → `references/interval-match.md` for syntax, the standard `LEFT JOIN` + `DROP TABLE` resolution of the structural synthetic key, and the SCD2-style worked example.
 
 ### Composite business key hashing
 

@@ -140,7 +140,7 @@ Full treatment — `Null()` / `IsNull()` / `NullCount()` constructors, the `vCle
 
 ## 7. Data-Driven Patterns
 
-**Range bucketing via mapping expansion:** Replace nested IFs with inline data + mapping table + ApplyMap. Edit the inline table to change buckets, no code changes needed.
+**Range bucketing via mapping expansion (`ApplyMap`):** for **static, enumerable, integer** buckets applied globally (age bands, score ranges, star ratings). Inline table + `WHILE IterNo()` expansion + `ApplyMap`. Edit the inline table to change buckets.
 
 ```qlik
 [_Def]: LOAD * INLINE [from, to, label, sort
@@ -154,6 +154,8 @@ DROP TABLE [_Def];
 
 ApplyMap('_Map', [Age], Dual('Unknown', 0)) AS [Age.Group]
 ```
+
+**IntervalMatch prefix:** for **data-driven, per-entity, or time-varying** intervals — SCD2 effective-dating, DV2 satellite point-in-time, version history, per-line tier definitions. One-key + N-key forms (up to 5 extra key fields), supports overlapping intervals, produces a `$Syn` by construction (resolve with `LEFT JOIN` + `DROP TABLE` of the IntervalMatch output). Quick decision: interval table changes per entity or over time → `IntervalMatch`; static global reference list → Range Bucketing. Full syntax, SCD2 worked example with NULL upper-bound handling, performance notes, and three wrong-choice scenarios in `references/interval-match.md`.
 
 **Boolean fields via Dual:** `Dual('Active', 1)` enables text display AND numeric aggregation (`Sum([Is.Active])` = count of active). Wrap in a SET variable function for reuse. See `script-templates/clean-null-function.qvs` for vDualBool.
 
@@ -524,6 +526,7 @@ Clean delimiters with PurgeChar before expanding.
 - `references/error-handling.md` -- TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2, file-existence guards, field-value inspection, framework-vs-standalone selection
 - `references/subroutine-patterns.md` -- Must_Include vs Include, CALL syntax, SUB variable scoping rules, FOR EACH iteration with Cloud wildcard caveat, phantom field detection, composite key workaround
 - `references/incremental-load-patterns.md` -- Complete incremental load patterns with working code
+- `references/interval-match.md` -- IntervalMatch prefix (one-key + N-key syntax), synthetic-key resolution via LEFT JOIN + DROP TABLE, SCD2 effective-dating worked example, performance notes, IntervalMatch vs Range Bucketing decision block with three wrong-choice scenarios
 - `references/diagnostic-patterns.md` -- TRACE templates, row count logging, validation queries
 - `script-templates/master-calendar.qvs` -- Production-ready master calendar
 - `script-templates/error-handling.qvs` -- Error handling and logging framework

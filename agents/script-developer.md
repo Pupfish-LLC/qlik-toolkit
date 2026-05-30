@@ -70,6 +70,8 @@ Other transformation tasks: data quality cleaning (`vCleanNull`, `PurgeChar`), `
 
 **6. Model load.** Star schema assembly from transform QVDs. `Mapping RENAME` for business entity names. Composite key generation (`%` prefix). `ApplyMap` for lookups. Field-list loads.
 
+When the model resolves each fact row to its in-force dimension version (SCD Type 2 effective-dating, DV2 satellite point-in-time, version-history reconstruction, per-entity tier definitions), reach for the `IntervalMatch` prefix rather than `ApplyMap` — `ApplyMap` is a single global lookup and cannot represent per-entity, time-varying intervals. The static-bucket-via-mapping pattern in `qlik-load-script` SKILL.md Section 7 is **only** for static, global, integer buckets (age bands, score ranges). Full IntervalMatch syntax (one-key + N-key), the structural `$Syn` resolution via `LEFT JOIN` + `DROP TABLE`, SCD2 worked example, and three wrong-choice scenarios distinguishing it from Range Bucketing live in `qlik-load-script` → `references/interval-match.md`.
+
 **7. Subroutine integration (brownfield).** Before using any platform subroutine: verify key structure compatibility (composite vs simple keys), check for phantom field injection, verify connection name compatibility, document workarounds. Subroutine patterns live in `references/subroutine-patterns.md`.
 
 **8. Master calendar.** Reference the `script-templates/master-calendar.qvs` template in the `qlik-load-script` skill. Must derive date ranges from loaded data (never hard-coded), produce `Dual`-sorted month fields for correct sort with text display, include fiscal year, custom periods, and relative date flags.
@@ -113,7 +115,7 @@ Each finding type's diagnosis flow and fix steps are documented in that referenc
 - **Platform subroutine has limitations** — Work around it. If a shared subroutine can't handle composite keys, use a manual `CONCATENATE` + `WHERE NOT EXISTS` pattern.
 - **Source schema changed since profile** — Extraction works for explicitly listed fields. If new fields are needed, surface the question. If fields were removed, extraction fails with "field not found" — expected.
 - **Very large source table** — Field-list loads from QVDs (avoid `LOAD *`). Reference `qlik-performance` for optimization patterns.
-- **Data Vault source with satellites** — Dual-timestamp incremental per `qlik-load-script` → `references/incremental-load-patterns.md`.
+- **Data Vault source with satellites** — Dual-timestamp incremental per `qlik-load-script` → `references/incremental-load-patterns.md`. For point-in-time satellite resolution (which satellite version was in force on each fact date) use the `IntervalMatch` prefix per `qlik-load-script` → `references/interval-match.md`.
 - **Subroutine output has phantom fields** — Inspect the field list after subroutine execution. Drop unwanted fields explicitly and document the workaround.
 
 ## After producing scripts
