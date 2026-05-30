@@ -20,9 +20,9 @@ Reload-blocking and silent-failure patterns in load scripts. Canonical home for 
 - **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Every `$(variable(...))` call must have arguments that do NOT contain nested function calls with commas
 - **How to Verify:**
-  - Search scripts/*.qvs for all `$(`
-  - For each match, verify the argument is: simple field name, simple literal, or function call with zero or one argument only
-  - Flag any instance where argument contains `ApplyMap(`, `IF(`, `Pick(`, `PurgeChar(`, `SubField(`, `Match(`, or any other multi-parameter function
+  - Search scripts/*.qvs for `$(\w+\(` — parameterized variable expansion (variable name followed by `(`). Bare `$(varname)` expansions without `()` carry no comma risk and do not need scanning.
+  - For each match, verify the arguments inside the inner `()` are: simple field name, simple literal, or function call with zero or one argument only
+  - Flag any instance where the inner arguments contain `ApplyMap(`, `IF(`, `Pick(`, `PurgeChar(`, `SubField(`, `Match(`, or any other multi-parameter function
   - Special check: `SET` (not `LET`) must be used for variable functions containing quotes or `Dual()`
   - Scan exhaustively — this is the single most common Qlik reload error from variables
 - **Finding Format:** `[S-1.1]: Dollar-sign expansion with nested function / Severity: Critical / Category: Script Syntax / Location: [file]:[line] / Finding: $(variable(...)) contains [problematic function] with comma-separated arguments / Impact: Variable expansion will fail during reload, breaking script execution / Recommended Fix: Rewrite [line] inline without variable wrapping, or restructure to avoid nested comma-containing functions`
