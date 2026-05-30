@@ -69,13 +69,13 @@ When an entry uses TOTAL or Aggr(), add notes per Approach steps 5.
 
 When `qlik_*` tools are available, validate expressions against live data per workflow pattern 5.2 (Expression Validation) in `qlik-cloud-mcp`:
 
-- `clear_selections` before validation to ensure a clean state.
-- `get_fields` to verify every field reference matches exactly (field names are case-sensitive).
-- `create_data_object` to test each expression with a relevant dimension. Non-null results confirm evaluation; null/0 results need cross-checking with `get_field_values` to distinguish "no data" from "bad field name".
-- For set analysis, test with known-good values verified first with `search_field_values`.
-- `clear_selections` after each run to avoid polluting session state.
+- `qlik_clear_selections` before validation to ensure a clean state.
+- `qlik_get_fields` to verify every field reference matches exactly (field names are case-sensitive).
+- `qlik_create_data_object` to test each expression with a relevant dimension. Non-null results confirm evaluation; null/0 results need cross-checking with `qlik_get_field_values` to distinguish "no data" from "bad field name".
+- For set analysis, test with known-good values verified first with `qlik_search_field_values`.
+- `qlik_clear_selections` after each run to avoid polluting session state.
 
-Key gotcha: `create_data_object` silently returns null/0 for non-existent fields rather than erroring. Always verify field names with `get_fields` first. If MCP is unavailable, mark expressions as "execution validation pending" and defer to the next reload.
+Key gotcha: `qlik_create_data_object` silently returns null/0 for non-existent fields rather than erroring. Always verify field names with `qlik_get_fields` first. If MCP is unavailable, mark expressions as "execution validation pending" and defer to the next reload.
 
 ## Adding to or fixing an existing catalog
 

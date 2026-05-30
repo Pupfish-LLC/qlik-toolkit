@@ -67,8 +67,8 @@ For one-off design conversations, return the design inline.
 
 When `qlik_*` tools are available, scaffold sheets and objects in the target app per workflow pattern 5.3 (Visualization Scaffolding) in `qlik-cloud-mcp`:
 
-- `create_dimension` and `create_measure` for master items (validate expressions with `create_data_object` first — invalid expressions succeed at creation but fail at render).
-- `create_sheet` for sheet skeletons, then `add_filter` and `add_chart` to populate.
+- `qlik_create_dimension` and `qlik_create_measure` for master items (validate expressions with `qlik_create_data_object` first — invalid expressions succeed at creation but fail at render).
+- `qlik_create_sheet` for sheet skeletons, then `qlik_add_filter` and `qlik_add_chart` to populate.
 - Reference master items by `libraryId` (returned from creation calls) rather than inline expressions.
 
 Limitations to document for manual completion: MCP provides no control over grid positioning, object sizing, visual formatting (colors, fonts, number formats), conditional formatting, or responsive behavior. The manual build checklist remains essential for final layout work.
