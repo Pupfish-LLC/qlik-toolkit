@@ -56,7 +56,7 @@ Record what's provided and what's missing. Missing materials aren't failures; th
 
 **2. For each `.qvs` file, extract these patterns** (full extraction protocol in `qlik-platform-discovery` SKILL.md):
 
-- **Subroutine identification** — Each `SUB ... END SUB`: name, parameters, purpose, known limitations (single-key constraints, wildcard injection risks, hardcoded paths). Flag limitations as questions, not assumptions.
+- **Subroutine identification** — Each `SUB ... END SUB`: name, parameters, purpose, known limitations (single-key constraints, wildcard injection risks, hardcoded paths, optional parameters that default to NULL, copy-out semantics for variable-name actuals). See `qlik-platform-discovery` SKILL.md for the full extraction protocol including how to detect de facto optional parameters from call sites and how to record copy-out behavior. Flag limitations as questions, not assumptions.
 - **LIB CONNECT and connection references** — connection names, types, target systems.
 - **Field naming patterns** — entity-prefix dot notation? underscore_separation? camelCase?
 - **Table naming conventions** — prefixes (`dim_`, `fact_`, `_temp`, `Map_`).
