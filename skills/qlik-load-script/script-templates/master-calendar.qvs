@@ -39,6 +39,14 @@ SET vCalendarDateField = 'Order.Date';          // The date field to link to
 SET vCalendarSourceTable = 'Orders';            // The table containing the date field
 SET vFiscalYearStartMonth = 1;                  // 1=Jan, 4=Apr, 7=Jul, 10=Oct
 
+// --- Snapshot Today() once for the entire script ---
+// Today() is volatile: each call re-reads the system clock. Calling it
+// per-row inside the LOAD wastes cycles AND -- if the script runs across
+// midnight -- can yield inconsistent "current" flags (some rows see
+// yesterday, others see today). Snapshot once here and reference $(vToday)
+// inside the LOAD so every row uses the same reference date.
+LET vToday = Today();
+
 // --- Derive date range from data ---
 // Uses RESIDENT against the source table to scope correctly.
 // FieldValue() operates across the entire symbol space (all tables
@@ -133,32 +141,35 @@ ELSE
         )                                                            AS [Calendar.FiscalYearQuarter],
 
         // --- Relative date flags ---
-        IF(MonthStart(_TempDate) = MonthStart(Today()), 1, 0)       AS [Calendar.IsCurrentMonth],
-        IF(QuarterStart(_TempDate) = QuarterStart(Today()), 1, 0)   AS [Calendar.IsCurrentQuarter],
-        IF(Year(_TempDate) = Year(Today()), 1, 0)                   AS [Calendar.IsCurrentYear],
-        IF(Year(_TempDate) = Year(Today()) - 1, 1, 0)               AS [Calendar.IsPriorYear],
+        // All "current" flags reference $(vToday), the script-start snapshot
+        // of Today(). This is intentional: it avoids per-row volatility and
+        // keeps the calendar internally consistent if the reload spans midnight.
+        IF(MonthStart(_TempDate) = MonthStart($(vToday)), 1, 0)     AS [Calendar.IsCurrentMonth],
+        IF(QuarterStart(_TempDate) = QuarterStart($(vToday)), 1, 0) AS [Calendar.IsCurrentQuarter],
+        IF(Year(_TempDate) = Year($(vToday)), 1, 0)                 AS [Calendar.IsCurrentYear],
+        IF(Year(_TempDate) = Year($(vToday)) - 1, 1, 0)             AS [Calendar.IsPriorYear],
 
         // YTD: same year, day of year <= today's day of year
-        IF(Year(_TempDate) = Year(Today())
-           AND DayNumberOfYear(_TempDate) <= DayNumberOfYear(Today()), 1, 0)
+        IF(Year(_TempDate) = Year($(vToday))
+           AND DayNumberOfYear(_TempDate) <= DayNumberOfYear($(vToday)), 1, 0)
                                                                      AS [Calendar.IsYTD],
 
         // Prior year YTD (for comparison)
-        IF(Year(_TempDate) = Year(Today()) - 1
-           AND DayNumberOfYear(_TempDate) <= DayNumberOfYear(Today()), 1, 0)
+        IF(Year(_TempDate) = Year($(vToday)) - 1
+           AND DayNumberOfYear(_TempDate) <= DayNumberOfYear($(vToday)), 1, 0)
                                                                      AS [Calendar.IsPriorYTD],
 
         // Today flag (useful for visual highlighting)
-        IF(_TempDate = Today(), 1, 0)                               AS [Calendar.IsToday],
+        IF(_TempDate = $(vToday), 1, 0)                             AS [Calendar.IsToday],
 
         // Rolling 12 months: trailing 12 COMPLETE months, excluding current partial month.
-        // Change < MonthStart(Today()) to <= Today() to include the current partial month.
-        IF(_TempDate >= AddMonths(MonthStart(Today()), -12)
-           AND _TempDate < MonthStart(Today()), 1, 0)               AS [Calendar.IsRolling12],
+        // Change < MonthStart($(vToday)) to <= $(vToday) to include the current partial month.
+        IF(_TempDate >= AddMonths(MonthStart($(vToday)), -12)
+           AND _TempDate < MonthStart($(vToday)), 1, 0)             AS [Calendar.IsRolling12],
 
         // Rolling 12 months prior (for YoY comparison)
-        IF(_TempDate >= AddMonths(MonthStart(Today()), -24)
-           AND _TempDate < AddMonths(MonthStart(Today()), -12), 1, 0)
+        IF(_TempDate >= AddMonths(MonthStart($(vToday)), -24)
+           AND _TempDate < AddMonths(MonthStart($(vToday)), -12), 1, 0)
                                                                      AS [Calendar.IsPriorRolling12]
 
     RESIDENT [_TempCalendar];
