@@ -103,7 +103,7 @@ These are gotchas discovered through live testing that are NOT documented in the
 
 **Hypercube cell limit.** `qlik_create_data_object` and `qlik_get_chart_data` are subject to a 10,000 cells per request limit (dimensions × measures × rows). For large result sets, use pagination (offset/limit) and keep dimension cardinality bounded with sort + limit settings.
 
-**Lineage is one level per call.** `qlik_get_lineage` returns only immediate upstream dependencies. To trace a full pipeline (Source → Extract → QVD → Transform → App), call recursively on each upstream node. QRI format for apps: `qri:app:sense://[appId]`. Get dataset QRIs from `qlik_get_dataset` response.
+**Lineage is one level per call.** `qlik_get_lineage` returns only immediate upstream dependencies. To trace a full pipeline (Source → Extract → QVD → Transform → App), call recursively on each upstream node. QRI format for apps: `qri:app:sense://[appId]`. Get dataset QRIs from `qlik_get_dataset` response. Lineage stops at the tenant boundary: external sources appear as a terminal node, and `LIB CONNECT` chains to ODBC/REST sources end at the connection name, not the source table — source-system-side lineage is not retrievable via MCP.
 
 **Trust scores are often absent.** `qlik_get_dataset_trust_score` returns an error (not null) when no trust score exists. Handle this gracefully -- most datasets won't have one unless explicitly assessed.
 
@@ -138,6 +138,8 @@ Use when analyzing an existing app to extract patterns for replication.
    → Trace upstream pipeline. Recurse on each upstream node
    for full lineage chain.
 ```
+
+MCP cannot reveal table membership: `qlik_get_fields` returns field-level tags but no table assignment. To reconstruct the table-association map, combine the `$key`-tagged fields from `qlik_get_fields` with the app's load script (or use `qlik_get_lineage` to trace back to a QVD dataset and read its schema). Fields sharing the same `$key` value across tables indicate the associations Qlik built in memory.
 
 ### 5.2 Expression Validation
 

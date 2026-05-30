@@ -29,7 +29,7 @@ These notes document behaviors discovered through live testing against Qlik Clou
 - Field names are case-sensitive throughout Qlik. `[Sales.Amount]` and `[sales.amount]` are different fields.
 
 ### qlik_get_field_values
-- `limit` maximum is effectively 99. Requesting 100 may return an error on some tenants.
+- `limit` cap is not specified in tier-1 docs. Values up to ~99 have been observed to work reliably in testing; higher values may fail on some tenants. When in doubt, keep `limit` at or below the values used in this skill's examples (e.g., `limit=20`) and paginate for larger samples.
 - Values are returned in Qlik's internal sort order, not alphabetical.
 - **Affected by active selections.** If you need the full unfiltered value set, call `qlik_clear_selections` first.
 - Does not return null counts. Use `qlik_create_data_object` with `NullCount()` for null analysis.
@@ -179,6 +179,7 @@ These notes document behaviors discovered through live testing against Qlik Clou
   - Apps: `qri:app:sense://[appId]`
   - Datasets: Get the QRI from `qlik_get_dataset` response (format varies).
 - Not all resources have lineage metadata. Some apps or datasets may return empty results.
+- **Lineage stops at the tenant boundary.** External sources outside Qlik Cloud (ODBC/REST endpoints, source databases) appear as a single terminal node; source-system-side lineage is not retrievable via MCP. For `LIB CONNECT` to ODBC/REST sources, the chain ends at the connection name, not the source table.
 
 ---
 
