@@ -88,7 +88,13 @@ Step-by-step structured elicitation. Conduct as an interactive conversation.
 
 **3. Source System Inventory** — Per source: system name and type, connection method, tables/entities needed, refresh capability (real-time / scheduled / manual export), known data quality issues.
 
-**4. Data Scope — GRAIN DETERMINATION IS THE SINGLE MOST IMPORTANT CONCEPT.** What entities are in scope? What grain do you need? Probe with concrete examples ("Sum at order header or order line level? Each product on an order a separate row?"). Grain informs everything downstream — join logic, measure aggregation, dimension conformity. What time range? What estimated data volumes?
+**4. Data Scope — GRAIN DETERMINATION IS THE SINGLE MOST IMPORTANT CONCEPT.** What entities are in scope? A single "what grain" question silently produces double-counted measures in realistic scenarios. Probe with this checklist:
+- **Row grain per fact** — "Sum at order header or order line level? Each product a separate row?"
+- **Per-measure grain on the same fact** — "Are there measures that DON'T add up at this row grain?" (line-level quantity vs. header-level freight or order_discount on the same transactional table — loading freight at line grain quadruple-counts it).
+- **Cross-fact conformity** — when multiple facts are in scope (Orders + Shipments + Returns), "Do all facts share the same grain on the conformed dimensions (time, customer, product)?" Grain mismatch across facts sharing dims drives synthetic keys and double-counting (see `qlik-data-modeling` §8).
+- **Periodic snapshot vs. transaction** — "Is this an event log (insert-only) or a snapshot (period-end state, e.g., month-end balance)?" Snapshots are semi-additive — summing across periods is usually wrong; use Last/First per period.
+
+Grain informs join logic, measure aggregation, and dimension conformity downstream. What time range? What estimated data volumes?
 
 **5. Business Rules** — How is each key metric calculated, with EXACT definitions. **Business Rule Elicitation Trap:** users say "revenue" but mean different things. For every metric probe:
 - What TABLE and FIELD? (e.g., "`order_amount` from `order_items` table")
