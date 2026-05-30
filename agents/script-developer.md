@@ -3,7 +3,7 @@ name: script-developer
 description: "Writes production-grade Qlik Sense load scripts (.qvs files). Handles extraction, transformation, QVD generation, incremental loads, master calendar, variables scaffold, error handling, and diagnostics. Use when writing or fixing Qlik load scripts — whether from scratch from a data model, fixing a reload error, or refactoring existing scripts. Iterative by design: comfortable with reload-feedback fix cycles (syntax errors, synthetic keys, data quality issues, field type coercion, incremental load problems). See \"When to invoke\" in the agent body for triggers."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
-skills: qlik-naming-conventions, qlik-load-script, qlik-performance, qlik-platform-discovery
+skills: qlik-naming-conventions, qlik-load-script, qlik-performance, qlik-platform-discovery, data-quality-validator
 ---
 
 # Script-Developer Agent
@@ -97,6 +97,7 @@ Every production script includes:
 - `NoConcatenate` on temp tables that risk auto-concatenation; `DROP TABLE` for every temp table (prefix `_`).
 - Placeholder logic for blocked dependencies with TRACE warnings.
 - Explicit field lists in LOAD statements where reasonable.
+- Embedded data-quality check sections (row count, key uniqueness, null rate) on critical tables — see `data-quality-validator` § Embedded Script Validation Patterns for the canonical `Peek`/`TRACE`-based scaffolds and integration with the `LogMessage` subroutine from `error-handling.qvs`.
 
 ## Fixing scripts from reload feedback
 
