@@ -12,7 +12,9 @@ This file is the canonical home for synthetic key, circular reference, QUALIFY d
 
 When two tables share **more than one field name**, Qlik cannot pick a single join key, so it creates a hidden composite table named `$Syn 1` (then `$Syn 2`, etc.) that holds every distinct combination of the shared values. Each original table connects to the `$Syn` table by all of the shared fields collectively. In the Data Model Viewer this appears as a separate `$Syn N` node with **solid** connector lines to the contributing tables. Solid lines distinguish synthetic keys from circular references (#3), which use **dotted** lines.
 
-Synthetic keys are not always wrong — Qlik documents them as "valid composite keys" — but they are almost never what the developer intended, and they cause:
+Synthetic keys are not uniformly wrong. Qlik's official documentation notes that "a synthetic key is, in itself, not wrong" and that a single synthetic key representing a deliberately composite relationship between two tables may be acceptable. The situation that is always wrong — and the primary target of this section — is **multiple interdependent synthetic keys**: the official guidance states "whenever there are several synthetic keys that are dependent on each other, it is good practice to remove them" (help.qlik.com, Synthetic keys). The second reliably wrong case is a synthetic key that formed *accidentally* because of unprefixed generic field names colliding across tables (`Status`, `Code`, `Type`) — the developer never intended a composite relationship at all.
+
+Regardless of origin, any synthetic key causes:
 
 - **Silent unintended filtering.** Selecting a value in one shared field filters the other table on the same value, even when that's semantically meaningless.
 - **Wrong aggregations.** Rows that happen to match on incidental fields (e.g., both rows have `Status = 'Active'`) get included in cross-table sums.
