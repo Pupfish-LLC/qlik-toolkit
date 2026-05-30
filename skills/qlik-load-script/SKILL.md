@@ -183,54 +183,15 @@ DROP TABLE [_PipeBuild];
 
 Consume on the UI side with dollar-sign expansion (`='$(vPipe)'`). The technique generalizes beyond Variable Input — anywhere a UI control or set-analysis clause needs a delimited string of distinct values, this is the pattern. See `qlik-visualization` → `references/variable-input-control.md` for the full UI consumption walkthrough including value-label form and chart-side double-dollar dereferencing.
 
-## 8. JOIN/KEEP Prefixes
+## 8. JOIN/KEEP Prefixes (Summary)
 
-JOIN and KEEP combine two tables. **Critical difference from SQL:** Qlik joins on ALL fields with matching names between the two tables, not just the field you intend as a key. Unintended field-name overlaps produce wrong results silently.
-
-**Worked example of the silent collision:**
-
-```qlik
-// Customers has: CustomerID, Name, Status, Region
-// Orders has:    OrderID, CustomerID, OrderDate, Amount, Status
-// BOTH tables have a 'Status' field -- a silent collision waiting to happen.
-
-// WRONG -- Qlik will join on BOTH CustomerID AND Status:
-[Customers]: LOAD CustomerID, Name, Status, Region FROM [customers.qvd] (qvd);
-LEFT JOIN([Customers])
-LOAD OrderID, CustomerID, OrderDate, Amount, Status FROM [orders.qvd] (qvd);
-// Result: orders only attach to customers where Status matches too.
-// A customer with Status='Active' and an order with Status='Shipped'
-// will NOT match. The LEFT JOIN silently drops those orders.
-
-// RIGHT -- alias the overlapping non-key field before the join:
-[Customers]:
-LOAD CustomerID, Name, Status AS [Customer.Status], Region
-FROM [customers.qvd] (qvd);
-
-LEFT JOIN([Customers])
-LOAD OrderID, CustomerID, OrderDate, Amount, Status AS [Order.Status]
-FROM [orders.qvd] (qvd);
-// Now CustomerID is the only shared field and the only join criterion.
-```
+JOIN and KEEP combine two tables. **Critical difference from SQL:** Qlik joins on ALL fields with matching names between the two tables, not just the field you intend as a key. Unintended field-name overlaps produce wrong results silently — e.g., a `Status` field present in both Customers and Orders causes a LEFT JOIN to drop every order whose Status does not match its customer's Status, with no error raised.
 
 **The rule:** Before any JOIN, list the fields in both tables and alias every non-key field that shares a name. Never rely on Qlik to "figure out" the intended key.
 
-```qlik
-// LEFT JOIN adds lookup fields to the main table (rows preserved):
-LEFT JOIN([Orders])
-LOAD [%Customer.Key], [Customer.Region]
-RESIDENT [Customers];
+**JOIN vs KEEP:** JOIN merges into one table; KEEP filters both tables to matching rows but keeps them separate in the data model. **Row multiplication:** if the join key is not unique on both sides, rows multiply (1000-row fact × 3-per-key lookup = 3000 rows). **Decision:** JOIN for small lookups with unique keys; ApplyMap for large lookups or when a default value is needed (Section 9); the associative engine handles dimension-to-fact naturally. See `qlik-performance` for JOIN vs ApplyMap benchmarks.
 
-// INNER JOIN retains only matching rows:
-INNER JOIN([Orders])
-LOAD DISTINCT [%Customer.Key] RESIDENT [ActiveCustomers];
-```
-
-**JOIN vs KEEP:** JOIN merges into one table (matched fields combined). KEEP filters both tables to matching rows but keeps them as separate tables in the data model. Use KEEP when you want association filtering without merging.
-
-**Row multiplication:** If the join key is not unique in both tables, rows multiply. A 1000-row fact joined to a lookup with 3 rows per key produces 3000 rows. Always ensure the lookup side has unique keys, or use ApplyMap instead.
-
-**Decision framework:** JOIN for small lookups with unique keys. ApplyMap for large lookups or when you need a default value (see Section 9). Let the associative engine handle dimension-to-fact relationships naturally (no join needed). See `qlik-performance` for JOIN vs ApplyMap benchmarks.
+Full reference: `references/join-keep-patterns.md` (silent-collision worked example with WRONG/RIGHT side-by-side, LEFT/INNER JOIN syntax with RESIDENT, JOIN vs KEEP semantics, row multiplication, decision framework).
 
 ## 9. ApplyMap Patterns
 
@@ -522,6 +483,7 @@ Clean delimiters with PurgeChar before expanding.
 
 - `references/sql-constructs.md` -- SQL constructs not valid in Qlik LOAD/RESIDENT, the SQL SELECT pass-through exception, and the five most common adjacent failure modes (NoConcatenate, Count() argument requirements, QUALIFY with prefixed fields, DROP TABLE discipline, NullAsValue scope)
 - `references/qvd-operations.md` -- STORE syntax, optimized vs standard read rules, NoConcatenate around QVD loads, multi-QVD concatenation, file-list patterns, partial reload prefixes, binary load
+- `references/join-keep-patterns.md` -- JOIN/KEEP silent-collision worked example, LEFT/INNER JOIN syntax with RESIDENT, JOIN vs KEEP semantics, row multiplication, decision framework
 - `references/null-handling.md` -- canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue, key-field NULL, date sentinel guards, decision framework)
 - `references/error-handling.md` -- TRACE semicolon trap, ScriptError vs ScriptErrorCount snapshot pattern, ErrorMode 0/1/2, file-existence guards, field-value inspection, framework-vs-standalone selection
 - `references/subroutine-patterns.md` -- Must_Include vs Include, CALL syntax, SUB variable scoping rules, FOR EACH iteration with Cloud wildcard caveat, phantom field detection, composite key workaround
