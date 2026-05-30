@@ -164,36 +164,12 @@ Mapping tables created with `MAPPING LOAD` are consumed at `ApplyMap()` time and
 
 ### 2.5 NullAsValue scope persistence and key corruption
 
-`NullAsValue` is field-specific and stateful — it persists across all subsequent LOADs until explicitly reset with `NullAsNull *` and `SET NullValue=;`.
-
-Two failure modes:
-
-1. **Key field corruption.** Applying `NullAsValue` to key fields converts NULL to a string value (e.g., `'No Entry'`). Every NULL key in the source becomes the same string — creating phantom associations between unrelated rows (a customer with a NULL region key and an order with a NULL region key now "match" through the substituted string).
-2. **Measure field corruption.** Applying `NullAsValue` to measure fields converts NULL to a string. `Sum(field)` then silently breaks because the field is no longer numeric for the substituted rows.
-
-Always reset immediately after the LOAD that needed null substitution:
-
-```qlik
-SET NullValue = 'No Entry';
-NullAsValue [Dimension.Category];
-
-[Dimension]:
-LOAD id, name AS [Dimension.Name], category AS [Dimension.Category]
-FROM source;
-
-// Reset immediately:
-NullAsNull *;
-SET NullValue =;
-
-// Now safe to load other tables without NullAsValue interference.
-```
-
-Use `NullAsValue` ONLY on sparse dimension fields (text fields with many NULLs that should display as "No Entry" in filter panes). For string-encoded nulls ("null", "NaN", "n/a"), use `vCleanNull` instead — see `null-handling.md`.
+See `null-handling.md` Section 3 (NullAsValue pattern, scope-management example, key/measure-field corruption failure modes) and Section 4 (substituted vs bare NULL keys, phantom-association risk) for full coverage.
 
 ## See Also
 
 - `qlik-load-script` SKILL.md Section 1 — inline summary table.
 - `qlik-load-script` SKILL.md Section 14 — NoConcatenate full treatment with the INLINE auto-concat trap.
-- `null-handling.md` — canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue brief, key-field NULL, date sentinel guards, decision framework).
+- `null-handling.md` — canonical script-layer null handling (Null/IsNull/NullCount, vCleanNull, NullAsValue with scope/corruption failure modes, key-field NULL, date sentinel guards, decision framework).
 - `qlik-naming-conventions` — entity-prefix convention that obviates `QUALIFY`.
 - help.qlik.com Cloud — Aggregation functions (Count, NullCount), Concatenate / NoConcatenate, NullAsValue.

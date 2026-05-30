@@ -168,7 +168,12 @@ LOAD region AS [Customer.Region] FROM ...;
 
 ### Scope persistence and failure modes
 
-`NullAsValue` is a stateful switch that persists across all subsequent LOADs until explicitly reset. The full treatment of scope persistence, key-field corruption, and measure-field corruption lives in `references/sql-constructs.md` Section 2.5 (grouped with the other adjacent failure modes). **Always pair every `NullAsValue` block with a `NullAsNull *;` + `SET NullValue =;` reset immediately after the LOAD that needed it.**
+`NullAsValue` is field-specific and stateful — it persists across all subsequent LOADs until explicitly reset with `NullAsNull *;` and `SET NullValue =;`. **Always pair every `NullAsValue` block with that reset immediately after the LOAD that needed it.**
+
+Two failure modes when the switch is left active or applied to the wrong field type:
+
+1. **Key field corruption.** Applying `NullAsValue` to key fields converts NULL to a string value (e.g., `'No Entry'`). Every NULL key in the source becomes the same string — creating phantom associations between unrelated rows (a customer with a NULL region key and an order with a NULL region key now "match" through the substituted string). See Section 4 below for the full phantom-association treatment.
+2. **Measure field corruption.** Applying `NullAsValue` to measure fields converts NULL to a string. `Sum(field)` then silently breaks because the field is no longer numeric for the substituted rows.
 
 Reference: help.qlik.com Cloud — NullAsValue statement. "The NullAsValue statement operates as a switch and will operate on subsequent loading statements. It can be switched off again by means of the NullAsNull statement."
 
@@ -216,7 +221,7 @@ Never mask NULL values on key fields. The phantom-association risk has two disti
 
 ### Substituted NULL keys (NullAsValue applied to a key)
 
-If `NullAsValue` is mistakenly applied to a key field, every NULL key in the source becomes the same substituted string (e.g., `'No Entry'`). Rows from unrelated parents now share that same key value and associate with each other through the substitution. Symptom: customers with no region key, orders with no region key, and products with no region key all appear to share a region — the engine cannot tell that those NULLs were unrelated. Full failure-mode treatment in `references/sql-constructs.md` Section 2.5.
+If `NullAsValue` is mistakenly applied to a key field, every NULL key in the source becomes the same substituted string (e.g., `'No Entry'`). Rows from unrelated parents now share that same key value and associate with each other through the substitution. Symptom: customers with no region key, orders with no region key, and products with no region key all appear to share a region — the engine cannot tell that those NULLs were unrelated. The same failure mode applies to measure fields, where the substituted string breaks `Sum`/`Avg` — see Section 3 "Scope persistence and failure modes" above.
 
 ### Bare NULL keys (left as-is)
 
@@ -367,7 +372,6 @@ In this example:
 ## See Also
 
 - `qlik-load-script` SKILL.md Section 6 — inline summary of the three strategies
-- `qlik-load-script/references/sql-constructs.md` Section 2.5 — full `NullAsValue` scope and corruption failure modes (grouped with the other adjacent failure modes)
 - `qlik-expressions` SKILL.md Section 9 — null handling in expressions (`Alt`, `Coalesce`, `RangeSum`, division guards, documentation requirement)
 - `script-templates/clean-null-function.qvs` — `vCleanNull`, `vCleanDate`, `vCleanNumeric`, `vDualBool` definitions
 - help.qlik.com Cloud — Null function, IsNull function, NullCount function, NullAsValue statement, Null-value handling

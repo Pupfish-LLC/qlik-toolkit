@@ -189,19 +189,9 @@ $(vYearOverYear([Amount], 1))
 ```
 Per help.qlik.com Cloud — Dollar-sign expansion using parameters, the `$1`, `$2` placeholders are text substitution: the caller's argument is dropped into the variable body verbatim before parsing continues.
 
-**The comma limitation (critical):** Expressions with commas cannot be passed as arguments to variable functions. Commas are interpreted as parameter delimiters:
-```
-// WRONG - ApplyMap's commas break parameter parsing:
-$(vCleanNull(ApplyMap('MyMap', field, 'default')))
-// The engine sees: $1=ApplyMap('MyMap', $2=field, $3='default')
+**The comma limitation (critical):** Commas inside `$(...)` are parameter delimiters, so expressions containing commas (`ApplyMap`, `IF`, `PurgeChar`, `Concat`) cannot be passed as arguments to a variable function — the engine splits the call at the inner commas. Write the equivalent logic inline at the call site with a comment.
 
-// RIGHT - write inline when expression contains commas:
-IF(IsNull(ApplyMap('MyMap', field, 'default')), Null(), ApplyMap('MyMap', field, 'default'))
-```
-
-Common violations: ApplyMap (has commas), PurgeChar (has comma), IF (has commas), Concat (has comma).
-
-When a variable function cannot wrap an expression due to commas, write the equivalent logic inline and add a comment.
+See `references/variable-rules.md` Section 2 for the full comma-trap mechanism, the list of triggering functions, wrong/right worked examples, the `Chr(44)` workaround, and indirect `$(=...)` expansion rules.
 
 **Dynamic set analysis:** `Sum({<Year={$(vCurrentYear)}>} Sales)` — Variable expands before set analysis evaluates.
 
@@ -210,9 +200,9 @@ When a variable function cannot wrap an expression due to commas, write the equi
 - `$(=expression)` forces immediate evaluation and substitutes the result at parse time
 - This matters for dynamic labels: `=$(=Sum(Amount))` shows the evaluated sum in a text box
 
-Reference `references/set-analysis.md` § Dollar-Sign Expansion Inside Set Modifiers for dynamic set modifiers, the comma trap, and indirect references like `Year={$(=Max(Year))}`.
+Reference `references/set-analysis.md` § Dollar-Sign Expansion Inside Set Modifiers for set-analysis-specific dynamic modifiers and indirect references like `Year={$(=Max(Year))}`.
 
-For SET vs LET decision criteria, the comma trap with workarounds, trailing-semicolon discipline, and the conventional structure of an `expression-variables.qvs` file, see `references/variable-rules.md`.
+For SET vs LET decision criteria, trailing-semicolon discipline, and the conventional structure of an `expression-variables.qvs` file, see `references/variable-rules.md`.
 
 ## 7. Calculation Conditions
 

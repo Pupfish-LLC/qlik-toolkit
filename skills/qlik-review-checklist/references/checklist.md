@@ -16,6 +16,8 @@ Reload-blocking and silent-failure patterns in load scripts. Canonical home for 
 
 ### 1.1 Dollar-Sign Expansion Safety
 
+> Canonical authoring reference: `qlik-expressions/references/variable-rules.md` Section 2 (comma-trap mechanism, triggering functions, workarounds). The list below is the QA-verification enumeration.
+
 - **Severity:** Critical
 - **Applicable Scopes:** Script / Comprehensive
 - **What to Check:** Every `$(variable(...))` call must have arguments that do NOT contain nested function calls with commas
@@ -450,6 +452,8 @@ Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null
 - **Finding Format:** `[E-5.4]: Field reference to non-existent field / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: Expression references [fieldname] which does not exist in data model / Impact: Expression will fail to evaluate, measure will show error / Recommended Fix: [Correct field name to match data model | Add field to data model via script modification]`
 
 ### 5.5 Dollar-Sign Expansion in SET Variables (Comma Rule)
+
+> Canonical authoring reference: `qlik-expressions/references/variable-rules.md` Section 2. The item below is the QA-verification enumeration.
 
 - **Severity:** Critical
 - **Applicable Scopes:** Expression / Comprehensive

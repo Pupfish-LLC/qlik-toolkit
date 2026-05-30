@@ -292,16 +292,16 @@ The commas separating field modifiers are safe — they're NOT inside `$()`. The
 
 ### The comma trap (dollar-sign expansion in variables containing commas)
 
-Commas inside `$()` are parameter delimiters for variable functions, not expression commas. This breaks expressions that contain commas (ApplyMap, IF, Concat, PurgeChar) when wrapped in a variable function:
+Commas inside `$()` are parameter delimiters for variable functions, not expression commas. Comma-containing expressions (`ApplyMap`, `IF`, `Concat`, `PurgeChar`) cannot be passed as arguments to a variable function — the call misparses silently. See `variable-rules.md` Section 2 for the canonical treatment of the mechanism, the triggering function list, and general workarounds.
+
+**Set-analysis-specific resolution.** Inside a set modifier the inline form uses an embedded search-string expression (note the `=` prefix and double-quoted form), and an alternative pre-resolves the lookup in the load script:
 
 ```
 // WRONG -- ApplyMap's commas break parameter parsing:
 SET vCleanField = ApplyMap('MyMap', $1, 'default');
 Sum({<Region={$(vCleanField(Country))}>} [Amount])
-// The engine sees: $1=ApplyMap('MyMap', $2=Country, $3='default')
-// Misparses, returns NULL or errors.
 
-// RIGHT -- write inline when the inner expression contains commas:
+// RIGHT -- inline as a search-string expression inside the set modifier:
 Sum({<Region={"=ApplyMap('MyMap', Country, 'default')"}>} [Amount])
 
 // RIGHT alternative -- pre-resolve in load script:
@@ -309,10 +309,6 @@ Sum({<Region={"=ApplyMap('MyMap', Country, 'default')"}>} [Amount])
 LOAD Country, ApplyMap('MyMap', Country, 'default') AS MappedCountry RESIDENT ...;
 Sum({<Region={MappedCountry}>} [Amount])
 ```
-
-Common violations: `ApplyMap` (commas), `IF` (commas), `PurgeChar` (comma in arg), `Concat` (comma delimiter).
-
-When a variable function cannot wrap an expression due to commas, write the equivalent logic inline and add a comment explaining the workaround.
 
 ### No nesting inside `$()` parameters
 

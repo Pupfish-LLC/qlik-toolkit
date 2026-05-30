@@ -45,41 +45,21 @@ These SQL constructs do NOT exist in Qlik LOAD statements. Using them causes rel
 
 ## 2. SET vs LET
 
-`SET` preserves the right side as literal text (a template). `LET` evaluates the right side immediately.
+`SET` preserves the right side as literal text (a template, re-evaluated at use time). `LET` evaluates the right side once at script-load time and stores the result.
 
-```qlik
-// SET preserves the template -- $1 placeholders stay unevaluated:
-SET vDualBool = IF(Match($1, 'true') > 0, Dual('$2', 1), Dual('$3', 0));
+**Rule:** Use `SET` for expression templates, variable functions with `$1` placeholders, and anything referenced in chart expressions. Use `LET` for values needed as a literal downstream in the script (row counts, FOR-loop bounds, incremental-load timestamps).
 
-// LET evaluates immediately -- use for computed values:
-LET vRowCount = NoOfRows('MyTable');
-LET vToday = Num(Today());
-```
+**Critical script gotcha:** `SET` does not evaluate function calls on its right side. `SET HidePrefix=Chr(37);` assigns the literal string `Chr(37)`, not `%`. Use `LET HidePrefix=Chr(37);` (evaluates to `%`) or `SET HidePrefix='%';` (literal). Applies to all function calls on the right of SET (`Chr()`, `Num()`, `Date()`, `Today()`, `Time()`, etc.).
 
-**Rule:** Use `SET` for variable functions containing quotes, Dual(), or `$1` placeholders. Use `LET` for simple value assignments where you need the result now.
-
-**Critical:** `SET` does not evaluate function calls. `SET HidePrefix=Chr(37);` assigns the literal string `Chr(37)`, not the `%` character. To assign a computed value, use `LET HidePrefix=Chr(37);` or `SET HidePrefix='%';`. This applies to all function calls on the right side of SET, including `Chr()`, `Num()`, `Date()`, `Today()`, `Time()`, etc.
+See `qlik-expressions/references/variable-rules.md` Section 1 for the full decision criteria, LET evaluation semantics, the dynamic-UI rule, and worked examples.
 
 ## 3. Dollar-Sign Expansion
 
-Inside `$()`, commas are parameter delimiters. This is the #1 source of reload errors in scripts using SET variable functions.
+Inside `$()`, commas are parameter delimiters, not expression argument separators. Passing a comma-containing expression (`ApplyMap`, `IF`, `PurgeChar`, `Concat`) as an argument to a variable function breaks the call — the engine splits at the inner commas. The rule: only pass simple field references or literals to variable functions; write comma-containing logic inline with a comment.
 
-```qlik
-// The comma in PurgeChar breaks the variable call:
-// WRONG: $(vCleanNull(PurgeChar(field, '[]')))
-// The engine sees: $1=PurgeChar(field, $2='[]')
+See `qlik-expressions/references/variable-rules.md` Section 2 for full coverage — the comma-trap mechanism, the list of commonly triggering functions, the wrong/right worked example, and the rare `Chr(44)` workaround.
 
-// RIGHT -- write inline with comment:
-// Cannot use vCleanNull here (comma in PurgeChar args)
-IF(IsNull(PurgeChar(given_names, '[]{}' & Chr(34)))
-   OR Len(Trim(PurgeChar(given_names, '[]{}' & Chr(34)))) = 0,
-   Null(),
-   Trim(PurgeChar(given_names, '[]{}' & Chr(34))))  AS [Name.Given]
-```
-
-Only pass simple field names or literals (no commas) as arguments to variable functions.
-
-**Null variable expansion:** If a `LET` assignment evaluates to null, the variable is empty. `IF $(emptyVar) >= 0 THEN` becomes `IF >= 0 THEN` -- a syntax error. Guard at assignment time with a default: `LET vX = Alt(NoOfRows('MaybeGone'), -1);` or check before expansion: `IF '$(vX)' <> '' AND $(vX) >= 0 THEN`. This applies to any function that can return null (`NoOfRows` on dropped/nonexistent tables, `Peek` past end of table, `FieldValue` out of range, etc.).
+**Script-context null variable expansion:** If a `LET` assignment evaluates to null, the variable is empty. `IF $(emptyVar) >= 0 THEN` becomes `IF >= 0 THEN` -- a syntax error. Guard at assignment time with a default: `LET vX = Alt(NoOfRows('MaybeGone'), -1);` or check before expansion: `IF '$(vX)' <> '' AND $(vX) >= 0 THEN`. This applies to any function that can return null (`NoOfRows` on dropped/nonexistent tables, `Peek` past end of table, `FieldValue` out of range, etc.).
 
 ## 4. Preceding LOAD
 
@@ -132,7 +112,7 @@ Three strategies, each for a different null shape:
 | Date/numeric calculations | Genuine NULL plus non-NULL sentinel dates (`1900-01-01`, epoch zero) | Explicit `IsNull` + range guards |
 | Key fields | Any null | **Never mask** — surface as data quality issue |
 
-`NullAsValue` is field-specific and stateful — persists until reset with `NullAsNull *;` + `SET NullValue =;`. Never apply to key fields (creates phantom associations through the substituted string) or measure fields (breaks `Sum`/`Avg`). Full failure-mode treatment in `references/sql-constructs.md` Section 2.5.
+`NullAsValue` is field-specific and stateful — persists until reset with `NullAsNull *;` + `SET NullValue =;`. Never apply to key fields (creates phantom associations through the substituted string) or measure fields (breaks `Sum`/`Avg`).
 
 For date arithmetic, the threat is non-NULL sentinels (sources substitute `1900-01-01` for "unknown"), not genuine NULLs — those propagate to NULL correctly. Guard against both: `IF(IsNull(d) OR d < MakeDate(1901,1,2) OR d > Today(), Null(), ...)`.
 
