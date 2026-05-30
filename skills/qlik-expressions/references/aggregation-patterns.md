@@ -91,6 +91,18 @@ Aggr(NODISTINCT Sum([Amount]), [Customer.Key])
 
 NODISTINCT is rare in practice — most use cases want distinct-dimension semantics. Use it only when the outer aggregation needs to count or weight by source-row multiplicity.
 
+**DISTINCT position matters — two different keywords, two different scopes.** The DISTINCT/NODISTINCT shown in the Section 2 syntax line sits at the Aggr level and governs how the virtual table groups dimension rows. DISTINCT can *also* appear inside the inner aggregation, where it governs which values the inner aggregation sees. These are semantically different:
+
+```
+// Inner DISTINCT — inner Count sees only unique Amount values per customer
+Aggr(Count(DISTINCT [Amount]), [Customer.Key])
+
+// Aggr-level DISTINCT (default) — one virtual row per distinct Customer.Key
+Aggr(DISTINCT Sum([Amount]), [Customer.Key])
+```
+
+Per help.qlik.com — Aggr function, both positions are valid syntax; mistaking one for the other is a known source of wrong results. When reading or writing Aggr expressions, check whether each DISTINCT applies to the inner aggregation or to the dimension iteration.
+
 ## 6. Aggr() with Set Analysis
 
 Two positions for set modifiers. Both filter the record set the Aggr operation iterates over:
