@@ -71,7 +71,7 @@ For each column in a table, capture:
 ### 2. Cardinality and Uniqueness
 
 - **Cardinality** — Approximate distinct value count. Range is fine (e.g., "~500 distinct products" vs. "~5M distinct transactions").
-- **Null rate** — Percentage of rows where the column is NULL. If cardinality includes NULLs, note separately.
+- **Null rate** — Percentage of rows where the column is NULL. Note: `COUNT(DISTINCT col)` does not include NULLs in any standard database. Report distinct-value count and null rate as two independent measures.
 - **Uniqueness** — If this column is or could be a key, note whether values are unique (no duplicates). Check for composite key opportunities (e.g., does `[order_id, line_number]` form a unique key?).
 
 ### 3. Value Ranges and Sample Values

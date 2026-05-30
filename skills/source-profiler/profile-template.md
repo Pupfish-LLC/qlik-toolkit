@@ -74,7 +74,7 @@ Use this template to manually profile data sources when MCP connections are not 
 - **Null handling:** Several columns have nulls (email 0.04%, customer_name 2%, address 5%, phone 10%). Null rate is reasonable; no fields have excessive nulls (>50%).
 - **String encoding:** No string-encoded nulls detected (e.g., 'null' as text). Actual NULL values used.
 - **Date consistency:** Dates are consistent DATE type. No mixed format issues.
-- **Key integrity:** Primary key is unique and never null. Business key (email) is almost unique (~99.96% unique) but has duplicates; investigate during detailed source profiling detailed profiling.
+- **Key integrity:** Primary key is unique and never null. Business key (email) is almost unique (~99.96% unique) but has duplicates; investigate during detailed source profiling.
 
 ### Cross-Table Notes
 

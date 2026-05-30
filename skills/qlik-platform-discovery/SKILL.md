@@ -109,7 +109,7 @@ The structural mechanics for each architecture pattern live in `qlik-data-modeli
 Subroutines in shared libraries are reused widely, which means their limitations propagate. The following limitations are common enough to check for explicitly:
 
 - **Single-key assumption** — the body uses `WHERE FieldName = pKey` or `Hash128(pKey)` with one parameter; composite keys will not work without modification.
-- **Wildcard SELECT** — the body does `LOAD * FROM ...` or `LOAD * RESIDENT ...`; fields not present in the expected schema can leak into the target table.
+- **Wildcard SELECT** — the body does `LOAD * FROM ...` or `LOAD * RESIDENT ...`; fields not in the expected schema can leak into the target table, AND tables with identical field signatures auto-concatenate silently when the SUB is called multiple times.
 - **Hardcoded paths** — connection names or QVD paths written as string literals inside the SUB body; moving the SUB across environments requires patching.
 - **Variable scope leakage** — SUBs that `SET vSomeVar = ...` without resetting leave state for the next caller. `LET` and `SET` inside SUBs write to global scope.
 - **Missing `NoConcatenate`** — SUBs that load a temp table without `NoConcatenate` will silently concatenate into a previously loaded table with matching field structure. Especially dangerous when SUBs are called in loops.

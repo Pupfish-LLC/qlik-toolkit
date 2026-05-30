@@ -88,41 +88,41 @@ Step-by-step structured elicitation. Conduct as an interactive conversation.
 
 **3. Source System Inventory** — Per source: system name and type, connection method, tables/entities needed, refresh capability (real-time / scheduled / manual export), known data quality issues.
 
-**4. Data Scope — GRAIN DETERMINATION IS THE SINGLE MOST IMPORTANT CONCEPT.** What entities are in scope? A single "what grain" question silently produces double-counted measures in realistic scenarios. Probe with this checklist:
+**4. Source Profiling** — Run profiling immediately after source inventory so cardinality, volume, and freshness data are available when discussing grain, business rules, refresh, and constraints in the steps that follow. Assess which scenario applies:
+- **MCP available** — Invoke the `source-profiler` skill with connection details from step 3 for a full Source Profile Report.
+- **MCP unavailable but connection details known** — Generate the Source Profile Template (system name, connection type, tables with columns, types, sample values, row count estimates) for the developer to complete.
+- **Neither** — Document as a blocked dependency with placeholder strategy.
+
+Whatever the scenario, include the profile (template, or blocked note) in the spec. Subsequent steps reference the profiling output where it informs their answers.
+
+**5. Data Scope — GRAIN DETERMINATION IS THE SINGLE MOST IMPORTANT CONCEPT.** What entities are in scope? A single "what grain" question silently produces double-counted measures in realistic scenarios. Probe with this checklist:
 - **Row grain per fact** — "Sum at order header or order line level? Each product a separate row?"
 - **Per-measure grain on the same fact** — "Are there measures that DON'T add up at this row grain?" (line-level quantity vs. header-level freight or order_discount on the same transactional table — loading freight at line grain quadruple-counts it).
 - **Cross-fact conformity** — when multiple facts are in scope (Orders + Shipments + Returns), "Do all facts share the same grain on the conformed dimensions (time, customer, product)?" Grain mismatch across facts sharing dims drives synthetic keys and double-counting (see `qlik-data-modeling` §8).
 - **Periodic snapshot vs. transaction** — "Is this an event log (insert-only) or a snapshot (period-end state, e.g., month-end balance)?" Snapshots are semi-additive — summing across periods is usually wrong; use Last/First per period.
 
-Grain informs join logic, measure aggregation, and dimension conformity downstream. What time range? What estimated data volumes?
+Grain informs join logic, measure aggregation, and dimension conformity downstream. Use cardinality and row-count evidence from step 4 to ground the grain discussion in actual data. What time range? What estimated data volumes?
 
-**5. Business Rules** — How is each key metric calculated, with EXACT definitions. **Business Rule Elicitation Trap:** users say "revenue" but mean different things. For every metric probe:
+**6. Business Rules** — How is each key metric calculated, with EXACT definitions. **Business Rule Elicitation Trap:** users say "revenue" but mean different things. For every metric probe:
 - What TABLE and FIELD? (e.g., "`order_amount` from `order_items` table")
 - What EXCLUSIONS? ("exclude cancelled, returned")
 - What INCLUSIONS? ("include tax, include shipping")
 - At what GRAIN? ("sum of order items per order, or sum across all orders?")
 - For what TIME SCOPE? ("current fiscal year only", "rolling 12 months", "all time")
 
-Also probe: classification logic, SCD (slowly changing) requirements where business rules are time-dependent.
+Also probe: classification logic, SCD (slowly changing) requirements where business rules are time-dependent. Cross-check field references against the profiling output from step 4 to confirm the named fields exist and behave as the user describes.
 
-**6. ETL Preference** — Reference platform context findings. Present the existing architecture pattern and ask if they're continuing it or changing. App-architecture thresholds (single-app vs multi-app, QVD layer warranted, refresh-time concerns) belong to the `qlik-performance` § Architecture-Level Decisions framework — surface the user's preference here; the data architect makes the final call.
+**7. ETL Preference** — Reference platform context findings. Present the existing architecture pattern and ask if they're continuing it or changing. App-architecture thresholds (single-app vs multi-app, QVD layer warranted, refresh-time concerns) belong to the `qlik-performance` § Architecture-Level Decisions framework — surface the user's preference here; the data architect makes the final call.
 
-**7. App Architecture Strategy** — How many apps, what each does, reload dependencies. Preference only; data architect decides.
+**8. App Architecture Strategy** — How many apps, what each does, reload dependencies. Preference only; data architect decides.
 
-**8. Refresh Requirements** — How fresh must data be? Acceptable reload duration? Reload schedule?
+**9. Refresh Requirements** — How fresh must data be? Acceptable reload duration? Reload schedule? Use the row-count and incremental-load-pattern evidence from step 4 to set realistic latency expectations.
 
-**9. Security** — Who sees what? Row-level security? Data reduction? Section Access considerations?
+**10. Security** — Who sees what? Row-level security? Data reduction? Section Access considerations?
 
-**10. Known Constraints and Risks** — Data quality issues, system limitations, political constraints, dependencies on other teams, blocked items.
+**11. Known Constraints and Risks** — Data quality issues, system limitations, political constraints, dependencies on other teams, blocked items. Carry forward any data quality flags surfaced in step 4 profiling.
 
 For each topic: ask, document, flag ambiguities. **If the user says "just the standard stuff," probe deeper.** Translate vague asks ("I want to see X") into dimensions/measures/time/filters. Use existing reports as anchors ("How do you calculate this today?"). Probe concrete scenarios ("Show me three questions you ask most often").
-
-**11. Source Profiling** — Assess which scenario applies:
-- **MCP available** — Invoke the `source-profiler` skill with connection details from step 3 for a full Source Profile Report.
-- **MCP unavailable but connection details known** — Generate the Source Profile Template (system name, connection type, tables with columns, types, sample values, row count estimates) for the developer to complete.
-- **Neither** — Document as a blocked dependency with placeholder strategy.
-
-Whatever the scenario, include the profile (template, or blocked note) in the spec.
 
 **12. Compile findings into the Project Specification Document.** Suggested sections: business context, user persona matrix, source system catalog, data scope (entities, grain with explicit examples, time range, volume estimates), business rule definitions (table/field/grain/time scope, classification, SCD), ETL architecture preference, app architecture preference, refresh schedule and latency, security requirements, constraints and risks, blocked dependency inventory, Source Profile Report.
 

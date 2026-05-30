@@ -196,9 +196,30 @@ Platform-level limits, deployment model, security model, and other constraints t
 
 **Details:** [Environment tiers, their purposes, and any development workflow (dev → test → prod)]
 
+### License Tier and Capacity
+
+| Attribute | Value |
+|---|---|
+| License tier | [e.g., Qlik Cloud Standard / Premium / Enterprise; QSEoW Token / Professional / Analyzer] |
+| Capacity units | [e.g., capacity-unit allocation, user allocation, or stream-card count] |
+| Large-app entitlement | [Yes / No; if yes, maximum permitted in-memory app size] |
+| AI feature availability | [e.g., Insight Advisor, Auto ML, generative AI add-on — present / absent] |
+| Notes | [Anything else affecting what the project can use: add-on bundles, regional restrictions] |
+
+### Monitoring Infrastructure
+
+| Attribute | Value |
+|---|---|
+| Qlik-OSS monitoring apps installed | [e.g., Operations Monitor, License Monitor, App Metadata Analyzer, Reload Insights — list each that is in use] |
+| Monitor output consumed by | [Who watches the monitor apps and what decisions are driven from them — for example, a platform operations team reviews reload health weekly] |
+| Custom monitoring | [Any custom logging tables, telemetry pipelines, or third-party observability tooling] |
+| Notes | [Where monitor app data is stored, refresh cadence, retention] |
+
 ### Security Model
 
-**Approach:** [Section Access | Stream Security | Identity Provider Integration | Other]
+**Section Access setup approach** (Cloud: refer to help.qlik.com Cloud Section Access docs; Client-Managed: refer to help.qlik.com QSEoW Section Access docs).
+
+**In use on this platform:** [Yes / No / Mixed across apps — brownfield discovery captures THAT Section Access is in use; HOW is deferred]
 
 **Identity Provider:** [Okta | Azure AD | LDAP | Static credentials | Other]
 
@@ -239,9 +260,30 @@ Platform-level limits, deployment model, security model, and other constraints t
 
 **Details:** Three environments: Development (personal dev space for developers), Test (shared test space for QA), Production (managed content space for end users). Promotion workflow: Develop in Dev space → Export to Test → Run validation suite → Import to Prod via change control ticket.
 
+### License Tier and Capacity
+
+| Attribute | Value |
+|---|---|
+| License tier | Qlik Cloud Premium |
+| Capacity units | 100 capacity units, 50 named Professional users, 200 Analyzer users |
+| Large-app entitlement | Yes — up to 25 GB in-memory app size |
+| AI feature availability | Insight Advisor enabled; Auto ML not licensed |
+| Notes | Add-on bundle for Application Automation included; EU region |
+
+### Monitoring Infrastructure
+
+| Attribute | Value |
+|---|---|
+| Qlik-OSS monitoring apps installed | Operations Monitor, License Monitor, App Metadata Analyzer (Reload Insights not installed) |
+| Monitor output consumed by | Platform operations team reviews Operations Monitor weekly for reload failures and capacity trends; License Monitor reviewed monthly |
+| Custom monitoring | None — relying on Qlik-OSS monitor apps and tenant native alerting |
+| Notes | Monitor apps reload nightly; data retained for 90 days |
+
 ### Security Model
 
-**Approach:** Stream Security with Section Access
+**Section Access setup approach** (refer to help.qlik.com Cloud Section Access docs for this Cloud tenant).
+
+**In use on this platform:** Yes — required for all Production apps; optional in Dev/Test.
 
 **Identity Provider:** Azure AD
 
