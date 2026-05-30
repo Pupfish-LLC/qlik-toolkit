@@ -255,7 +255,7 @@ LOAD order_id, customer_id, detail_id, [Detail.Quantity] FROM orderdetail.qvd (q
 
 ### Why It's Wrong
 
-Both tables share `order_id` **and** `customer_id`. Qlik creates a synthetic key on the pair even though the real relationship between the two tables is just `order_id` — `customer_id` is only in OrderDetail for denormalization convenience.
+Both tables share `order_id` **and** `customer_id`. Qlik creates a synthetic key on the pair even though the real relationship between the two tables is just `order_id` — `customer_id` is only in OrderDetail for denormalization convenience. The synthetic key (rather than silent auto-concatenation) is the outcome here because the two tables share *some* field names but not the *same field count* — see `qlik-load-script` SKILL.md § 14 (NoConcatenate and Auto-Concatenation) for the count-rule that distinguishes partial overlap (this synthetic-key case) from full match (silent auto-concatenation).
 
 ### The Fix
 
