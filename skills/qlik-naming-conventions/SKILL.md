@@ -266,6 +266,8 @@ Account.City, Customer.City
 Rename Fields using FieldMap;
 ```
 
+> **Scope-wide rename:** `Rename Fields using` renames every loaded table that contains the old field name — not just the table you intend. If `Account.Email` also exists in a separate Lead extract that was not yet entity-prefixed, both occurrences are renamed to `Customer.Email`, silently creating an unintended link. Confirm the old name is unique across all loaded tables before running the rename. (Source: [help.qlik.com — Rename Field statement](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Rename-Field.htm))
+
 **When to use Mapping RENAME:**
 - The business calls the entity something different than the technical model (`Account` vs. `Customer`)
 - You need to align field names with an existing app's conventions in a brownfield project
