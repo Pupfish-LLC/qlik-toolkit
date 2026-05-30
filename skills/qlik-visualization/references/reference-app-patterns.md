@@ -120,6 +120,11 @@ Date Range | Sheet-Specific | Calendar Picker | Daily | Last 90 days
 4. Record font sizes for KPI titles, chart titles, axis labels
 5. Check for alternating row colors in tables
 
+**Implementation paths for static value-to-color mapping.** Three options exist for binding a dimension value to a fixed color, and a reference app may use any of them — check all three when replicating:
+1. **Pick(Match(...)) expression on a master dimension** — colors live inside the chart's color-by-expression. Portable per object; harder to change globally.
+2. **Master measure or master dimension Background/Color expression** — colors are attached to the master item; consistent everywhere the master item is used.
+3. **`theme.json` `colorMap` (or `dataColorPalette`) section** — colors are defined at the app-theme level; centralized and reusable across apps that share the theme.
+
 **Document:**
 ```
 Chart | Dimension | Color | Conditional? | Notes
@@ -187,13 +192,13 @@ Layout Priority | Object | Breakpoint (Desktop / Tablet / Mobile)
    - Do any objects get resized?
 5. Record the widths at which behavior changes (these are author-controlled; Qlik does not publish a tiered breakpoint scheme).
 
-**Document (author-defined widths; not Qlik-published tiers):**
+**Document (author-defined widths; not Qlik-published tiers). The pixel values below are illustrative — they are the widths observed in one specific reference app, not defaults. Record whatever widths you actually observe the layout stop reflowing at:**
 ```
 Observed Width | Behavior Changes
 ---------------|------------------
-Wide (~1200px+ in the reference app) | 3-column layout: Filters (left) | KPIs (center-top) | Trend Chart (center-large)
-Medium (~768-1199px) | 2-column layout: Filters (left, narrower) | Charts stack below
-Narrow (below ~768px; ≤480px enters Qlik's documented small-screen mode) | 1-column: filter pane shrinks then uses the dropdown chevron for dimension overflow | KPIs stack | Trend chart reflows | Regional table hidden
+Wide (whatever width the reference app stops reflowing — e.g., ~1200px+ in the example app) | 3-column layout: Filters (left) | KPIs (center-top) | Trend Chart (center-large)
+Medium (the band between wide and narrow — e.g., ~768-1199px in the example app) | 2-column layout: Filters (left, narrower) | Charts stack below
+Narrow (below the medium band; ≤480px enters Qlik's documented small-screen mode — e.g., below ~768px in the example app) | 1-column: filter pane shrinks then uses the dropdown chevron for dimension overflow | KPIs stack | Trend chart reflows | Regional table hidden
 ```
 
 ---
@@ -218,7 +223,7 @@ Narrow (below ~768px; ≤480px enters Qlik's documented small-screen mode) | 1-c
 | **Filters** | Year (button group, global), Region (list, global) |
 | **Colors** | Brand blue, orange, green, purple (dimension-based); conditional red/green for KPI vs. target |
 | **Responsive** | Wide widths: 3-column. Medium: 2-column. Narrow: filter pane shrinks/overflows to chevron + KPIs stack + table hidden (widths are author-defined; Qlik publishes only the 480px small-screen threshold) |
-| **Accessibility** | 5:1 contrast; color-blind safe palette; all axes labeled; no information in color alone |
+| **Accessibility** | 4.5:1 contrast (WCAG 2.1 AA normal text); color-blind safe palette; all axes labeled; no information in color alone |
 | **Replicable Elements** | KPI arrangement, color scheme, global filter design, responsive breakpoints |
 | **Adaptations for New Project** | Measure names differ per dataset; color scheme aligns with client branding; responsive behavior same; layout same |
 ```
@@ -283,7 +288,7 @@ Replication Checklist for Executive Dashboard Pattern
 | **Charts** | Sales Trend (line), Regional Breakdown (stacked bar), Top 10 Products (table) |
 | **Filters** | Year, Month (cascading), Region, Sales Rep (search) |
 | **Responsive** | Desktop 3-col / Tablet 2-col / Mobile: 1-col with filter menu |
-| **Accessibility** | Colorblind palette (blue/orange/purple), 5:1 contrast, labeled axes |
+| **Accessibility** | Colorblind palette (blue/orange/purple), 4.5:1 contrast (WCAG 2.1 AA normal text), labeled axes |
 | **Replicate For** | Marketing dashboard (same layout), Finance dashboard (similar structure) |
 | **Customize** | Measure expressions for new KPIs; filter fields depend on data structure |
 ```

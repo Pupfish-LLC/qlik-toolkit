@@ -58,7 +58,8 @@ Row 4-5 (Comparison):    [Bar Chart ~1/2 width] [Summary Table ~1/2 width]
 - **Dimension(s):** [Calendar.Month] or [multiple dimensions]
 - **Measure(s):** vRevenue, vRevenueTarget (reference expression catalog)
 - **Sorting:** Month ascending, or custom order
-- **Calculation Condition:** vCalcCondSingleYear or "None"
+- **Calculation Condition:** vCalcCondSingleYear or "None" — gates when the object *evaluates* (with a user-facing message when unmet, e.g., "Select a single year")
+- **Show Condition:** `=GetSelectedCount(Year)=1` or "None" — gates when the object *renders at all* (object is hidden entirely when unmet)
 - **Conditional Formatting:** "Green if > target, Red if < target" or "None"
 - **Grid Position:** Row 1, right-side strip (~1/4 of sheet width); adjust if Grid spacing differs
 - **Responsive Notes:** "Collapses to list on mobile" or "Remains full width"
@@ -103,6 +104,8 @@ Per dimension:
 ```
 
 ### Drill-down groups section
+
+Drill-down dimensions are a separate master item type (not a regular dimension with multiple fields). Create them via Master items → Dimensions → Create new → Drill-down.
 
 ```markdown
 **Drill-down: [Name]**
@@ -178,7 +181,7 @@ Per dimension:
 21. Verify all objects render without error.
 22. Verify filter selection triggers calculation conditions.
 23. Verify no null/missing values without context.
-24. Verify color palette matches organizational standard.
+24. Verify color palette matches organizational standard. Inspect via App settings → Appearance → Theme; for static dimension colors, verify against the master dimension's color expression or `theme.json` `colorMap`.
 ```
 
 ## Expression Gap Reporting
