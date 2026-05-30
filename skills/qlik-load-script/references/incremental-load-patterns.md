@@ -46,6 +46,52 @@ Projects with multiple source tables need a state management strategy. Two appro
 
 Every incremental load pattern should include a periodic full-refresh as a safety net. Incremental logic can silently drift from truth due to source key resets, missed edge cases in change detection, retroactive updates that fall outside the timestamp window, or bugs in source system change tracking. Schedule a full-refresh cycle (e.g., weekly or monthly) that replaces the entire QVD from a complete source extract. Track the last full-refresh date in the state QVD and force a full load when the interval expires. This catches any accumulated drift without requiring you to identify the specific failure mode.
 
+### Timezone and Source Timestamp Compatibility
+
+`vThisExecTime` and `vLastExecTime` are both produced by `Now()` in the Qlik load script. In Qlik Cloud, `Now()` returns the current time in **UTC** (the reload pod's system clock). On-premises Qlik Sense returns the time in the **server's local timezone**.
+
+When the source database stores timestamps in a different timezone — for example, SQL Server `DATETIME` columns recorded in America/New_York with no UTC offset — the WHERE clause comparison silently drifts by the timezone offset (5–8 hours for US Eastern). On a 1-hour reload schedule, this can cause up to 8 hours of changed records to be missed entirely or re-extracted on every reload.
+
+**This is silent.** No error is raised. Row counts look plausible. The drift accumulates undetected until a periodic full-refresh corrects it.
+
+**Resolution — normalize before comparison. Choose one approach:**
+
+*Option A: Normalize at the source (SQL Server `AT TIME ZONE`)*
+
+Convert the stored timestamp to UTC inside the SQL SELECT. This is the preferred approach because it keeps all timezone logic in one place and does not require changes to state management.
+
+```sql
+-- SQL Server: convert a DATETIME stored in Eastern time to UTC
+WHERE CONVERT(DATETIME,
+      SWITCHOFFSET(
+          CONVERT(DATETIMEOFFSET, modified_date) AT TIME ZONE 'Eastern Standard Time',
+          '+00:00'))
+    >= '$(vLastExecTime)'
+```
+
+Note: `AT TIME ZONE` in SQL Server requires SQL Server 2016 or later and a named Windows Time Zone identifier (e.g., `'Eastern Standard Time'`), not an IANA name. The named zone handles DST transitions automatically.
+
+*Option B: Normalize on the Qlik side*
+
+Shift `vLastExecTime` and `vThisExecTime` into the source timezone using `ConvertToLocalTime()` before the SQL is issued. This keeps the SQL simple but requires knowing the source offset at script time.
+
+```qlik
+// Add the source-timezone offset before issuing the SQL
+// Example: source is UTC-5 (US Eastern Standard Time)
+LET vLastExecTime_Source  = ConvertToLocalTime(vLastExecTime,  'Eastern Standard Time');
+LET vThisExecTime_Source  = ConvertToLocalTime(vThisExecTime,  'Eastern Standard Time');
+
+// Then use the adjusted variables in the WHERE clause:
+// WHERE modified_date >= '$(vLastExecTime_Source)'
+//   AND modified_date < '$(vThisExecTime_Source)'
+```
+
+`ConvertToLocalTime()` is documented in Qlik help (help.qlik.com) and accepts the same Windows Time Zone identifiers as SQL Server `AT TIME ZONE`. It handles DST shifts automatically.
+
+**If you cannot determine the source timezone**, add a reconciliation query to your diagnostic run that compares the MAX(modified_date) from the source against `vLastExecTime` in UTC. A consistent gap matching the suspected offset confirms the drift.
+
+**Qlik Cloud reload timezone reference:** Qlik Cloud reload pods run in UTC. This is documented on qlik.dev (developer portal, Reload task scheduling). On-premises Qlik Sense inherits the Windows Server timezone; confirm with your infrastructure team before assuming UTC.
+
 ### How to Use These Patterns
 
 **Patterns 1-3 are building blocks.** They assume `vLastExecTime` and `vThisExecTime` already exist. You must combine each pattern with the state management block above (or equivalent) to get a complete incremental script. Without state management, the pattern loads new records but never persists the timestamp, so the next reload re-extracts everything.
