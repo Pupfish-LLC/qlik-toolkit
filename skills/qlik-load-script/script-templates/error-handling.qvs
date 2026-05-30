@@ -35,17 +35,28 @@ LOAD * INLINE [
 SUB LogMessage(vLogSeverity, vLogPhase, vLogMsg)
     LET vLogTimestamp = Timestamp(Now(), 'YYYY-MM-DD hh:mm:ss');
 
+    // Escape single quotes by doubling them. This is the documented Qlik
+    // pattern for embedding apostrophes inside single-quoted string literals
+    // (help.qlik.com: "Using quotation marks in the script"). Without this,
+    // a message like "Can't open file" would terminate the literal early at
+    // the apostrophe and break the reload inside the very SUB designed to
+    // capture errors. ScriptError text from databases routinely contains
+    // apostrophes, so this escaping is required, not optional.
+    LET vLogMsgEsc      = Replace('$(vLogMsg)', Chr(39), Chr(39) & Chr(39));
+    LET vLogSeverityEsc = Replace('$(vLogSeverity)', Chr(39), Chr(39) & Chr(39));
+    LET vLogPhaseEsc    = Replace('$(vLogPhase)', Chr(39), Chr(39) & Chr(39));
+
     CONCATENATE([_ReloadLog])
     LOAD
-        '$(vLogTimestamp)' AS LogTimestamp,
-        '$(vLogSeverity)'  AS Severity,
-        '$(vLogPhase)'     AS Phase,
-        '$(vLogMsg)'       AS Message
+        '$(vLogTimestamp)'   AS LogTimestamp,
+        '$(vLogSeverityEsc)' AS Severity,
+        '$(vLogPhaseEsc)'    AS Phase,
+        '$(vLogMsgEsc)'      AS Message
     AUTOGENERATE 1;
 
-    // NOTE: If vLogMsg contains single quotes, the TRACE will break.
-    // Avoid passing user-derived strings with apostrophes directly.
-    // Use Replace(vLogMsg, '''', '') if needed before calling.
+    // TRACE writes to the reload log output and tolerates apostrophes in
+    // the expanded text without breaking parsing, so the raw (unescaped)
+    // values are used here for human readability.
     TRACE [$(vLogSeverity)] $(vLogPhase): $(vLogMsg);
 END SUB
 
