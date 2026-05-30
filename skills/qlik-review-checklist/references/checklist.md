@@ -44,7 +44,7 @@ Reload-blocking and silent-failure patterns in load scripts. Canonical home for 
     5. `BETWEEN` — rewrite as `field >= low AND field <= high`
     6. `IN (list)` — use `Match(field, val1, val2, ...)` or `WildMatch()`
     7. `CASE WHEN` — use `IF()`, `Pick()`, or `Match()` inside LOAD
-    8. `LIMIT` — use `WHERE RowNo() <= N` on RESIDENT LOAD
+    8. `LIMIT` — use `FIRST n LOAD ...` prefix (works on any source); `WHERE RecNo() <= N` on RESIDENT LOAD as a fallback
     9. Table aliases like `FROM table t1` — use full table names in brackets, no aliases
   - Note: `SQL SELECT` pass-through statements to database connections CAN use native SQL syntax (all of above is valid in `SQL SELECT`)
 - **Finding Format:** `[S-1.2]: SQL construct [construct name] in LOAD statement / Severity: Critical / Category: Script Syntax / Location: [file]:[line] / Finding: [construct] is SQL-only syntax, not valid in Qlik LOAD / Impact: Script reload will fail or produce silent data errors / Recommended Fix: Rewrite [line] using Qlik equivalent: [suggested replacement]`
@@ -74,7 +74,7 @@ Reload-blocking and silent-failure patterns in load scripts. Canonical home for 
     - SUB count vs END SUB count (must equal)
     - FOR/FOR EACH count vs NEXT count (must equal)
   - Special pattern: `IF NOT IsNull(FileTime(...))` must have matching `END IF`
-  - Use editor find/replace to verify counts (Ctrl+H in most editors: search IF, count results; search END IF, count results)
+  - Use a word-boundary regex (`\bIF\b`, `\bEND\s+IF\b`) with case-insensitive matching to count occurrences. Naive substring counting matches `IF()` function calls and substrings like `LIFE`, `WIFI`, `DRIFT`. Exclude matches that are inside parentheses (those are `IF()` function calls in LOAD expressions). Alternatively, use a Qlik-aware editor that highlights block structure (Qlik script editor, VS Code with a Qlik extension).
 - **Finding Format:** `[S-1.4]: Unbalanced [block type] blocks / Severity: Critical / Category: Script Syntax / Location: [file] / Finding: Found [n] opening [keyword] but [m] closing [END keyword] / Impact: Script will fail to parse or reload / Recommended Fix: Add missing [END keyword] statements or remove extra [keyword] statements to balance`
 
 ### 1.5 NullAsValue Scope
@@ -159,7 +159,7 @@ Inefficient script patterns that waste memory or reload time without breaking th
   - Search scripts/*.qvs for table creates: `[_tablename]` or `_tablename`
   - For each temp table created (name starts with `_`), search for `DROP TABLE _tablename`
   - If not found, flag as missing DROP
-  - Note: Tables created via `MAPPING LOAD` persist in memory until script end — they are NOT auto-dropped when `ApplyMap()` uses them. To release a mapping table early, use `DROP MAPPING TABLE [name];` (the `MAPPING` keyword is required; plain `DROP TABLE` does not apply). See help.qlik.com — [Drop Table](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Drop_Table.htm). Do not flag missing `DROP TABLE` on mapping tables — the correct release syntax is different.
+  - Note: Tables created via `MAPPING LOAD` persist in memory until script end — they are NOT auto-dropped when `ApplyMap()` uses them. They are also NOT droppable with plain `DROP TABLE`; use `DROP MAPPING TABLE tablename;` instead (the `MAPPING` keyword is required). Explicit `DROP MAPPING TABLE` after the last `ApplyMap` is good practice for memory optimization, especially for large mappings. See help.qlik.com — [Drop Table](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Drop_Table.htm). Do not flag missing `DROP TABLE` on mapping tables — the correct release syntax is different — but DO flag large mapping tables that have no `DROP MAPPING TABLE` after their last `ApplyMap` use.
 - **Finding Format:** `[P-2.3]: Missing temp table cleanup / Severity: Warning / Category: Performance / Location: [file] / Finding: Temp table [_tablename] created at [line] but no DROP TABLE found / Impact: Unnecessary memory usage, slower reload / Recommended Fix: Add DROP TABLE [_tablename] after all uses of temp table`
 
 ---
@@ -208,17 +208,46 @@ Structural defects in the loaded data model: synthetic keys, broken associations
   - Note: aliased EXISTS pattern (`key AS _alias_name`) avoids this naturally
 - **Finding Format:** `[D-3.3]: Auto-concatenation trap / Severity: Critical / Category: Data Model Integrity / Location: [file]:[line] / Finding: LOAD of [tablename] produces field names [field1, field2, ...] that match existing table [existing_tablename], no NoConcatenate / Impact: New table not registered, data silently concatenated, data model structure violated / Recommended Fix: Add NoConcatenate before LOAD, or rename fields to differentiate`
 
-### 3.4 QUALIFY/UNQUALIFY Interaction with Prefixed Fields
+### 3.4 QUALIFY/UNQUALIFY Failure Classes
+
+QUALIFY is a state toggle that affects subsequent LOADs, not retroactive. Three distinct failure classes are catalogued below. Canonical mechanics: `qlik-load-script` Section 1 (QUALIFY/UNQUALIFY).
+
+#### 3.4a QUALIFY Persistence Beyond Intended Scope
+
+- **Severity:** Critical
+- **Applicable Scopes:** Script / Comprehensive
+- **What to Check:** QUALIFY remains active until explicitly reset with UNQUALIFY. Forgetting `UNQUALIFY *;` (or scoped `UNQUALIFY fieldlist;`) after the intended block leaves QUALIFY active for ALL subsequent LOADs, producing silent table-prefixed field names downstream.
+- **How to Verify:**
+  - Search scripts/*.qvs for every `QUALIFY` statement
+  - For each QUALIFY, locate the matching `UNQUALIFY` reset before any subsequent unrelated LOAD
+  - Flag any QUALIFY without a corresponding UNQUALIFY reset before the next unrelated LOAD block
+  - Inspect the Data Model Viewer after reload: unintended `TableName.FieldName` patterns on downstream tables indicate persistence leak
+- **Impact:** Silently produces table-prefixed field names in downstream tables; breaks associations because key fields receive table prefixes that don't match across tables; no error or warning is raised
+- **Finding Format:** `[D-3.4a]: QUALIFY persistence beyond intended scope / Severity: Critical / Category: Data Model Integrity / Location: [file]:[line] / Finding: QUALIFY statement at line [n] has no matching UNQUALIFY reset before subsequent LOAD at line [m] / Impact: Subsequent tables receive unintended table-prefixed field names, silently breaking associations / Recommended Fix: Add `UNQUALIFY *;` (or scoped `UNQUALIFY fieldlist;`) immediately after the intended QUALIFY block`
+
+#### 3.4b QUALIFY * Applied to Key Fields
+
+- **Severity:** Critical
+- **Applicable Scopes:** Script / Comprehensive
+- **What to Check:** `QUALIFY *;` qualifies ALL fields including key fields. Once a key field is qualified, it no longer matches the unqualified key name in associated tables — silently breaking the association with no error or warning.
+- **How to Verify:**
+  - Search scripts/*.qvs for every `QUALIFY *;`
+  - For each occurrence, verify an explicit `UNQUALIFY [keyfield1], [keyfield2], ...;` immediately follows, listing every key field used for association
+  - Inspect the Data Model Viewer after reload: tables that should associate but appear disconnected indicate qualified key fields
+- **Impact:** Silent loss of associations between tables; data model breaks without any reload error; users see no data on selections
+- **Finding Format:** `[D-3.4b]: QUALIFY * applied to key fields / Severity: Critical / Category: Data Model Integrity / Location: [file]:[line] / Finding: `QUALIFY *;` applied at line [n] without UNQUALIFY of key field [keyname] before LOAD at line [m] / Impact: Key field receives table prefix, silently breaking the association with [other table] / Recommended Fix: Add `UNQUALIFY [keyfield1], [keyfield2], ...;` listing all key fields, immediately after the `QUALIFY *;` statement`
+
+#### 3.4c QUALIFY Interaction with Already-Prefixed Fields (Double-Prefix)
 
 - **Severity:** Warning
 - **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** If upstream fields already prefixed (e.g., Order.Status), QUALIFY * will double-prefix
+- **What to Check:** If upstream fields are already entity-prefixed (e.g., `Order.Status`), `QUALIFY *` prepends the table name, producing `TableName.Order.Status` — breaking all downstream field references.
 - **How to Verify:**
   - Search scripts/*.qvs for `QUALIFY` statements
   - Search upstream artifacts (source profile, data model spec) for evidence of entity-prefixed field names
   - If prefixed fields detected, verify QUALIFY is NOT applied OR if QUALIFY is applied, verify double-prefix is intentional
   - Check for documentation explaining why QUALIFY was omitted (if applicable)
-- **Finding Format:** `[D-3.4]: QUALIFY/UNQUALIFY interaction issue / Severity: Warning / Category: Data Model Integrity / Location: [file]:[line] / Finding: [QUALIFY * applied to already-prefixed fields creating double-prefix | QUALIFY omitted, should be documented] / Impact: Field naming inconsistency, harder to manage, potential synthetic keys / Recommended Fix: [Remove QUALIFY if fields already prefixed, OR explicitly UNQUALIFY prefixed fields before QUALIFY * | Add comment documenting why QUALIFY omitted]`
+- **Finding Format:** `[D-3.4c]: QUALIFY double-prefix on already-prefixed fields / Severity: Warning / Category: Data Model Integrity / Location: [file]:[line] / Finding: [QUALIFY * applied to already-prefixed fields creating double-prefix | QUALIFY omitted, should be documented] / Impact: Field naming inconsistency, harder to manage, potential synthetic keys / Recommended Fix: [Remove QUALIFY if fields already prefixed, OR explicitly UNQUALIFY prefixed fields before QUALIFY * | Add comment documenting why QUALIFY omitted]`
 
 ### 3.5 Null Handling Gaps
 
@@ -267,6 +296,19 @@ Structural defects in the loaded data model: synthetic keys, broken associations
   - Check for cases where same logical key appears with different names in different tables (field name inconsistency)
   - Verify no key field is modified by expressions (e.g., UPPER, TRIM) inconsistently between tables
 - **Finding Format:** `[D-3.8]: Key resolution inconsistency / Severity: Warning / Category: Data Model Integrity / Location: [file]:[line] / Finding: Key field [keyname] defined inconsistently: [table1] as [type1], [table2] as [type2] OR key values transformed inconsistently (UPPER in [table1], raw in [table2]) / Impact: Failed associations, missing records, incorrect analytics / Recommended Fix: Standardize key field definition and transformation consistently across all tables`
+
+### 3.8a AutoNumber at Extract Layer
+
+- **Severity:** Warning (Critical if QVDs are shared across multiple apps)
+- **Applicable Scopes:** Script / Comprehensive
+- **What to Check:** `AutoNumber()` must be applied only at the final app-model load, never in QVD-extraction scripts. AutoNumber assigns integers in load order, so the same business value receives different integers in different apps or different reloads — silently breaking key associations between any apps that consume the same extract QVD. Canonical mechanics: `qlik-load-script` Section 17 (AutoNumber and Composite Keys).
+- **How to Verify:**
+  - Search QVD-extract scripts for `AutoNumber(`
+  - For each occurrence, identify the output QVD and check whether it is consumed by other apps
+  - Flag any `AutoNumber` call in extract-layer scripts whose output QVD is consumed by other apps (Critical) or might be in future (Warning)
+  - Note: AutoNumber inside a `LOAD FROM QVD` also forces standard (non-optimized) read mode, defeating extraction-layer performance — flag this as an additional concern
+- **Impact:** Same business value receives different integer keys in different consuming apps; inter-app associations break silently; no error or warning raised at reload time
+- **Finding Format:** `[D-3.8a]: AutoNumber at extract layer / Severity: [Warning | Critical] / Category: Data Model Integrity / Location: [file]:[line] / Finding: AutoNumber([fieldname]) called in extract-layer script producing [QVD path] / Impact: [Breaks inter-app associations if QVD is consumed by other apps | Forces standard QVD read mode, slowing extraction] / Recommended Fix: Remove AutoNumber from extract layer; apply only at the final app-model load. For stable cross-app keys, use Hash128/Hash160/Hash256 on the business key instead.`
 
 ---
 
@@ -371,7 +413,7 @@ Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null
 - **How to Verify:**
   - Search expression-catalog.md for TOTAL keyword
   - Verify TOTAL is used correctly: `Sum(TOTAL Measure)` removes current dimension filtering
-  - Flag invalid TOTAL placement: `Sum(TOTAL <field={value}> Measure)` is invalid because TOTAL cannot contain set modifiers. However, `Sum({<field={value}>} TOTAL Measure)` IS valid — set analysis first, then TOTAL qualifier. Do not confuse these two patterns.
+  - Flag invalid TOTAL placement: `Sum(TOTAL <field={value}> Measure)` — the angle brackets after `TOTAL` may contain a list of **field names only** (no `=` and no value lists). For value filtering, use set analysis inside `{...}` braces. Valid: `Sum(TOTAL <Region> Amount)` (percent-within-region) and `Sum({<Year={2024}>} TOTAL <Region> Amount)` (set analysis + TOTAL field list). Set analysis first, then TOTAL qualifier — do not confuse these patterns.
   - Watch for TOTAL parsing ambiguity: `Sum({<...>}Total Field)` — Qlik parses `Total` as the TOTAL qualifier keyword (case-insensitive), NOT as part of a field name "Total Field." If a field is genuinely named "Total Something," it must be in square brackets: `[Total Something]`.
   - Verify TOTAL is only used when totaling across ALL dimension context is intended
   - Check expressions for cases where set analysis `{...}` should be used instead of TOTAL
