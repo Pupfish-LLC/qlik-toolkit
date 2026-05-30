@@ -24,11 +24,13 @@ CALL MySub(param1, param2);
 Qlik variables are primarily global. The single exception, documented by help.qlik.com:
 
 - **Variables created inside a SUB with `LET` or `SET`** are global. They persist after the subroutine returns and will overwrite any caller variable of the same name.
-- **Formal parameters declared in the SUB signature** (e.g., `SUB MySub(pArg1, pArg2)`) are locally scoped to that subroutine. Extra parameters beyond the actual arguments passed are initialized to NULL and can be used as local-only working variables.
+- **Formal parameters declared in the SUB signature** (e.g., `SUB MySub(pArg1, pArg2)`) are locally scoped during execution. However, their behavior at `END SUB` depends on whether a matching actual argument was supplied:
+  - **No matching actual argument (extra formal parameter):** initialized to NULL at SUB entry, value is discarded at `END SUB`. Truly local — safe working variable, no leak.
+  - **Matching actual argument supplied as a variable name:** copy-out semantics apply. Per help.qlik.com Sub statement: "If a variable is used as parameter in a CALL, ... the parameter is copied back to the calling variable upon return." The parameter's value at `END SUB` is written back to the caller's variable. NOT purely local.
 
 ### Practical rule
 
-Use the SUB parameter list for anything that must not leak out. Use naming prefixes (e.g., `vSub_MySub_Counter`) for `LET`/`SET` variables that intentionally stay global. **Never rely on a bare `LET` inside a SUB for local state** — it pollutes the caller's variable space.
+Use extra formal parameters (declared beyond the CALL arguments) as purely local working variables — they are the only way to get true locality. Use matching parameters intentionally when you need a SUB to return computed values to the caller. Use naming prefixes (e.g., `vSub_MySub_Counter`) for `LET`/`SET` variables that intentionally stay global. **Never rely on a bare `LET` inside a SUB for local state** — it pollutes the caller's variable space.
 
 ```qlik
 // WRONG -- vCounter leaks to caller and overwrites any global of the same name:
@@ -37,12 +39,31 @@ SUB CountRows(pTable)
     TRACE Table $(pTable) has $(vCounter) rows;
 END SUB
 
-// RIGHT -- pCounter is a formal parameter, locally scoped; no leak:
+// CASE A -- pCounter declared but no second argument passed:
+// pCounter is initialized to NULL at SUB entry, used locally, and discarded at END SUB.
+// Nothing leaks to the caller. Truly local working variable.
+CALL CountRows('Customers');           // only one actual argument
+
 SUB CountRows(pTable, pCounter)
     LET pCounter = NoOfRows('$(pTable)');
     TRACE Table $(pTable) has $(pCounter) rows;
 END SUB
+
+// CASE B -- caller supplies a variable name as the second argument:
+// Per help.qlik.com Sub statement: "If a variable is used as parameter in a CALL,
+// ... the parameter is copied back to the calling variable upon return."
+// pCounter's value at END SUB is assigned back to vMyCounter in the caller.
+// This is copy-out semantics -- NOT purely local.
+LET vMyCounter = 0;
+CALL CountRows('Customers', vMyCounter);
+// After the call, vMyCounter = NoOfRows('Customers') in the caller's scope.
 ```
+
+**Rule (source: help.qlik.com Sub..End Sub):**
+- Extra formal parameters with NO matching actual argument → NULL-initialized, truly local, discarded at `END SUB`. Safe working variables.
+- Formal parameters with a matching actual argument passed as a variable name → value is **copied back** to the caller's variable at `END SUB`. The SUB effectively returns a value through that parameter.
+
+Use Case A (declare extra params beyond the CALL arguments) for purely local state. Use Case B intentionally when you want the SUB to return a computed value to the caller through a parameter.
 
 ## FOR EACH Loops
 

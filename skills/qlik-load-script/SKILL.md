@@ -419,7 +419,9 @@ AutoNumber([%Region.Product.Key], '%Region.Product.Key');
 
 `$(Must_Include=lib://Connection/path/file.qvs);` fails the reload if the file is missing; `$(Include=...)` silently skips. `CALL SubName(param1, param2);` invokes after the include.
 
-**Critical scoping rule:** `LET`/`SET` inside a SUB create GLOBAL variables that persist after the subroutine returns — they will overwrite caller variables of the same name. Only the SUB's formal parameter list is locally scoped. A bare `LET` inside a SUB leaks state to the caller. Use the parameter list (with extra params as local working variables, initialized to NULL) for anything that must not leak; use naming prefixes (`vSub_MySub_Counter`) for variables that intentionally stay global.
+**Critical scoping rule:** `LET`/`SET` inside a SUB create GLOBAL variables that persist after the subroutine returns — they will overwrite caller variables of the same name. Only the SUB's formal parameter list is locally scoped. A bare `LET` inside a SUB leaks state to the caller. Use the parameter list for anything that must not leak; use naming prefixes (`vSub_MySub_Counter`) for variables that intentionally stay global.
+
+Two distinct behaviors apply to formal parameters (per help.qlik.com Sub..End Sub): (1) **Extra formal parameters with no matching actual argument** are NULL-initialized at SUB entry and truly local — their value is discarded at `END SUB`. Use these as pure local working variables. (2) **Formal parameters whose corresponding actual argument is a variable name** use **copy-out semantics** — the parameter's value at `END SUB` is written back to the caller's variable. This means a SUB can return computed values to the caller through its parameter list; it is NOT purely local in this case.
 
 Full reference: `references/subroutine-patterns.md` (Must_Include vs Include, CALL syntax, variable scoping rules with worked example, FOR EACH file/value iteration with Cloud wildcard caveat, phantom field detection after subroutine return, composite key concatenate-before/split-after workaround).
 
