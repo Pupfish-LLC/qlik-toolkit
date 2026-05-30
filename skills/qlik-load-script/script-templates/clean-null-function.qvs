@@ -134,6 +134,19 @@ SET vDualBool = IF(IsNull($1) OR Len(Trim($1)) = 0
 // For fields with unknown content, inspect distinct values first
 // before applying this function.
 //
+// LOCALE FORMAT DEPENDENCY: Num#(Trim($1)) without a format string
+// relies on the app's SET MoneyFormat / SET DecimalSep / SET ThousandSep.
+// If the source field uses a different numeric format than the app
+// default, Num#() returns NULL with no error -- silently coercing
+// valid numeric content to null. Examples:
+//   - US-defaults app, source value "1.234,56" (European format) -> NULL
+//   - European-defaults app, source value "1,234.56" (US format) -> NULL
+// Only use vCleanNumeric when the source field's numeric format matches
+// the app's SET MoneyFormat. If the formats may differ, write
+// Num#(field, 'format-string') inline instead -- the comma in Num#()
+// breaks variable expansion anyway. See help.qlik.com Number-interpretation
+// functions reference for the full format-string syntax.
+//
 // Usage: $(vCleanNumeric(field_name)) AS [Output.Amount]
 // ============================================================
 SET vCleanNumeric = IF(IsNull($1) OR Len(Trim($1)) = 0
