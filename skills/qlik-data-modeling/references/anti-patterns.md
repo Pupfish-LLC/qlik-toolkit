@@ -45,15 +45,19 @@ LOAD order_id, product_id, Status, Code, Type FROM order.qvd (qvd);
 
 Both tables share `product_id`, `Status`, `Code`, and `Type`. Qlik creates a `$Syn 1` table; selecting a product `Status` silently filters orders by the same value.
 
-### Prevention — Three Mechanisms
+### Prevention — Three Mechanisms for Non-Key Fields, Plus Bridge / Link Discipline
 
-These are the three orthogonal disciplines for preventing synthetic keys. Apply all three at design time, not as fixes after a synthetic key has appeared.
+Mechanisms (a)–(c) govern **non-key fields only** — attributes that should never be shared across tables. Apply all three at design time, not as fixes after a synthetic key has appeared. Mechanism (d) covers **intentionally shared keys** in bridge and link tables, which require a separate structural discipline.
 
 **(a) Distinct entity prefixes on non-key fields.** Generic attribute names like `Name`, `Status`, `Code`, `Type`, `Category` must be entity-prefixed at load time so they cannot collide across tables (`[Product.Status]`, `[Order.Status]`, `[Customer.Region]`). See `qlik-naming-conventions` for the full convention.
+
+> **Wildcard-LOAD edge case.** Even prefixed fields can collide if two raw QVDs were stored with the same entity prefix independently. If one developer stored `Order.Status` into `Raw_Order.qvd` and a separate extract also stored `Order.Status` into a different QVD, a `LOAD *` from both files pulls two fields with identical names and Qlik synthesizes a key. Entity prefixes prevent collisions only when each entity name is assigned to exactly one source/table in the project. Validate at design time that no two distinct QVDs claim the same entity prefix.
 
 **(b) Exactly one shared field per relationship.** For Customer ↔ Order, the only shared field should be the FK (`Customer.CustomerID`). If a denormalized source ships `Customer.Name` into the Order table, Qlik sees two join paths and synthesizes a key. Resolution: rename the duplicate non-key field on the fact side (`Order.CustomerName`).
 
 **(c) Drop or hide metadata fields** (`load_date`, `source_system`, `created_by`, `record_hash`) that appear in many tables but carry no analytical meaning. Either omit them from the LOAD field list or apply a hiding convention (`HidePrefix` / `HideSuffix`) so they cannot participate in associations.
+
+**(d) Bridge and link tables carry only relationship keys — no descriptive attributes.** Mechanisms (a)–(c) prevent unintended field collisions, but a bridge or link table can still cause a synthetic key even when all fields are correctly prefixed. If a bridge table carries a descriptive attribute (e.g., `[Category.Label]`) in addition to the foreign key (`[Category.Code]`), it shares two fields with the child dimension and Qlik synthesizes a key — even though both fields are entity-prefixed and entirely intentional. The rule: **bridge and link tables hold only the keys that define the relationship; descriptive attributes belong on the dimension they describe.** See `star-schema-patterns.md` (Bridge Tables) for the three-table pattern (`[Product]`, `[Category]`, `[ProductCategoryBridge]`) and the worked example that keeps `[Category.Label]` on `[Category]` only.
 
 ### The Fix (when one has already formed)
 
@@ -516,7 +520,7 @@ Pick one of:
 
 | Anti-Pattern | Failure Mode | Detection | Fix |
 |---|---|---|---|
-| 1. Synthetic keys from generic names | Silent unintended filtering | `$Syn` table in viewer, solid lines | Entity-prefix non-key fields |
+| 1. Synthetic keys from generic names | Silent unintended filtering | `$Syn` table in viewer, solid lines | Entity-prefix non-key fields; bridge/link tables carry keys only (no descriptive attributes) |
 | 2. AutoNumber in QVD layer | Non-deterministic surrogates break incremental | Reload twice, keys differ | Hash keys; AutoNumber only in final model |
 | 3. Circular references | Loosely coupled table, inconsistent selection propagation | Dotted connector, script log warning | Consolidate key paths or use a link table |
 | 4. QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state) | Fields double-prefixed; data islands; cross-tab contamination | Weird `Tbl.Entity.Field` names; no associations; later loads silently qualified | Pick one prefixing discipline; always UNQUALIFY keys; reset state at block end |
