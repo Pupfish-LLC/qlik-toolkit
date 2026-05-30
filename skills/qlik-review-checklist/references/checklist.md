@@ -154,12 +154,12 @@ Inefficient script patterns that waste memory or reload time without breaking th
 
 - **Severity:** Warning
 - **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** Every temp table (prefixed `_`) must have corresponding DROP; MAPPING tables auto-drop
+- **What to Check:** Every temp table (prefixed `_`) must have a corresponding DROP; MAPPING tables persist until script end and may be released early with `DROP MAPPING TABLE`
 - **How to Verify:**
   - Search scripts/*.qvs for table creates: `[_tablename]` or `_tablename`
   - For each temp table created (name starts with `_`), search for `DROP TABLE _tablename`
   - If not found, flag as missing DROP
-  - Exception: Tables created via `MAPPING LOAD` are auto-dropped, do not manually drop
+  - Note: Tables created via `MAPPING LOAD` persist in memory until script end — they are NOT auto-dropped when `ApplyMap()` uses them. To release a mapping table early, use `DROP MAPPING TABLE [name];` (the `MAPPING` keyword is required; plain `DROP TABLE` does not apply). See help.qlik.com — [Drop Table](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Drop_Table.htm). Do not flag missing `DROP TABLE` on mapping tables — the correct release syntax is different.
 - **Finding Format:** `[P-2.3]: Missing temp table cleanup / Severity: Warning / Category: Performance / Location: [file] / Finding: Temp table [_tablename] created at [line] but no DROP TABLE found / Impact: Unnecessary memory usage, slower reload / Recommended Fix: Add DROP TABLE [_tablename] after all uses of temp table`
 
 ---
