@@ -76,7 +76,7 @@ Think of these as a specialist team you can call on at any point:
 
 ### Hook
 
-- **PostToolUse on Write/Edit**: Runs `validate-qvs-syntax.sh` on any `.qvs` file written or edited. Scans for SQL constructs in `LOAD` context (`HAVING`, `Count(*)`, `IS NULL`, `BETWEEN`, `IN`, `CASE WHEN`, `LIMIT`, `SELECT DISTINCT`, table aliases), TRACE statements with embedded semicolons (which terminate the statement early), unbalanced control blocks (`IF`/`END IF`, `SUB`/`END SUB`, `FOR`/`NEXT`), and malformed `PurgeChar()` calls (missing second argument). Findings appear before you reload.
+- **PostToolUse on Write/Edit**: Runs `validate-qvs-syntax.sh` on any `.qvs` file written or edited. Scans for SQL constructs in `LOAD` context (`HAVING`, `Count(*)`, `IS NULL`, `BETWEEN`, `IN`, `CASE WHEN`, `LIMIT`, `SELECT DISTINCT`), TRACE statements with embedded semicolons (which terminate the statement early), unbalanced control blocks (`IF`/`END IF`, `SUB`/`END SUB`, `FOR`/`NEXT`), and malformed `PurgeChar()` calls (missing second argument). Findings appear before you reload.
 
 ## How To Use It (Examples)
 
