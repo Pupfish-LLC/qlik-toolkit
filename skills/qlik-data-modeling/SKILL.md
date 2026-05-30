@@ -99,6 +99,7 @@ Single-app vs multi-app is a deployment decision. The real drivers are reload cy
 | Teams | 1 | 1–3 | 3+ | 1 for shared model |
 | Independent layer refresh | no | yes | yes | no |
 | Per-consumer model customization | n/a | yes | yes | **no** |
+| Incremental load support | yes | yes | yes | **no** (full reload only) |
 
 **Binary Load** copies the entire data model (and section access) from another app. Must be the **first statement** in the script. Syntax depends on platform:
 
