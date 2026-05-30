@@ -1,6 +1,6 @@
 ---
 name: qlik-visualization
-description: "Chart type selection with decision criteria based on data relationships, sheet layout patterns on the Qlik Sense 24-column grid, responsive design behavior, color and formatting standards including accessibility-safe palettes, filter pane and listbox design strategies, navigation flow, accessibility best practices, and reference-app reverse-engineering patterns. Load when designing or reviewing Qlik Sense sheets, choosing chart types, building KPIs, configuring filter panes, replicating a reference app's look-and-feel, or evaluating a layout's responsive behavior."
+description: "Chart type selection with decision criteria based on data relationships, sheet layout patterns on the Qlik Sense responsive grid, responsive design behavior, color and formatting standards including accessibility-safe palettes, filter pane and listbox design strategies, navigation flow, accessibility best practices, and reference-app reverse-engineering patterns. Load when designing or reviewing Qlik Sense sheets, choosing chart types, building KPIs, configuring filter panes, replicating a reference app's look-and-feel, or evaluating a layout's responsive behavior."
 user-invocable: false
 ---
 
