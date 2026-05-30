@@ -328,17 +328,45 @@ Sum({<Field={$(vFieldValue)}>} [Amount])
 ## 5. Time Intelligence Patterns
 
 ### Year-to-Date (YTD)
-Sum for current year through current month.
+Sum for current year through today.
+
+**Preferred — anchor YTD on a Date field.** A date string in `YYYY-MM-DD` form sorts lexically as a date, so the string comparison in the element set produces the correct calendar range regardless of how Month is encoded.
+
+```
+Sum({<[Order.Date]={"<=$(=Date(Today(),'YYYY-MM-DD'))"}, Year={$(=Year(Today()))}>} [Amount])
+// Current calendar year, dates up to and including today
+```
+
+**Acceptable — Month-as-zero-padded-text comparison.** This works ONLY when the Month field is a genuine string with two-digit zero padding (`'01'`..`'12'`). Comparisons in element sets are STRING comparisons (Section 3, "Comparison Operators in Element Sets"), so a non-zero-padded encoding will break the range silently.
 
 ```
 SET vCurrentYear = Num(Today(), 'YYYY');
-SET vCurrentMonth = Num(Today(), 'MM');
+SET vCurrentMonth = Num(Today(), 'MM');   // returns the two-digit text '11'
 
 Sum({<Year={$(vCurrentYear)}, Month={"<=$(vCurrentMonth)"}>} [Amount])
-// Current year, months 1 through current month
+// Safe ONLY if Month field is literal text '01'..'12'
 ```
 
-**Assumption:** Month field is numeric (01..12) or zero-padded text. For mixed representations, normalize Month at load time.
+**Failure case — Month-as-Dual-integer.** If Month is stored as the integers `1..12` (or Dual values whose numeric component is `1..12` and whose text equals the numeric representation, no zero padding), the element set comparison `Month={"<=11"}` runs as a string comparison. String ordering puts `"9"` *after* `"11"` (because `"9" > "1"`), so September through November get excluded from a YTD-through-November calculation. The expression returns a wrong-but-plausible number and gives no error.
+
+```
+// WRONG when Month is Dual integer 1..12 with no zero padding:
+Sum({<Year={$(vCurrentYear)}, Month={"<=11"}>} [Amount])
+// String comparison: matches '1', '10', '11' only.
+// Excludes '2'..'9' and '12'. Silent undercount.
+
+// FIX A (preferred) — anchor on Date:
+Sum({<[Order.Date]={"<=$(=Date(Today(),'YYYY-MM-DD'))"}, Year={$(=Year(Today()))}>} [Amount])
+
+// FIX B — list the months explicitly (works for any Month encoding):
+Sum({<Year={$(vCurrentYear)}, Month={1,2,3,4,5,6,7,8,9,10,11}>} [Amount])
+
+// FIX C — normalize Month to zero-padded text at load time:
+// In the script: Num(Month([Order.Date]), '00') AS Month
+// Then the original Month={"<=$(vCurrentMonth)"} pattern works.
+```
+
+The safest rule: if the comparison range crosses the `"1"`/`"2"`/.../`"9"` vs `"10"`/`"11"`/`"12"` boundary, use a Date-anchored form or enumerate values explicitly. Reserve string-comparison element sets for fields where the lexical order matches the intended order (zero-padded text, 4-digit years, `YYYY-MM-DD` dates).
 
 ### Prior Year Comparison
 Sum for the same period last year.
@@ -363,6 +391,8 @@ Same months as current YTD, but prior year.
 SET vPriorYear = $(vCurrentYear)-1;
 Sum({<Year={$(vPriorYear)}, Month={"<=$(vCurrentMonth)"}>} [Amount])
 ```
+
+Same Month-encoding caveat as the YTD section above: the `Month={"<=..."}` comparison is a string comparison and is safe only when Month is zero-padded text. For a Month-as-Dual-integer field, anchor on a date instead: `[Order.Date]={">=$(=Date(YearStart(AddYears(Today(),-1)),'YYYY-MM-DD'))<=$(=Date(AddYears(Today(),-1),'YYYY-MM-DD'))"}`.
 
 ### Rolling 12 Months (date-based)
 
