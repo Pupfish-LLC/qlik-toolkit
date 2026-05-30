@@ -57,12 +57,25 @@ Practical implications:
 
 Reference for the symbol-table / bit-stuffed-pointer concept: Henric Cronström, "Symbol Tables and Bit-Stuffed Pointers," Qlik Design Blog.
 
-**Strategy:** Load dates as integers (days since epoch). Use expressions to format for display. Example:
+**Strategy:** Load dates as plain integers (days since epoch) and format for display in chart expressions. The key is to strip the textual representation at load time — `Date()` returns a dual (text + numeric), so using it here would carry the textual side into the symbol table, defeating the goal. Use `Floor()` (or `Num(Floor(...))`) on a numeric date, or `Floor(Date#(date_field, 'YYYY-MM-DD'))` if the source is text:
 ```qlik
-LOAD Date(date_field) AS [Date.Key]  // Integer, ~4 bytes per value
+// Source already numeric/date-typed: strip dual textual representation
+LOAD Floor(date_field) AS [Date.Key]  // Integer numeric, no textual dual
 FROM [data.qvd] (qvd);
-// In expression: Date(Floor([Date.Key]))  // Formats as YYYY-MM-DD on demand
+
+// Source is text (e.g., 'YYYY-MM-DD' from CSV): parse, then strip
+LOAD Floor(Date#(date_field, 'YYYY-MM-DD')) AS [Date.Key]
+FROM [data.csv];
+
+// In a chart expression, format on demand:
+// Date([Date.Key], 'YYYY-MM-DD')
 ```
+
+Per Qlik help, `Date()` has return data type *dual*; `Floor()` returns a plain numeric. See Section 2.B for why the dual cost matters.
+
+References:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/FormattingFunctions/Date.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/NumericFunctions/floor.htm
 
 ### B. Dual Values
 
@@ -197,13 +210,15 @@ Expressions execute during user interaction (sheet opens, selections made, filte
 
 ### A. Avoid Expensive Aggregation Patterns
 
-**Nested Aggr():** Each `Aggr()` call creates internal temporary tables for each dimension value. Nested Aggr calls multiply temporary tables exponentially.
+**Nested Aggr():** Per Qlik help, `Aggr()` materializes a "temporary staged result set (a virtual table), over which another aggregation can be made." Nesting `Aggr()` forces the engine to materialize the inner virtual table first, then perform a second aggregation pass over it. Cost scales with the cardinality of each `Aggr()`'s dimensions multiplied together (the Cartesian product when the inner and outer dimensions differ) plus the per-cell evaluation cost of the outer aggregation, which can become noticeable on high-cardinality dimensions. Henric Cronström, "Aggr — Advanced Aggregations" (Qlik Design Blog), frames cost in the same terms: virtual-table size and outer-aggregation re-evaluation, not row-count exponents.
 
 ```qlik
-// SLOW: Nested Aggr creates N² temporary tables
+// SLOW: Two Aggr passes — inner virtual table materializes per product_id,
+// then the outer Sum re-aggregates over that virtual table
 Sum(Aggr(Sum(sales) / Aggr(Count(distinct_product), product_id), product_id))
-// N=100 products → 10,000 temporary tables per expression evaluation
 ```
+
+Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/ChartFunctions/AdvancedAggregation/aggr.htm
 
 **Fix:** Pre-calculate in the load script:
 ```qlik
