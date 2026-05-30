@@ -90,13 +90,10 @@ Full rules are in `qlik-load-script` → `qvd-operations.md`.
 
 ## 6. Multi-App Architecture
 
-Single-app vs multi-app is a deployment decision. The real drivers are reload cycle time, number of consumer apps, team ownership boundaries, and whether layers need independent refresh schedules. The size/table/team thresholds below are practitioner heuristics, **not** Qlik-published limits.
+Single-app vs multi-app is a deployment decision. This section covers the **structural mechanics** of each pattern — how layers separate, what each app can customize, and what binary load does and does not copy. The **WHEN-to-split signals** (volume, refresh SLA, consumer count, team boundaries) live canonically in `qlik-performance` § 1 "Architecture-Level Decisions"; for the GB-anchored heuristics behind those signals see `references/multi-app-architecture.md`.
 
-| Factor | Single App | Generator / Consumer | Extract → Transform → Model → UI | Binary Load |
+| Structural mechanic | Single App | Generator / Consumer | Extract → Transform → Model → UI | Binary Load |
 |---|---|---|---|---|
-| Rough data volume | small | medium | large | matches generator |
-| Rough table count | ≤ ~10 | ~10–30 | 30+ | same as generator |
-| Teams | 1 | 1–3 | 3+ | 1 for shared model |
 | Independent layer refresh | no | yes | yes | no |
 | Per-consumer model customization | n/a | yes | yes | **no** |
 | Incremental load support | yes | yes | yes | **no** (full reload only) |
