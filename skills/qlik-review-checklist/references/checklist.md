@@ -476,17 +476,9 @@ PII handling, Section Access correctness, and data access control. **Note:** a d
   - Verify row-level filters (reduction fields) are properly mapped to data model fields
 - **Finding Format:** `[SC-6.2]: Section Access STAR field issue / Severity: Critical / Category: Security / Location: [scripts/section-access.qvs] / Finding: [STAR field missing from Section Access table | STAR field values incorrect | Reduction fields not properly mapped] / Impact: Section Access will not function correctly, data visibility not restricted as intended / Recommended Fix: [Add STAR field to Section Access | Correct STAR values | Map reduction fields to data model fields]`
 
-### 6.3 Reduction Field Case-Sensitivity Match
+### 6.3 Section Access Reduction Fields
 
-- **Severity:** Critical
-- **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** Section Access reduction field names must match data model field names exactly (case-sensitive)
-- **How to Verify:**
-  - If Section Access present, load Section Access table and final data model
-  - For each reduction field in Section Access, verify exact case-sensitive match in data model
-  - Example: `customer_key` in Section Access must match `customer_key` in model (not `Customer_Key` or `CUSTOMER_KEY`)
-  - Use Data Model Viewer to confirm exact field names
-- **Finding Format:** `[SC-6.3]: Section Access reduction field case mismatch / Severity: Critical / Category: Security / Location: [Section Access table] / Finding: Reduction field [field_in_section_access] does not case-sensitively match [corresponding_model_field] / Impact: Section Access filtering will fail, users may see restricted data / Recommended Fix: Correct Section Access field name to [corrected_name] with exact case match`
+- **Note:** Detailed Section Access mechanics (including reduction-field case behavior, STAR field syntax, OMIT semantics) are deferred to a future version of this toolkit. For current Section Access requirements, refer to `help.qlik.com` Cloud Section Access docs: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm
 
 ### 6.4 Section Access Table Completeness
 
