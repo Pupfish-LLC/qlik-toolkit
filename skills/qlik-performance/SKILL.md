@@ -387,15 +387,18 @@ Reducing data volume at load time is always more efficient than filtering at que
 
 Measure before optimizing. Qlik provides built-in tools.
 
-### A. Document Analyzer
+### A. App Analyzer (qlik-oss)
 
-The Document Analyzer (Qlik Cloud) reports:
+App Analyzer is a community-built data-model profiler from the qlik-oss organization on GitHub — one of several Cloud monitoring apps Qlik publishes there. It is not a Qlik-shipped product; it is a Qlik-maintained open-source app you import into your tenant. It reports:
 - Table row counts and memory footprint per table
 - Field cardinality and data types
 - Reload time breakdown
-- Expression evaluation time
 
-**Usage:** After reload, sort tables by memory footprint. Target largest tables for optimization.
+**Usage:** Import from the qlik-oss monitoring-apps repo, point it at the app under review, and sort tables by memory footprint. Target the largest tables for optimization.
+
+App Analyzer covers data model and memory; it does NOT report object load times or expression-level timing. For object-level diagnostics, use App Performance Evaluation (Section 7.B), which is the Qlik-shipped tool that reports sheet and object load time but also does not break out individual expressions.
+
+Reference: https://github.com/qlik-oss/qlik-cloud-monitoring-apps
 
 ### B. App Performance Evaluation
 
