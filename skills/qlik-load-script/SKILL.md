@@ -286,25 +286,40 @@ Full reference: `references/qvd-operations.md` (STORE, optimized vs standard rul
 
 ## 12. Master Calendar
 
-A master calendar provides a continuous date dimension with custom periods (fiscal year, relative date flags). It must derive date ranges from loaded data, never hard-coded. Must produce Dual-sorted month fields for correct sort with text display.
+A master calendar provides a continuous date dimension with custom periods (fiscal year, relative date flags). It must derive date ranges from loaded data, never hard-coded. Custom period labels (quarter, fiscal quarter, year-month, year-week) must be wrapped in `Dual()` so they sort chronologically while displaying as text.
 
-**Dual() for chronological month sort -- critical pattern:**
+**Dual() for chronological sort -- when it is and is not needed:**
 
-Plain `Month(date)` returns a text value ("Jan", "Feb"...) which sorts alphabetically (Apr, Aug, Dec, Feb...) in charts. Wrap every month-like field in `Dual(text, number)` so the text displays correctly AND the numeric component drives the sort order:
+`Month()`, `MonthName()`, and `WeekDay()` **already return Dual values** per help.qlik.com -- the text component is the month/day name and the numeric component is the underlying integer (or, for `MonthName()`, the serial number of the month start). They sort numerically in charts despite displaying as text. Wrapping them in `Dual(..., Num(...))` is redundant and inflates the symbol table by storing every text/number pair as a fresh dual value instead of reusing the engine's built-in dual.
+
+References:
+- Month: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/DateAndTimeFunctions/month.htm
+- MonthName: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/DateAndTimeFunctions/monthname.htm
+- WeekDay: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/DateAndTimeFunctions/weekday.htm
 
 ```qlik
-// WRONG -- sorts alphabetically:
-Month([Order.Date]) AS [Cal.Month]
+// CORRECT -- Month() is already Dual; sorts as 1-12, displays as "Jan", "Feb":
+Month([Order.Date])     AS [Calendar.Month]
 
-// RIGHT -- displays "Jan" but sorts as 1:
-Dual(Month([Order.Date]), Num(Month([Order.Date]))) AS [Cal.Month]
-
-// For year-month labels in time-series charts:
-Dual(Date(MonthStart([Order.Date]), 'MMM-YYYY'),
-     Year([Order.Date]) * 100 + Num(Month([Order.Date]))) AS [Cal.MonthYear]
+// REDUNDANT -- wrapping a built-in Dual in Dual() wastes symbol-table memory:
+Dual(Month([Order.Date]), Num(Month([Order.Date])))   AS [Calendar.Month]
 ```
 
-Apply the same pattern to weekday, quarter, and fiscal period fields. Without Dual(), charts and filter panes will display months alphabetically even when the MonthNum field exists separately.
+`Dual()` IS required for **derived labels** built by string concatenation, because the concatenation result is plain text with no underlying numeric component. Add the numeric sort key explicitly:
+
+```qlik
+// Quarter label -- 'Q' & ... is plain text, needs Dual for numeric sort:
+Dual('Q' & Ceil(Month([Order.Date])/3), Ceil(Month([Order.Date])/3))   AS [Calendar.Quarter]
+
+// Year-month label -- the formatted text sorts lexically; pair with a numeric key:
+Dual(Date(MonthStart([Order.Date]), 'YYYY-MM'),
+     Year([Order.Date]) * 100 + Month([Order.Date]))   AS [Calendar.YearMonth]
+
+// Fiscal quarter label -- hand-built text with no numeric component:
+Dual('FY' & vFY & '-Q' & vFQ, vFY * 10 + vFQ)   AS [Calendar.FiscalYearQuarter]
+```
+
+The rule: if the value comes straight from `Month()`, `MonthName()`, or `WeekDay()`, leave it alone. If the value is built with `&`, `Date(..., 'format')`, or any other string-producing expression, wrap it in `Dual(text, numeric_sort_key)`.
 
 **Fiscal year configuration:** Set `vFiscalYearStartMonth` (e.g., 7 for July start). The template handles the year offset automatically: FY2026 runs Jul 2025 - Jun 2026 when start=7.
 

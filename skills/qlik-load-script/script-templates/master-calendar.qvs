@@ -76,13 +76,22 @@ ELSE
         // --- Standard calendar fields ---
         Year(_TempDate)                                              AS [Calendar.Year],
         Month(_TempDate)                                             AS [Calendar.MonthNum],
-        Dual(MonthName(_TempDate), Month(_TempDate))                 AS [Calendar.Month],
-        'Q' & Ceil(Month(_TempDate) / 3)                             AS [Calendar.Quarter],
-        Year(_TempDate) & '-Q' & Ceil(Month(_TempDate) / 3)         AS [Calendar.YearQuarter],
-        Date(MonthStart(_TempDate), 'YYYY-MM')                      AS [Calendar.YearMonth],
+        // Month() already returns a Dual (text = "Jan"/"Feb"..., num = 1-12)
+        // per help.qlik.com -- no wrapper needed. Sorts numerically, displays as text.
+        Month(_TempDate)                                             AS [Calendar.Month],
+        // Quarter, YearQuarter, YearMonth are derived TEXT labels (string concat
+        // or Date() format) with no underlying numeric -- Dual() supplies the sort key.
+        Dual('Q' & Ceil(Month(_TempDate) / 3),
+             Ceil(Month(_TempDate) / 3))                             AS [Calendar.Quarter],
+        Dual(Year(_TempDate) & '-Q' & Ceil(Month(_TempDate) / 3),
+             Year(_TempDate) * 10 + Ceil(Month(_TempDate) / 3))      AS [Calendar.YearQuarter],
+        Dual(Date(MonthStart(_TempDate), 'YYYY-MM'),
+             Year(_TempDate) * 100 + Month(_TempDate))               AS [Calendar.YearMonth],
         Week(_TempDate)                                              AS [Calendar.Week],
         Year(_TempDate) & '-W' & Num(Week(_TempDate), '00')         AS [Calendar.YearWeek],
         Day(_TempDate)                                               AS [Calendar.DayOfMonth],
+        // WeekDay() already returns a Dual (text = day name, num = 0-6)
+        // per help.qlik.com -- no wrapper needed.
         WeekDay(_TempDate)                                           AS [Calendar.DayOfWeek],
         DayNumberOfYear(_TempDate)                                   AS [Calendar.DayOfYear],
 
@@ -98,12 +107,18 @@ ELSE
               + IF(Month(_TempDate) < $(vFiscalYearStartMonth), 12, 0)) / 3)
                                                                      AS [Calendar.FiscalQuarter],
 
-        // Combined fiscal year-quarter (e.g., "FY2026-Q1")
-        'FY' & (Year(_TempDate) + IF(Month(_TempDate) >= $(vFiscalYearStartMonth)
-                                      AND $(vFiscalYearStartMonth) > 1, 1, 0))
-        & '-Q' & Ceil((Month(_TempDate) - $(vFiscalYearStartMonth) + 1
-                        + IF(Month(_TempDate) < $(vFiscalYearStartMonth), 12, 0)) / 3)
-                                                                     AS [Calendar.FiscalYearQuarter],
+        // Combined fiscal year-quarter (e.g., "FY2026-Q1").
+        // Derived text label -- wrap in Dual() so it sorts chronologically.
+        Dual(
+            'FY' & (Year(_TempDate) + IF(Month(_TempDate) >= $(vFiscalYearStartMonth)
+                                          AND $(vFiscalYearStartMonth) > 1, 1, 0))
+            & '-Q' & Ceil((Month(_TempDate) - $(vFiscalYearStartMonth) + 1
+                            + IF(Month(_TempDate) < $(vFiscalYearStartMonth), 12, 0)) / 3),
+            (Year(_TempDate) + IF(Month(_TempDate) >= $(vFiscalYearStartMonth)
+                                   AND $(vFiscalYearStartMonth) > 1, 1, 0)) * 10
+            + Ceil((Month(_TempDate) - $(vFiscalYearStartMonth) + 1
+                     + IF(Month(_TempDate) < $(vFiscalYearStartMonth), 12, 0)) / 3)
+        )                                                            AS [Calendar.FiscalYearQuarter],
 
         // --- Relative date flags ---
         IF(MonthStart(_TempDate) = MonthStart(Today()), 1, 0)       AS [Calendar.IsCurrentMonth],
