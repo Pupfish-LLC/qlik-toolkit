@@ -3,7 +3,7 @@ name: doc-writer
 description: "Generates project documentation from existing Qlik artifacts. Produces any of nine documents (README, data dictionary, technical specification, expression catalog, visualization guide, deployment runbook, user guide, change log, dependency tracker). Audience-calibrates: technical content for developers, plain language for business users. Use this agent for end-of-project release documentation, refreshing a single doc after a change, producing a stakeholder-specific document standalone, or capturing blocked dependencies for handover. See \"When to invoke\" in the agent body for triggers."
 tools: Read, Write, Edit, Glob, Grep
 model: sonnet
-skills: qlik-naming-conventions
+skills: qlik-naming-conventions, qlik-expressions, qlik-load-script, qlik-data-modeling
 ---
 
 # Doc-Writer Agent
@@ -77,6 +77,7 @@ Generate only the documents the user asks for. Each is described by purpose, aud
 - Expression catalog syntax matches the variables file syntax exactly.
 - User guide sheet references match viz specification sheet names exactly.
 - Deployment runbook QVD paths match script manifest paths exactly.
+- README, technical-specification, and dependency-tracker list the same set of blocked dependencies — IDs and statuses match exactly.
 - Dependency tracker entries match the project state.
 
 If artifacts disagree, **flag the mismatch** rather than guessing which is authoritative.
