@@ -141,14 +141,17 @@ Incremental loads typically use `created_date`, `modified_date`, or status flags
 **Also known as:** Hub-link-satellite (HLS) model
 
 **Identification Criteria:**
-- Explicit table naming conventions: `hub_*`, `link_*`, `sat_*` or clear hub/link/satellite suffixes
+- Explicit table naming conventions: `hub_*`, `link_*`, `sat_*` (raw vault core), plus business-vault markers `pit_*` (Point-in-Time tables) and `br_*` (Bridge tables), and `eff_sat_*` or `sat_*_eff` (effectivity satellites tracking link membership lifecycle) — or clear hub/link/satellite/PIT/bridge suffixes
 - Hub tables: contain business keys and a `hub_hash_key` (32-char hex hash), `load_date`, `record_source`
   - Example: `hub_customer (customer_hash_key, customer_id, load_date, record_source)` where `customer_id` is the business key
 - Link tables: contain foreign keys to multiple hubs and a `link_hash_key`
   - Example: `link_customer_product_order (link_hash_key, customer_hash_key, product_hash_key, order_hash_key, load_date, record_source)`
-- Satellite tables: contain descriptive attributes, linked to a hub or link via hash key, with `load_date` and `load_end_date` (or `effective_from`/`effective_to`)
-  - Example: `sat_customer_details (customer_hash_key, load_date, load_end_date, name, email, region, record_source)`
-- Every table includes `load_date` and `record_source` columns (metadata about when data was loaded and from which source system)
+- Satellite tables: contain descriptive attributes, linked to a hub or link via hash key. Pure DV2.0 satellites are insert-only and usually contain `effective_from` (or `load_date`) only — end-dating (`load_end_date` / `effective_to`) is handled in a downstream PIT table or view layer rather than as a stored column. Some implementations (often hybrid DV1.0/DV2.0) do persist `load_end_date` in the satellite itself; presence is supporting evidence but not required to confirm DV2.0.
+  - Example: `sat_customer_details (customer_hash_key, load_date, name, email, region, record_source)`
+- PIT (Point-in-Time) tables: business-vault structures that pre-resolve "which satellite version is current at time T" for a hub, eliminating end-date scans across satellites
+- Bridge tables (`br_*`): business-vault structures that pre-join hub-link-hub paths for analytic consumption
+- Effectivity satellites (`eff_sat_*`): track when a link relationship is active vs. closed, distinct from regular attribute satellites
+- Every raw-vault table includes `load_date` and `record_source` columns (metadata about when data was loaded and from which source system)
 - Hash keys are deterministic (computed from business keys), enabling idempotent loads
 
 **Example Schema:**
@@ -172,15 +175,17 @@ sat_order_context (order_hash_key, load_date, load_end_date, status, order_date,
 - **Auditability:** load_date and record_source provide complete lineage.
 - **Hash keys:** Deterministic hashing of business keys enables idempotent processing (loading the same source record twice doesn't create duplicates).
 
-**Consumption Strategy for Qlik (Complex):**
-- Do NOT load raw Data Vault schema into Qlik; the many satellites and hash-key associations will produce a confusing model
-- Instead, use Data Vault as a staging area and create a dimensional model on top for Qlik
-- If you must load raw vault for advanced use cases:
-  - Load hub tables with business keys (create associations to fact tables via business keys, not hash keys)
-  - Load relevant satellites (filter to `load_end_date IS NULL` for current attributes)
-  - Handle link tables as bridge tables (many-to-many relationships) if modeling them explicitly
-  - Use `load_date` for temporal analysis (when did this attribute become current?)
-- **Best practice:** Create an intermediate staging area that denormalizes the vault into a dimensional model before loading Qlik
+**Consumption Strategy for Qlik:**
+
+Loading raw Data Vault schema into Qlik is not recommended because hash-key proliferation across hubs/links/satellites and per-attribute satellite versioning produce a model that is hard for end users to navigate and that exposes Qlik to synthetic-key risk wherever multiple satellites share field names. The vault is optimized for insert-only auditability and source integration, not for OLAP-style consumption. Two consumption approaches are viable:
+
+1. **Denormalize the vault into a dimensional model before Qlik (preferred).** Use the vault as a staging layer and build a star schema on top — typically via SQL views, business-vault PIT/bridge tables, or an intermediate extract/transform app — then load that dimensional model into Qlik. PIT (`pit_*`) and Bridge (`br_*`) tables, when already present in the source, are useful inputs because they pre-resolve current-version selection and many-to-many paths.
+2. **Load raw vault into Qlik directly (viable for narrow use cases such as audit/lineage exploration or single-subject-area apps).** When you take this path:
+   - Load hub tables and associate to fact tables via business keys, not hash keys
+   - Load relevant satellites filtered to current state (filter the downstream PIT/view, or `load_end_date IS NULL` when satellites persist end-dating)
+   - Treat link tables as bridge tables when modeling many-to-many relationships explicitly
+   - Use `load_date` (and effectivity satellites where present) for temporal analysis of when attributes or relationships became current
+   - Apply entity-prefixed field renames to prevent synthetic keys from shared `load_date`/`record_source` columns — see `qlik-naming-conventions`
 
 ### 2.4 Flat Files / CSV
 
