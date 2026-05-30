@@ -85,7 +85,7 @@ Reload-blocking and silent-failure patterns in load scripts. Canonical home for 
 - **How to Verify:**
   - Search scripts/*.qvs for `NullAsValue`
   - For each occurrence, determine scope:
-    - If scoped to single LOAD, verify `NullAsNull *` and `SET NullValue=;` reset immediately after
+    - If scoped to single LOAD, verify `NullAsNull *;` (or `NullAsNull fieldlist;`) is present immediately after. If `SET NullValue='SomeString';` was used in the same scope, also reset that with `SET NullValue=;`. These are independent settings: `NullAsNull` alone restores the default NULL behavior (per help.qlik.com Scripting/ScriptRegularStatements/NullAsNull.htm: "turns off the conversion of NULL values to string values previously set by a NullAsValue statement"); `SET NullValue` only controls the display string for nulls.
     - If scoped to persist, verify it's intentional and documented
   - Field names in `NullAsValue` must match output aliases (not source names). Cross-check against SELECT clause.
   - Flag any use of NullAsValue on key fields (breaks associations) or measure fields for Sum/Avg (converts NULL to string, breaking aggregation)
@@ -358,7 +358,7 @@ Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null
     - Empty modifier `<Field=>`: clears/ignores user selections on that field. Does NOT exclude nulls. This is fundamentally different from `{*}`.
     - Operators: `{1,2}` (OR), `{1}-{2}` (difference), `{1}*{2}` (intersection)
     - Dollar-sign expansion: `<Field = {$(varname)}>` (verify varname is simple)
-    - Nested set analysis not supported; use outer set only
+    - Set modifiers inside set modifiers (recursive nesting of `<...>` inside element-set values) are not supported. Use `Aggr()` for nested-scope aggregation, or compose multiple set identifiers via operators (e.g., `{$<Year={2024}>}*{$<Region={'East'}>}`). See `qlik-expressions` Section 2 (set operators) and Section 4 (Aggr())
   - Check for typos in field names (case-sensitive)
   - Verify set analysis is applied to correct aggregation function
 - **Finding Format:** `[E-5.1]: Set analysis syntax error / Severity: Critical / Category: Expression Correctness / Location: [artifact]:[line] / Finding: Set analysis [set_expression] has invalid syntax: [error detail] / Impact: Expression will fail to evaluate or return incorrect results / Recommended Fix: Correct syntax to [corrected_expression]`
