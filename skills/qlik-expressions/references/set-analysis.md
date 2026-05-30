@@ -349,11 +349,11 @@ Sum({<Year={$(=Max(Year)-1)}>} [Amount])
 
 **Prior year same month:**
 ```
-SET vCurrentYear = Num(Today(), 'YYYY');
-SET vCurrentMonth = Num(Today(), 'MM');
-
-Sum({<Year={$(=$(vCurrentYear)-1)}, Month={$(vCurrentMonth)}>} [Amount])
+Sum({<Year={$(=Year(Today())-1)}, Month={$(=Month(Today()))}>} [Amount])
+// Inline $(=...) evaluates Year(Today())-1 and Month(Today()) at chart time.
 ```
+
+Why not use intermediate SET variables here? `SET vCurrentYear = Num(Today(), 'YYYY');` stores the *literal text* `Num(Today(), 'YYYY')` — SET preserves expression text without evaluating it. A later `$(=$(vCurrentYear)-1)` first expands to `$(=Num(Today(), 'YYYY')-1)`, which evaluates correctly only because the parser reaches the arithmetic in the right order. A reader who writes the more natural-looking `Year={$(vCurrentYear)-1}` (without the outer `$(=...)`) gets the literal search string `Num(Today(), 'YYYY')-1` — a predicate, not a value, returning nothing. The inline `$(=Year(Today())-1)` form sidesteps that trap entirely. See Section 5 "Rolling 12 Months (sequential month-number key)" for the same reasoning applied to a different time-intelligence example, and Section 4 for SET-stores-text-not-value mechanics.
 
 ### Prior Year YTD
 Same months as current YTD, but prior year.
