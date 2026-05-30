@@ -380,10 +380,10 @@ Sum({<[Order.Date]={">=$(vRolling12Start)<=$(vToday)"}>} [Amount])
 If the data model has a truly sequential month number (e.g., `MonthSeq = Year * 12 + Month`, monotonically increasing across years), the arithmetic version works:
 
 ```
-SET vCurrentMonthSeq = $(=Max([Order.MonthSeq]));
-
-Sum({<[Order.MonthSeq]={">=$(=$(vCurrentMonthSeq)-11)<=$(vCurrentMonthSeq)"}>} [Amount])
+Sum({<[Order.MonthSeq]={">=$(=Max([Order.MonthSeq])-11)<=$(=Max([Order.MonthSeq]))"}>} [Amount])
 ```
+
+Why no intermediate variable: `SET vMyVar = $(=Max(...))` stores the *literal text* `$(=Max(...))` (SET preserves expression text without evaluating it), so a later `$(vMyVar)` re-expands the original `$(=...)`. That nesting compounds inside another `$(=$(vMyVar)-11)` and depends on parse order — fragile and easy to break. Inlining `$(=Max([Order.MonthSeq]))` evaluates once at chart time and avoids nested expansion entirely. If a named variable is preferred for readability, use `SET vCurrentMonthSeq = Max([Order.MonthSeq]);` (no `$(=)` wrapper) and reference it as `$(=$(vCurrentMonthSeq)-11)`.
 
 Note: `MonthSeq` here is `Year*12 + Month`, not YYYYMM. YYYYMM is NOT sequential across year boundaries (December → January jumps 89, not 1) and breaks all minus-N arithmetic.
 
