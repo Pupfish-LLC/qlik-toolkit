@@ -144,7 +144,6 @@ process_file() {
     local sub_count=0
     local endsub_count=0
     local for_count=0
-    local foreach_count=0
     local next_count=0
 
     # Read file line by line
@@ -254,12 +253,10 @@ process_file() {
         endsub_count=$((endsub_count + endsub_line_count))
 
         # Count FOR (case-insensitive, word boundary)
+        # Note: this pattern matches both bare 'FOR' and the 'FOR' in 'FOR EACH'.
+        # Both control constructs close with NEXT, so a single counter is correct.
         for_line_count=$(echo "$line" | grep -io '\bFOR\b' | wc -l)
         for_count=$((for_count + for_line_count))
-
-        # Count FOR EACH (case-insensitive)
-        foreach_line_count=$(echo "$line" | grep -io '\bFOR\s+EACH\b' | wc -l)
-        foreach_count=$((foreach_count + foreach_line_count))
 
         # Count NEXT (case-insensitive, word boundary)
         next_line_count=$(echo "$line" | grep -io '\bNEXT\b' | wc -l)
@@ -284,10 +281,10 @@ process_file() {
         add_finding "$file" "" "Block imbalance: $sub_count 'SUB' found but $endsub_count 'END SUB' found. Check SUB/END SUB pairing."
     fi
 
-    # FOR and FOR EACH both map to NEXT
-    local for_total=$((for_count + foreach_count))
-    if [ "$for_total" -ne "$next_count" ]; then
-        add_finding "$file" "" "Block imbalance: $for_total 'FOR/FOR EACH' found but $next_count 'NEXT' found. Check FOR/NEXT pairing."
+    # FOR and FOR EACH both close with NEXT; for_count already covers both
+    # (the \bFOR\b pattern matches the leading FOR in 'FOR EACH').
+    if [ "$for_count" -ne "$next_count" ]; then
+        add_finding "$file" "" "Block imbalance: $for_count 'FOR/FOR EACH' found but $next_count 'NEXT' found. Check FOR/NEXT pairing."
     fi
 
     return 0
