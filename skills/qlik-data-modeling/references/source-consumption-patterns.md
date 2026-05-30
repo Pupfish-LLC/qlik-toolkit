@@ -68,7 +68,7 @@ SCD Type 2 keeps every historical version with `effective_from` / `effective_to`
 ```qlik
 Sum({<
     [Customer.EffectiveFrom] = {"<=$(=vAsOfDate)"},
-    [Customer.EndDate]       = {">=$(=vAsOfDate)"}
+    [Customer.EffectiveTo]   = {">=$(=vAsOfDate)"}
 >} [Sales.Amount])
 ```
 
@@ -401,6 +401,54 @@ NEXT vFile
 
 ---
 
+## SaaS API Exports (Salesforce, HubSpot, NetSuite, etc.)
+
+Records pulled from a SaaS application via REST/Bulk API or a Qlik connector. The connector hides the API, but the *semantics* of the underlying object model leak through and shape the consumption pattern.
+
+### Identifying characteristics
+
+- **Two timestamp columns** per object: `CreatedDate` and a last-modified timestamp. The two are not interchangeable for incremental capture.
+- **Soft deletes.** Deleted rows leave the live object and reappear in a separate "deleted records" endpoint (Salesforce `getDeleted`, the Recycle Bin) until they are purged.
+- **History objects** (Salesforce `Account_History`, `Opportunity_History`, etc.) — one row per audited field change, not one row per entity version. Useful for change analysis, dangerous as a substitute for SCD2.
+- **Multi-currency** — when enabled, monetary fields are stored in the record's `CurrencyIsoCode` and need to be converted via `CurrencyType` / `DatedConversionRate` before aggregation.
+- **Field-level changes** (formula fields, owner changes, automation updates) often update the modified timestamp without any user editing the record.
+
+### Incremental: SystemModstamp over LastModifiedDate
+
+For Salesforce, `SystemModstamp` captures changes from both users *and* automated processes (triggers, workflows, flows, formula recalculation), while `LastModifiedDate` captures only user edits. `SystemModstamp` is also indexed; `LastModifiedDate` typically is not, so SOQL filters on it run unindexed. Use `SystemModstamp` for incremental extracts unless there is a specific reason to track only user-driven changes.
+
+```qlik
+LET vLastLoadTime = Timestamp(Peek('LastRun', 0, '_LoadMetadata'), 'YYYY-MM-DDThh:mm:ss.fffZ');
+
+[_NewAccounts]:
+SQL SELECT Id, Name, BillingCountry, CurrencyIsoCode, SystemModstamp
+FROM Account
+WHERE SystemModstamp > $(vLastLoadTime);
+```
+
+`LastModifiedDate` can also be back-dated by data-loader imports, which silently drops rows from a filtered incremental window. `SystemModstamp` is set by the platform and cannot be back-dated.
+
+### Soft-deleted records
+
+A record removed by the user moves to the Recycle Bin and disappears from queries against the live object. To keep the Qlik model consistent, query the deleted-records endpoint (Salesforce `getDeleted` for a date range, or `queryAll` to include `IsDeleted = true`) and drive deletions from that list. Without this step, deleted entities remain in QVDs and the model indefinitely.
+
+### History objects
+
+`<Object>_History` rows carry `FieldName`, `OldValue`, `NewValue`, and `CreatedDate`. They are useful for "who changed what when" analysis but are **not** an SCD2 dimension — each row is a single-field delta, not a full snapshot. Treat them as a fact at field-change grain; do not join them to a dimension expecting one row per version.
+
+### Multi-currency
+
+If the org has multi-currency enabled, every monetary field is in the row's `CurrencyIsoCode`. Convert to the corporate currency (or whatever currency the Qlik model reports in) by joining `DatedConversionRate` for the appropriate `CurrencyType` and effective date range. Aggregating mixed-currency amounts without conversion silently sums non-comparable values.
+
+### Pitfalls
+
+- **Using `LastModifiedDate` for incremental.** Misses formula recalculations, workflow updates, owner reassignments, and any change made by an integration user via the API without `LastModifiedDate` write-through. Also runs unindexed on large objects.
+- **Ignoring soft deletes.** Deleted records remain in the Qlik model forever.
+- **Treating History as SCD2.** Field-change rows do not aggregate to entity versions.
+- **Aggregating multi-currency amounts without conversion.** A `SUM(Amount)` across a multi-currency `Opportunity` table is meaningless.
+
+---
+
 ## Source Architecture Decision Summary
 
 | Architecture | Key approach | Incremental strategy | Denormalization | What goes wrong |
@@ -410,5 +458,6 @@ NEXT vFile
 | Data Vault 2.0 | Flatten hubs + satellites; hash composite business keys | LoadDate filter (insert-only) **or** LoadDate + LoadEndDate (end-dated variant) | Flatten satellites per hub | Applying dual-timestamp to insert-only SATs; applying single-timestamp to end-dated SATs |
 | Pre-joined view | Validate grain before trusting; dedup deliberately | File timestamp / monotonic column | Already done | Grain drift; dropped columns; accidental fan-out |
 | Flat files | Validate field count and encoding; use `msq` for quoted fields | `FILELIST()` + `FileTime()` + dedup on key | Required if source is normalized | Wrong codepage; missing `msq`; overlap not deduped |
+| SaaS API exports | Use the platform Id (SF 15/18-char Id, HubSpot recordId) directly; hash if combining systems | `SystemModstamp` (Salesforce) over `LastModifiedDate` + deleted-records endpoint | Usually required (objects are normalized) | Using `LastModifiedDate` misses system updates; ignoring soft deletes; treating History as SCD2; multi-currency without conversion |
 
 **Key takeaway:** the first thing to establish about any new source is which row of this table it sits on. The consumption pattern follows from that.

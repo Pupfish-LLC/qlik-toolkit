@@ -118,6 +118,7 @@ Different upstream systems require fundamentally different consumption patterns.
 | **Data Vault 2.0** | Merge hub + current-version satellite into dimensions; for insert-only DV use `LoadDate` filter (canonical variant) or `LoadDate`+`LoadEndDate` (end-dated variant) |
 | **Pre-joined views** | Validate grain before consuming — a "one row per customer" view often isn't; deduplicate if needed |
 | **Flat files / CSV** | Set codepage, quote handling (`msq`), delimiter, validate headers; watch for file rotation |
+| **SaaS API exports** (Salesforce, HubSpot, etc.) | Incremental on `SystemModstamp` over `LastModifiedDate` (indexed; captures system + user changes); handle soft-deletes via the deleted-record endpoint; for Salesforce expect Object History rows and multi-currency conversion fields |
 
 Full patterns and worked examples are in `references/source-consumption-patterns.md`.
 

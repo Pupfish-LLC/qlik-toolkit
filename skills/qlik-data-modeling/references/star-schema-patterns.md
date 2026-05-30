@@ -203,9 +203,9 @@ Use a link table when, at design time, you identify any of:
 
 ### When You Do NOT Need a Link Table
 
-A link table is overkill for a **single-fact star schema** with one path to each dimension. One fact, N dimensions, each dimension reached by exactly one key — that is a clean star and does not need an intermediate hub. The deferral guidance applies here: do not preemptively introduce a link table for a model that does not have multiple facts sharing keys. Add it only if a second fact at the same grain is later introduced.
+A link table is overkill for a **single-fact star schema** with one path to each dimension. One fact, N dimensions, each dimension reached by exactly one key — that is a clean star and does not need an intermediate hub. Don't preemptively build link tables for the simple star-schema case where only one fact shares dimensions.
 
-The distinguishing question at design time: **how many fact tables in the model will share dimension keys?** One → direct associations. Two or more at the same grain → link table from the start.
+The distinguishing question at design time: **predict whether the planned associations form a loop.** If yes, design the link table from the start. If no — one fact, direct associations — leave the link table out. The decision is made by reading the planned model, not by waiting for synthetic keys or circular references to appear at reload time.
 
 ---
 
