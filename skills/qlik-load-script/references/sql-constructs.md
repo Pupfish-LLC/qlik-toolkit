@@ -160,7 +160,7 @@ Every table prefixed with `_` (the temp-table convention) must have a correspond
 DROP TABLE [_Staging];
 ```
 
-Mapping tables created with `MAPPING LOAD` are consumed at `ApplyMap()` time and auto-dropped — do NOT manually drop them. Attempting to `DROP TABLE` a mapping table fails.
+Mapping tables created with `MAPPING LOAD` PERSIST in memory until script end — they are NOT auto-dropped when `ApplyMap()` consumes them. To release a mapping table early, use `DROP MAPPING TABLE [MappingTableName];` (the `MAPPING` keyword is required; plain `DROP TABLE` does not apply to mapping tables). See help.qlik.com — [Drop Table](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptRegularStatements/Drop_Table.htm).
 
 ### 2.5 NullAsValue scope persistence and key corruption
 
