@@ -43,13 +43,17 @@ Do not choose chart types by guess. Use a decision framework based on the data r
 
 ### Specialized Chart Types
 
-**KPI object** — Single metric with large font. Use when the metric is critical to user decision, or as dashboard headline. Supports conditional coloring and conditional symbols (e.g., check mark, caution, X) configured by adding range limits in **Appearance → Color**, and calculation conditions. Note: the standard KPI does not include up/down trend arrows; that pattern lived in the Multi-KPI chart, which is deprecated (no new instances since April 5, 2025; full removal May 2027). For trend visualization, use a separate trend line/spark chart next to the KPI. Example: "Total Sales YTD" KPI in top-left of executive dashboard, with a monthly spark line beside it.
+**KPI object** — Single metric with large font. Use when the metric is critical to user decision, or as dashboard headline. Supports conditional coloring and conditional symbols (e.g., check mark, caution, X) configured via the KPI's color/symbol limits in **Appearance** (and refined with calculation conditions). Note: the standard KPI does not include up/down trend arrows; that pattern lived in the Multi-KPI chart, which is deprecated (no new instances since April 5, 2025; full removal May 2027). For trend visualization, use a separate trend line/spark chart next to the KPI. Example: "Total Sales YTD" KPI in top-left of executive dashboard, with a monthly spark line beside it.
 
 **Table** — Detailed row-level data. Use when users need exact values, multiple columns from different tables, or custom sorting. Design heuristic (practitioner, not Qlik-prescribed): limit to roughly 15 columns to keep the table scannable, right-align numbers, add currency symbols, use alternating row background colors for readability.
 
 **Gauge chart** — Circular progress indicator with meaningful maximum (quota, target %). Use sparingly; wastes space compared to KPI for raw numbers. Useful when dashboard space is severely constrained.
 
-**Combo/Combination chart** — Multiple measures with different visualization types (bars + line on dual Y-axes). Design carefully: different Y-axis scales can be misleading. Label clearly which axis each measure uses.
+**Combo/Combination chart** — Multiple measures with different visualization types (bars + line on dual Y-axes). Design carefully: different Y-axis scales can be misleading. Label clearly which axis each measure uses. Prefer combo charts when the two measures share interpretive context (e.g., volume + cumulative sum, or count + rate over the same base) and avoid them when measures are independent — small-multiples or two stacked charts give viewers a fairer comparison.
+
+**Mekko chart** — Two-dimensional composition where bar width encodes one share and stacked-segment height encodes another, so each rectangle's area shows joint share of total. Use for "which segment + sub-segment dominates the whole" questions where size encoding adds information beyond a plain stacked bar.
+
+**Funnel chart** (Visualization Bundle — verify it is enabled in the tenant) — Sequential drop-off / conversion across an ordered stage list. Use for funnels like "leads → qualified → opportunity → closed-won" where stage-to-stage retention is the message.
 
 ---
 
@@ -65,6 +69,15 @@ Apply to sheet design using Qlik Sense's responsive grid system.
 - **Calculation conditions** — Hide objects when data is insufficient. Example: "Show this chart only if Year is selected" prevents showing a meaningless trend when no year filter is applied
 - **Whitespace** — Use grid gaps and padding to separate logical groups. Improves readability and reduces cognitive load
 
+### Calculation Condition Syntax
+
+A calculation condition is a Boolean expression set on a visualization's **Add-ons → Data handling → Calculation condition** property. The object renders only when the expression evaluates to true; otherwise the paired **Displayed message** property is shown in its place. Canonical forms:
+
+- `GetSelectedCount([Field])>0` — render only when the user has made at least one selection in `[Field]`.
+- `GetPossibleCount([Field])=1` — render only when current selections narrow `[Field]` to exactly one value (useful for "drill-down required" charts).
+
+Pair every calculation condition with a meaningful Displayed message so users see why the object is empty (e.g., "Select a Year to view this chart").
+
 ### Responsive Grid Behavior
 
 Qlik Sense responsive mode stacks objects vertically on smaller screens. Objects in top-left remain visible across screen sizes; lower-right objects may reflow below fold. Design: ensure single-column layout looks good on mobile. Test by resizing the browser window in the sheet editor — the live responsive layout renders directly (no separate "preview mode" toggle is documented).
@@ -73,7 +86,7 @@ Qlik Sense responsive mode stacks objects vertically on smaller screens. Objects
 
 **Executive Dashboard** — 4-6 KPIs across top row, global filters on right, one large visualization below (trend or comparison), action buttons or drill-through links at bottom.
 
-**Detail Analysis Sheet** — Filters on left side (global or sheet-specific), visualization grid on right. Top-right: high-level overview chart. Bottom-right: drill-down table. Users filter left side and see impact across visualizations.
+**Detail Analysis Sheet** — Filters along one edge (left or right depending on existing app conventions and reading direction; pick one and apply consistently across sheets), visualization grid filling the rest. Place the high-level overview chart top-opposite-the-filter-edge and the drill-down table beneath it. Users filter on the filter edge and see impact across visualizations.
 
 **Drill-down Sheet** — Breadcrumb navigation at top, detail table with progressive disclosure, supporting charts below for context.
 
@@ -102,8 +115,10 @@ Reduce Grid spacing (Wide → Narrow) when more granular placement is needed.
 
 ### Accessibility-Safe Palettes
 
-- **Color blindness (general accessibility heuristic)** — Approximately 8% of men and ~0.5% of women have some form of color vision deficiency (most common: red-green). Use tested colorblind-friendly palettes (viridis, cividis from the matplotlib/seaborn ecosystem are widely cited; not Qlik built-ins — apply via custom color expressions or hex values). When red/green is necessary, also use pattern, size, or text labels to differentiate.
-- **WCAG AA contrast (general web standard, not Qlik-specific)** — Text should have ≥4.5:1 contrast with background per W3C WCAG 2.x AA. Test with WebAIM Contrast Checker. Dark text on light background is always safe.
+Qlik Sense ships custom-theme support (`theme.json`) that can declare a categorical palette of accessible colors at app scope, so every chart inherits the same colorblind-safe sequence without per-object expressions; viridis and cividis are well-tested hex sources to embed in such a theme (see help.qlik.com Cloud → "Custom themes").
+
+- **Color blindness (general accessibility heuristic)** — Approximately 8% of men and ~0.5% of women have some form of color vision deficiency (most common: red-green). Use tested colorblind-friendly palettes (viridis, cividis from the matplotlib/seaborn ecosystem are widely cited; not Qlik built-ins — apply via custom themes, custom color expressions, or hex values). When red/green is necessary, also use pattern, size, or text labels to differentiate.
+- **WCAG AA contrast (general web standard, not Qlik-specific)** — Per W3C WCAG 2.1 AA, body text should have ≥4.5:1 contrast with its background, large text (≥18pt regular or ≥14pt bold) and graphical elements like chart marks, axis lines, and UI components need only ≥3:1 (SC 1.4.3 and SC 1.4.11). KPI headlines in the recommended 48-60pt range qualify as large text (3:1 threshold); axis labels in the 12-14pt range are body text (4.5:1 threshold). Test with WebAIM Contrast Checker. Dark text on light background is always safe.
 - **Recommended palette** — Blues, oranges, purples (avoid pure red/green combinations unless text labels are added)
 
 ### Number, Date, and Field Formatting
@@ -121,7 +136,7 @@ Reduce Grid spacing (Wide → Narrow) when more granular placement is needed.
 
 ### Global Filter Pane (Multi-Sheet)
 
-Use when users need the same filter context across multiple sheets (Year, Region, Department apply to all analyses). Appears in consistent location (typically right pane), selections persist as user navigates sheets. Design heuristic (practitioner, not Qlik-prescribed): low-cardinality fields work well as a direct list (Year, Region); for high-cardinality fields, expect users to use the filter pane's built-in text search.
+Use when users need the same filter context across multiple sheets (Year, Region, Department apply to all analyses). Place in a consistent location (either left or right edge — pick one as the app-wide convention and stick to it; see Section 2's Detail Analysis Sheet pattern), so selections persist as users navigate sheets and they always know where to find filters. Design heuristic (practitioner, not Qlik-prescribed): low-cardinality fields work well as a direct list (Year, Region); for high-cardinality fields, expect users to use the filter pane's built-in text search.
 
 ### Sheet-Specific Filter Pane
 
@@ -129,16 +144,18 @@ Use when filter applies only to one or two sheets (example: "Product Detail Filt
 
 ### Alternate States for Comparative Analysis
 
-Allow multiple independent filter contexts on the same sheet. Use for "Budget vs. Actual" or "This Year vs. Last Year" comparisons. Create alternate states in **Master items → Alternate states**, then apply a state to each visualization via **Appearance → Alternate states** (or drag the state onto an object and choose Apply state). Caution: increases complexity; use only when comparing is core workflow.
+Allow multiple independent filter contexts on the same sheet. Use for "Budget vs. Actual" or "This Year vs. Last Year" comparisons. First define alternate states for the app (managed alongside other app-level settings), then apply a chosen state to each visualization via its Appearance properties for alternate states. Exact menu labels and the precise navigation path may vary by Qlik Cloud release; refer to help.qlik.com Cloud → "Using alternate states for comparative analysis" for the current UI path. Caution: increases complexity; use only when comparing is core workflow.
 
 ### Field Selection for Filters
 
-| Cardinality | Mode (practitioner heuristic; Qlik does not prescribe these thresholds) | Example |
+The Qlik Sense filter pane renders one way — a list of values inside a single object — rather than offering separate widget modes per cardinality. The decision is about what interaction users will rely on, given how many values are in the field:
+
+| Cardinality | Recommended interaction model (practitioner heuristic; Qlik does not prescribe these thresholds) | Example |
 |---|---|---|
-| ≤20 values | List (checkboxes) | Region (4 regions) |
-| 21-50 values | List with scroll | Sales Rep (30 reps) |
-| >50 values | Rely on the always-available text-search box rather than scrolling | Product SKU (10,000 SKUs) |
-| Time | Button group or calendar | Monthly data → button group; Daily → calendar picker |
+| ≤20 values | All values visible at once — user scans and clicks | Region (4 regions) |
+| 21-50 values | Most values visible, light scroll inside the pane | Sales Rep (30 reps) |
+| >50 values | Rely on the search box; scrolling is not practical | Product SKU (10,000 SKUs) |
+| Time | Button group or calendar (separate Dashboard Bundle controls) | Monthly data → button group; Daily → calendar picker |
 
 ---
 
@@ -169,7 +186,7 @@ To validate responsive behavior, resize the browser window in the Qlik Cloud she
 ### Color Accessibility
 
 - **Color blindness-safe palettes (general accessibility heuristic, not Qlik built-ins)** — Use tested palettes (viridis, cividis are widely cited from the matplotlib/seaborn ecosystem; apply in Qlik via custom color expressions or hex values). When color alone distinguishes data, add pattern, shape, or text label. Example: don't just color bars red/green; also label "On Track" / "Off Track".
-- **WCAG AA contrast (general web standard, not Qlik-specific)** — Per W3C WCAG 2.x AA, body text should have ≥4.5:1 contrast with its background. Dark text on light background is always safe. Colored backgrounds need testing (WebAIM Contrast Checker).
+- **WCAG AA contrast (general web standard, not Qlik-specific)** — Per W3C WCAG 2.1 AA, body text should have ≥4.5:1 contrast with its background (SC 1.4.3); large text (≥18pt regular / ≥14pt bold) and graphical elements like chart marks and UI components need only ≥3:1 (SC 1.4.11). KPI headlines in the 48-60pt range qualify as large text, while 12-14pt axis labels are body text and need the full 4.5:1. Dark text on light background is always safe. Colored backgrounds need testing (WebAIM Contrast Checker).
 
 ### Screen Reader Considerations
 
@@ -200,7 +217,9 @@ The Dashboard Bundle ships native-feeling controls (Variable Input, Date Picker,
 
 ### Variable Input — Dynamic values takes a pipe-delimited string, not a field
 
-The Variable Input control's **Dynamic values** mode parses a pipe-delimited string (`value1|value2|...`) or pipe-tilde-delimited string (`value~label|...`) and tokenizes it into dropdown options. A bare field reference (`=[Table].[Field]`) resolves to a single scalar and the dropdown collapses — the control does NOT enumerate distinct field values for you.
+The Variable Input control's **Dynamic values** mode parses either value-only pairs separated by pipes (`v1|v2|...`) or value-label pairs (tilde between value and label, pipe between pairs: `v1~L1|v2~L2|...`) and tokenizes it into dropdown options. A bare field reference (`=[Table].[Field]`) resolves to a single scalar and the dropdown collapses — the control does NOT enumerate distinct field values for you.
+
+For small fixed lists, the control's **Static values** mode (configured as individual property-pane rows, not a pipe-delimited string) is simpler; reserve the Dynamic values pipe pattern for data-driven lists where the value set comes from script-time computation.
 
 - **Avoid:** `=[MeasuresMenu].[%MeasureLabel]` and similar bare field references in Dynamic values.
 - **Prefer:** materialize the pipe string in the load script (Concat-and-Peek), then reference the resulting variable: `='$(vPipeMeasures)'`.
