@@ -384,9 +384,11 @@ Why not use intermediate SET variables here? `SET vCurrentYear = Num(Today(), 'Y
 Same months as current YTD, but prior year.
 
 ```
-SET vPriorYear = $(vCurrentYear)-1;
-Sum({<Year={$(vPriorYear)}, Month={"<=$(vCurrentMonth)"}>} [Amount])
+Sum({<Year={$(=Year(Today())-1)}, Month={"<=$(vCurrentMonth)"}>} [Amount])
+// Inline $(=Year(Today())-1) evaluates at chart time, sidestepping the SET-stores-text trap.
 ```
+
+Do not write `SET vPriorYear = $(vCurrentYear)-1;` and then reference `Year={$(vPriorYear)}`. SET preserves expression text without evaluating it (see the Prior Year Comparison narrative above and Section 4), so `vPriorYear` stores the literal text `Num(Today(), 'YYYY')-1`, which expands inside the element set as a string predicate that matches no actual Year value. If a named variable is preferred, use the wrapped form from the canonical Time Intelligence template: `Year={$(=$(vCurrentYear)-1)}`.
 
 Same Month-encoding caveat as the YTD section above: the `Month={"<=..."}` comparison is a string comparison and is safe only when Month is zero-padded text. For a Month-as-Dual-integer field, anchor on a date instead: `[Order.Date]={">=$(=Date(YearStart(AddYears(Today(),-1)),'YYYY-MM-DD'))<=$(=Date(AddYears(Today(),-1),'YYYY-MM-DD'))"}`.
 
