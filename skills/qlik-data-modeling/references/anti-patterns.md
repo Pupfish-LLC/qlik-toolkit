@@ -10,7 +10,7 @@ This file is the canonical home for synthetic key, circular reference, QUALIFY d
 
 ### What a synthetic key is
 
-When two tables share **more than one field name**, Qlik cannot pick a single join key, so it creates a hidden composite table named `$Syn 1` (then `$Syn 2`, etc.) that holds every distinct combination of the shared values. Each original table connects to the `$Syn` table by all of the shared fields collectively. In the Data Model Viewer this appears as a separate `$Syn N` node with **solid** connector lines to the contributing tables. Solid lines distinguish synthetic keys from circular references (#3), which use **dotted** lines.
+When two tables share **more than one field name**, Qlik cannot pick a single join key, so it creates a hidden composite table named `$Syn 1` (then `$Syn 2`, etc.) that holds every distinct combination of the shared values. Each original table connects to the `$Syn` table by all of the shared fields collectively. In the Data Model Viewer this appears as a separate `$Syn N` node with **solid** connector lines to the contributing tables. Solid lines distinguish synthetic keys from circular references (#3), which use **red dotted** lines ([help.qlik.com — Circular references](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/LoadData/circular-references.htm)).
 
 Synthetic keys are not uniformly wrong. Qlik's official documentation notes that "a synthetic key is, in itself, not wrong" and that a single synthetic key representing a deliberately composite relationship between two tables may be acceptable. The situation that is always wrong — and the primary target of this section — is **multiple interdependent synthetic keys**: the official guidance states "whenever there are several synthetic keys that are dependent on each other, it is good practice to remove them" (help.qlik.com, Synthetic keys). The second reliably wrong case is a synthetic key that formed *accidentally* because of unprefixed generic field names colliding across tables (`Status`, `Code`, `Type`) — the developer never intended a composite relationship at all.
 
@@ -108,7 +108,7 @@ STORE [_RawOrder] INTO [lib://QVDs/Raw_Order.qvd] (qvd);
 
 ### Why It's Wrong
 
-`AutoNumber` assigns integers in the order values are first seen during **this reload**. If the source order changes, or a new row arrives between two existing rows, the same business key can receive a different AutoNumber value on the next reload. Storing that to a QVD means the persisted surrogate is unstable across runs.
+`AutoNumber` assigns integers in the order values are **first encountered during *this* reload** ([help.qlik.com — AutoNumber](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/CounterFunctions/autonumber.htm)). Source-row reordering, new rows arriving between existing rows, or a different upstream table being loaded first will all produce different integer assignments on the next reload. Storing that to a QVD means the persisted surrogate is unstable across runs.
 
 **Failure mode:** an incremental load matching on `order_key` finds no matches, reloads everything as new, and duplicates accumulate.
 
@@ -142,7 +142,7 @@ FROM [lib://QVDs/Transform_Order.qvd] (qvd);
 
 When three or more tables form a closed loop of single-field associations (A↔B, B↔C, C↔A), Qlik cannot resolve which path a selection should take. The engine's default response is to **loosely couple** one table in the loop — meaning that table's associations no longer propagate selections in either direction.
 
-In the Data Model Viewer this appears as a **dotted** connector line on the loosely coupled table (contrast with the solid lines of a synthetic key). The script log emits a circular reference warning that names the table chosen for loose coupling.
+In the Data Model Viewer this appears as a **red dotted** connector line on the loosely coupled table (contrast with the solid lines of a synthetic key) ([help.qlik.com — Circular references](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/LoadData/circular-references.htm)). The script log emits a circular reference warning that names the table chosen for loose coupling.
 
 **Failure modes:**
 - Selections made elsewhere in the model don't reach the loosely coupled table.
@@ -154,7 +154,7 @@ In the Data Model Viewer this appears as a **dotted** connector line on the loos
 | | Synthetic Key | Circular Reference |
 |---|---|---|
 | **Cause** | Two tables share >1 field name | Closed loop of single-field associations A↔B↔C↔A |
-| **Viewer signature** | `$Syn` table with **solid** connector lines | **Dotted** connector line on a *loosely coupled* table |
+| **Viewer signature** | `$Syn` table with **solid** connector lines | **Red dotted** connector line on a *loosely coupled* table |
 | **Failure mode** | Silent incorrect filtering; extra associations | Loosely coupled table does **not** propagate selections |
 | **Fix** | Entity-prefix non-key fields, drop redundant shared fields, or use `ApplyMap` for lookups | Consolidate redundant key paths into one dimension, or introduce a link table; do **not** leave Qlik to pick a loose-coupling victim |
 
@@ -176,7 +176,7 @@ There are two paths from Sales to Region: directly via `Product.Key` (Sales → 
 ### Detection
 
 - Script log warning mentioning circular reference / loosely coupled table.
-- Data Model Viewer shows a dotted connector line.
+- Data Model Viewer shows a red dotted connector line.
 - Selections propagate to part of the model but not the rest.
 
 ### The Fix
@@ -203,7 +203,7 @@ DROP FIELDS [Product.Key] FROM [Region];
 
 ### What QUALIFY does
 
-`QUALIFY [field-list]` is a stateful prefix that prepends the loaded table's label to each non-excluded field at load time. `QUALIFY *;` qualifies all fields; `UNQUALIFY [field-list]` carves out exceptions (typically the join keys you need to associate on). The state persists until the next `QUALIFY` / `UNQUALIFY` toggle — including across script tabs.
+`QUALIFY [field-list]` is a stateful prefix that prepends the loaded table's label to each non-excluded field at load time. `QUALIFY *;` qualifies all fields; `UNQUALIFY [field-list]` carves out exceptions (typically the join keys you need to associate on). Within a single reload, the state persists until the next `QUALIFY` / `UNQUALIFY` toggle — including across script tabs; QUALIFY state is reset automatically at the start of every reload ([help.qlik.com — Qualify](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/Qualify.htm)).
 
 QUALIFY is one valid tool for preventing synthetic keys on raw or wildcard loads, but it has two well-known failure modes.
 
@@ -237,7 +237,7 @@ LOAD customer_id, [Customer.Name] FROM another.qvd (qvd);
 
 ### Failure mode C — leaving QUALIFY active across tabs
 
-The QUALIFY state persists across tabs and script files until reset. A QUALIFY block in an Extract tab silently affects every subsequent LOAD in Transform and Model tabs unless explicitly reset with `UNQUALIFY *;`. Always reset at the end of the block where you turned it on.
+Within a single reload, the QUALIFY state persists across tabs until reset (QUALIFY state is reset automatically at the start of every reload — it does not carry over to a separate app or a later reload session). A QUALIFY block in an Extract tab silently affects every subsequent LOAD in Transform and Model tabs of the same reload unless explicitly reset with `UNQUALIFY *;`. Always reset at the end of the block where you turned it on.
 
 ---
 
@@ -524,7 +524,7 @@ Pick one of:
 |---|---|---|---|
 | 1. Synthetic keys from generic names | Silent unintended filtering | `$Syn` table in viewer, solid lines | Entity-prefix non-key fields; bridge/link tables carry keys only (no descriptive attributes) |
 | 2. AutoNumber in QVD layer | Non-deterministic surrogates break incremental | Reload twice, keys differ | Hash keys; AutoNumber only in final model |
-| 3. Circular references | Loosely coupled table, inconsistent selection propagation | Dotted connector, script log warning | Consolidate key paths or use a link table |
+| 3. Circular references | Loosely coupled table, inconsistent selection propagation | Red dotted connector, script log warning | Consolidate key paths or use a link table |
 | 4. QUALIFY discipline (double-prefix, missing UNQUALIFY, persistent state) | Fields double-prefixed; data islands; cross-tab contamination | Weird `Tbl.Entity.Field` names; no associations; later loads silently qualified | Pick one prefixing discipline; always UNQUALIFY keys; reset state at block end |
 | 5. Multiple shared fields | Synthetic key between a pair of tables | `$Syn` table | Drop the redundant field |
 | 6. Missing bridge table | Users can't filter individual many-to-many values | Delimited string columns | Bridge table |

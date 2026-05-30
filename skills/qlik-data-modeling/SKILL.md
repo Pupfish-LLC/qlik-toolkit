@@ -27,7 +27,7 @@ These are often conflated. They are not the same thing.
 | | Synthetic Key | Circular Reference |
 |---|---|---|
 | **Cause** | Two tables share >1 field name | Closed loop of single-field associations A↔B↔C↔A |
-| **Viewer signature** | `$Syn` table with **solid** connector lines | **Dotted** connector line on a *loosely coupled* table |
+| **Viewer signature** | `$Syn` table with **solid** connector lines | **Red dotted** connector line on a *loosely coupled* table ([help.qlik.com — Circular references](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/LoadData/circular-references.htm)) |
 | **Failure mode** | Silent incorrect filtering; extra associations | Loosely coupled table does **not** propagate selections |
 | **Fix** | Entity-prefix non-key fields, drop redundant shared fields, or use `ApplyMap` for lookups | Consolidate redundant key paths into one dimension, or introduce a link table; do **not** leave Qlik to pick a loose-coupling victim |
 
@@ -60,7 +60,7 @@ See `references/star-schema-patterns.md` for bridge-table construction, link tab
 | Storing surrogate in a QVD for incremental matching | **Hash128 / Hash256** | Deterministic; `AutoNumber` is not |
 | Final in-memory model load, very large string keys | **`AutoNumber`** | Memory savings; never in a stored QVD |
 
-**AutoNumber is non-deterministic across reloads.** Two runs can assign different integers to the same business key. Never use it in the QVD layer or anywhere its output is compared across reloads — it will silently break incremental-load matching and cause duplicates to accumulate. Reserve it for the final model load that is not stored.
+**AutoNumber assigns integers in the order values are first encountered during *this* reload.** Source-row reordering, new rows arriving between existing rows, or a different upstream table being loaded first will all produce different integer assignments on the next reload ([help.qlik.com — AutoNumber](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/CounterFunctions/autonumber.htm)). Never use it in the QVD layer or anywhere its output is compared across reloads — it will silently break incremental-load matching and cause duplicates to accumulate. Reserve it for the final model load that is not stored.
 
 ## 5. QVD Layer Architecture
 
@@ -145,7 +145,7 @@ Pick one fix:
 
 1. One shared field per table pair. Zero means island, more than one means synthetic key.
 2. Entity-prefix non-key fields. Don't combine QUALIFY with manual prefixing.
-3. `$Syn` table with solid lines ≠ dotted loose-coupling line. Synthetic keys and circular references are different problems with different fixes.
+3. `$Syn` table with solid lines ≠ red dotted loose-coupling line. Synthetic keys and circular references are different problems with different fixes.
 4. Hash keys for anything persisted to a QVD. `AutoNumber` only in the final in-memory model.
 5. Optimized QVD read is preserved by single-param `EXISTS` but broken by any function applied to a field.
 6. `binary` accepts an app ID or `lib://` .qvf path on Cloud; client-managed requires the `lib://` .qvf path. It does not cascade reloads.
