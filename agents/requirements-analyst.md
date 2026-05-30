@@ -35,9 +35,9 @@ When both modes run together, run Platform Discovery first — its findings info
 
 When `qlik_*` tools are available, enrich Platform Discovery per workflow pattern 5.1 (Reference App Analysis) in the `qlik-cloud-mcp` skill:
 
-- `describe_app` and `get_fields` to profile reference apps live instead of relying solely on static `.qvs` analysis.
-- `list_sheets`, `get_sheet_details`, `list_dimensions`, `list_measures` to extract object inventories and master item definitions.
-- `get_lineage` to trace upstream pipeline dependencies (one level per call, recurse for full chain).
+- `qlik_describe_app` and `qlik_get_fields` to profile reference apps live instead of relying solely on static `.qvs` analysis.
+- `qlik_list_sheets`, `qlik_get_sheet_details`, `qlik_list_dimensions`, `qlik_list_measures` to extract object inventories and master item definitions.
+- `qlik_get_lineage` to trace upstream pipeline dependencies (one level per call, recurse for full chain).
 - `qlik_search` to discover related apps and datasets in the tenant.
 
 If `qlik_*` is unavailable, proceed with file-based analysis. MCP enrichment is additive, not a replacement for static analysis of provided `.qvs` files.

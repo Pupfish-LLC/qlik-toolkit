@@ -48,41 +48,41 @@ Task abbreviations: **REF** = reference app analysis · **PROF** = source / data
 
 | Tool | REF | PROF | MOD | SCRIPT | EXPR | VIZ | QA |
 |---|---|---|---|---|---|---|---|
-| `describe_app` | ● | | | | | | |
-| `get_fields` | ● | | ● | ● | | | ● |
-| `get_field_values` | | ● | ● | | ● | | ● |
-| `search_field_values` | ● | | ● | | ● | | ● |
-| `list_sheets` | ● | | | | | ● | |
-| `get_sheet_details` | ● | | | | | ● | ● |
-| `list_dimensions` | ● | | | | ● | ● | |
-| `list_measures` | ● | | | | ● | ● | |
-| `create_data_object` | | | | ● | ● | | ● |
-| `get_chart_data` | | | | | ● | | ● |
-| `get_chart_info` | ● | | | | | | ● |
-| `select_values` | | | | | ● | | ● |
-| `clear_selections` | | | | | ● | | ● |
-| `get_current_selections` | | | | | ● | | ● |
-| `list_bookmarks` | ● | | | | ● | | |
-| `create_bookmark` | | | | | ● | | |
-| `select_bookmark` | ● | | | | ● | | |
-| `delete_bookmark` | | | | | ● | | |
-| `create_sheet` | | | | | | ● | |
-| `add_chart` | | | | | | ● | |
-| `add_filter` | | | | | | ● | |
-| `create_dimension` | | | | | | ● | |
-| `create_measure` | | | | | ● | ● | |
-| `update_dimension` | | | | | | ● | |
-| `update_measure` | | | | | ● | ● | |
-| `delete_dimension` | | | | | | ● | |
-| `delete_measure` | | | | | | ● | |
+| `qlik_describe_app` | ● | | | | | | |
+| `qlik_get_fields` | ● | | ● | ● | | | ● |
+| `qlik_get_field_values` | | ● | ● | | ● | | ● |
+| `qlik_search_field_values` | ● | | ● | | ● | | ● |
+| `qlik_list_sheets` | ● | | | | | ● | |
+| `qlik_get_sheet_details` | ● | | | | | ● | ● |
+| `qlik_list_dimensions` | ● | | | | ● | ● | |
+| `qlik_list_measures` | ● | | | | ● | ● | |
+| `qlik_create_data_object` | | | | ● | ● | | ● |
+| `qlik_get_chart_data` | | | | | ● | | ● |
+| `qlik_get_chart_info` | ● | | | | | | ● |
+| `qlik_select_values` | | | | | ● | | ● |
+| `qlik_clear_selections` | | | | | ● | | ● |
+| `qlik_get_current_selections` | | | | | ● | | ● |
+| `qlik_list_bookmarks` | ● | | | | ● | | |
+| `qlik_create_bookmark` | | | | | ● | | |
+| `qlik_select_bookmark` | ● | | | | ● | | |
+| `qlik_delete_bookmark` | | | | | ● | | |
+| `qlik_create_sheet` | | | | | | ● | |
+| `qlik_add_chart` | | | | | | ● | |
+| `qlik_add_filter` | | | | | | ● | |
+| `qlik_create_dimension` | | | | | | ● | |
+| `qlik_create_measure` | | | | | ● | ● | |
+| `qlik_update_dimension` | | | | | | ● | |
+| `qlik_update_measure` | | | | | ● | ● | |
+| `qlik_delete_dimension` | | | | | | ● | |
+| `qlik_delete_measure` | | | | | | ● | |
 | `qlik_search` | ● | ● | | | | | |
-| `get_dataset` | | ● | | | | | |
-| `get_dataset_schema` | | ● | | | | | |
-| `get_dataset_sample` | | ● | | | | | ● |
-| `get_dataset_profile` | | ● | | | | | ● |
-| `get_dataset_freshness` | | ● | | | | | ● |
-| `get_dataset_trust_score` | | | | | | | ● |
-| `get_lineage` | ● | ● | | | | | |
+| `qlik_get_dataset` | | ● | | | | | |
+| `qlik_get_dataset_schema` | | ● | | | | | |
+| `qlik_get_dataset_sample` | | ● | | | | | ● |
+| `qlik_get_dataset_profile` | | ● | | | | | ● |
+| `qlik_get_dataset_freshness` | | ● | | | | | ● |
+| `qlik_get_dataset_trust_score` | | | | | | | ● |
+| `qlik_get_lineage` | ● | ● | | | | | |
 
 **Reading the table:** ● means the tool has a defined use in that task. Consult the relevant workflow pattern (Section 5) for the sequencing.
 
@@ -91,21 +91,21 @@ Task abbreviations: **REF** = reference app analysis · **PROF** = source / data
 These are gotchas discovered through live testing that are NOT documented in the tool definitions. For the complete per-tool list, read `references/behavioral-notes.md`.
 
 **Silent failures are the biggest risk.** Several tools return null/zero instead of errors when given invalid input:
-- `create_data_object`: Referencing a non-existent field returns null/0, not an error. Always verify field names with `get_fields` first.
-- `select_values`: Selecting a value that doesn't exist in the field produces an empty selection silently. The returned selection list is the ground truth -- if the field doesn't appear in it, the selection failed.
-- `create_measure` / `add_chart`: Invalid expressions succeed at creation time but fail at render time. Always validate expressions with `create_data_object` before creating permanent objects.
+- `qlik_create_data_object`: Referencing a non-existent field returns null/0, not an error. Always verify field names with `qlik_get_fields` first.
+- `qlik_select_values`: Selecting a value that doesn't exist in the field produces an empty selection silently. The returned selection list is the ground truth -- if the field doesn't appear in it, the selection failed.
+- `qlik_create_measure` / `qlik_add_chart`: Invalid expressions succeed at creation time but fail at render time. Always validate expressions with `qlik_create_data_object` before creating permanent objects.
 
-**Selection state is persistent and cumulative.** `select_values` filters the entire session. Every subsequent `create_data_object`, `get_field_values`, and `get_chart_data` call reflects active selections. Always call `clear_selections` after validation runs. Some app-level default selections (script-embedded, Section Access, default bookmarks) cannot be cleared via MCP. Always call `get_current_selections` before profiling or validation work and document any active selections. When profiling, if selections cannot be cleared, consider using `{1}` set analysis to ensure data is profiled across all values, not only those currently selected.
+**Selection state is persistent and cumulative.** `qlik_select_values` filters the entire session. Every subsequent `qlik_create_data_object`, `qlik_get_field_values`, and `qlik_get_chart_data` call reflects active selections. Always call `qlik_clear_selections` after validation runs. Some app-level default selections (script-embedded, Section Access, default bookmarks) cannot be cleared via MCP. Always call `qlik_get_current_selections` before profiling or validation work and document any active selections. When profiling, if selections cannot be cleared, consider using `{1}` set analysis to ensure data is profiled across all values, not only those currently selected.
 
-**Visualization creation has no layout control.** `create_sheet`, `add_chart`, and `add_filter` create objects but provide zero control over grid positioning, sizing, visual formatting, colors, number formats, or conditional formatting. Objects are appended sequentially. The manual build checklist remains essential for final layout work.
+**Visualization creation has no layout control.** `qlik_create_sheet`, `qlik_add_chart`, and `qlik_add_filter` create objects but provide zero control over grid positioning, sizing, visual formatting, colors, number formats, or conditional formatting. Objects are appended sequentially. The manual build checklist remains essential for final layout work.
 
 **MCP-only mutation rule (master items and bookmarks).** The MCP server enforces a hard restriction documented as: "You can only update and delete master items created using Qlik MCP tools." In practice, `qlik_update_dimension` / `qlik_update_measure` / `qlik_delete_dimension` / `qlik_delete_measure` will only act on items that this MCP session (or a prior MCP session) created. Pre-existing user-created master items in the app are read-only through MCP. The same restriction applies to bookmarks: "You can only delete bookmarks created using Qlik MCP tools." Separately, the standard Qlik Sense platform rule still applies: in published apps (managed spaces) master-item changes must be made in the source app and re-published. If a master measure is renamed or deleted, expressions that reference it by name return NULL silently rather than raising an error.
 
-**Hypercube cell limit.** `create_data_object` and `get_chart_data` are subject to a 10,000 cells per request limit (dimensions × measures × rows). For large result sets, use pagination (offset/limit) and keep dimension cardinality bounded with sort + limit settings.
+**Hypercube cell limit.** `qlik_create_data_object` and `qlik_get_chart_data` are subject to a 10,000 cells per request limit (dimensions × measures × rows). For large result sets, use pagination (offset/limit) and keep dimension cardinality bounded with sort + limit settings.
 
-**Lineage is one level per call.** `get_lineage` returns only immediate upstream dependencies. To trace a full pipeline (Source → Extract → QVD → Transform → App), call recursively on each upstream node. QRI format for apps: `qri:app:sense://[appId]`. Get dataset QRIs from `get_dataset` response.
+**Lineage is one level per call.** `qlik_get_lineage` returns only immediate upstream dependencies. To trace a full pipeline (Source → Extract → QVD → Transform → App), call recursively on each upstream node. QRI format for apps: `qri:app:sense://[appId]`. Get dataset QRIs from `qlik_get_dataset` response.
 
-**Trust scores are often absent.** `get_dataset_trust_score` returns an error (not null) when no trust score exists. Handle this gracefully -- most datasets won't have one unless explicitly assessed.
+**Trust scores are often absent.** `qlik_get_dataset_trust_score` returns an error (not null) when no trust score exists. Handle this gracefully -- most datasets won't have one unless explicitly assessed.
 
 ## Workflow Patterns
 
@@ -116,25 +116,25 @@ These are the multi-step tool call sequences agents should follow. Each pattern 
 Use when analyzing an existing app to extract patterns for replication.
 
 ```
-1. describe_app(appId)
+1. qlik_describe_app(appId)
    → App overview, field count, metadata. First call for any app.
 
-2. get_fields(appId)
+2. qlik_get_fields(appId)
    → Full field inventory. Note $key, $date, $numeric tags for
    type classification and association detection.
 
-3. list_sheets(appId)
+3. qlik_list_sheets(appId)
    → Sheet inventory. Get IDs for step 4.
    ⚠ Do NOT rely on the cells array here -- it's truncated.
 
-4. For each sheet: get_sheet_details(appId, sheetId)
+4. For each sheet: qlik_get_sheet_details(appId, sheetId)
    → Complete object list per sheet. Extract chart types,
    dimension/measure assignments.
 
-5. list_dimensions(appId) + list_measures(appId)
+5. qlik_list_dimensions(appId) + qlik_list_measures(appId)
    → Master item inventory with definitions and expressions.
 
-6. get_lineage(qri:app:sense://[appId])
+6. qlik_get_lineage(qri:app:sense://[appId])
    → Trace upstream pipeline. Recurse on each upstream node
    for full lineage chain.
 ```
@@ -144,29 +144,29 @@ Use when analyzing an existing app to extract patterns for replication.
 Highest-value MCP integration. Validates expressions from the expression catalog against loaded data.
 
 ```
-1. clear_selections(appId)
-   → Ensure clean state. Verify with get_current_selections.
+1. qlik_clear_selections(appId)
+   → Ensure clean state. Verify with qlik_get_current_selections.
 
-2. get_fields(appId)
+2. qlik_get_fields(appId)
    → Build field name lookup. Every field reference in every
    expression must match exactly (case-sensitive).
 
 3. For each expression in the catalog:
-   a. create_data_object with the expression and a relevant dimension
+   a. qlik_create_data_object with the expression and a relevant dimension
    b. Check result:
       - Non-null → expression evaluates ✓
       - Null/0 → could be valid (no matching data) or invalid
         (field typo, syntax error). Cross-check with
-        get_field_values to confirm data exists.
+        qlik_get_field_values to confirm data exists.
 
 4. For set analysis expressions, test with known-good values:
    - Sum({<Year={2024}>} [Amount]) with a year known to have data
    - Verify the filter produces expected narrowing
 
 5. For comparative expressions (YoY, variance):
-   a. select_values to set a known context
+   a. qlik_select_values to set a known context
    b. Evaluate the expression
-   c. clear_selections immediately after
+   c. qlik_clear_selections immediately after
 
 6. Produce validation summary:
    | Expression | Expected | Actual | Status | Notes |
@@ -182,25 +182,25 @@ Creates the skeleton of sheets and objects. Manual work is still required for la
 ```
 1. Create master dimensions:
    For each dimension in master item definitions:
-     create_dimension(appId, name, dim, description)
+     qlik_create_dimension(appId, name, dim, description)
      → Record returned libraryId
 
 2. Create master measures:
    For each measure in expression catalog:
-     create_measure(appId, name, expr, description)
+     qlik_create_measure(appId, name, expr, description)
      → Record returned libraryId
-   ⚠ Validate expressions with create_data_object BEFORE this step.
+   ⚠ Validate expressions with qlik_create_data_object BEFORE this step.
    Invalid expressions succeed here but fail at render.
 
 3. Create sheets:
    For each sheet in viz specifications:
-     create_sheet(appId, title, description)
+     qlik_create_sheet(appId, title, description)
      → Record returned sheetId
 
 4. Add filter panes, then charts:
    For each sheet:
-     add_filter(appId, sheetId, title, fields)
-     add_chart(appId, sheetId, chartType, title,
+     qlik_add_filter(appId, sheetId, title, fields)
+     qlik_add_chart(appId, sheetId, chartType, title,
        dimensions=[{libraryId: dimId}],
        measures=[{libraryId: measureId}])
 
@@ -216,16 +216,16 @@ Creates the skeleton of sheets and objects. Manual work is still required for la
 Validates data quality through MCP as part of comprehensive QA.
 
 ```
-1. clear_selections(appId)
+1. qlik_clear_selections(appId)
 
 2. Null rate checks per key field:
-   create_data_object(measures=[
+   qlik_create_data_object(measures=[
      {expression: "Count([Field])", label: "Non-Null"},
      {expression: "NullCount([Field])", label: "Nulls"}
    ], dimensions=[])
 
 3. Uniqueness checks on key fields:
-   create_data_object(measures=[
+   qlik_create_data_object(measures=[
      {expression: "Count([KeyField])", label: "Total"},
      {expression: "Count(DISTINCT [KeyField])", label: "Distinct"}
    ], dimensions=[])
@@ -233,7 +233,7 @@ Validates data quality through MCP as part of comprehensive QA.
 
 4. Encoded null scan (iterate per field):
    For each candidate field in the field list:
-     search_field_values(fieldName=field, searchTerms=["N/A", "NULL", "TBD",
+     qlik_search_field_values(fieldName=field, searchTerms=["N/A", "NULL", "TBD",
        "-", "Unknown", "NONE", "n/a"])
    → Surfaces fields where common null encodings have leaked in as values.
    Note: `fieldName` is required per the official tool signature
@@ -241,9 +241,9 @@ Validates data quality through MCP as part of comprehensive QA.
    cross-field-search mode.
 
 5. For Qlik-managed datasets, augment with catalog tools:
-   get_dataset_profile(datasetId) → pre-computed statistics
-   get_dataset_freshness(datasetId) → data currency
-   get_dataset_trust_score(datasetId) → may return error (handle gracefully)
+   qlik_get_dataset_profile(datasetId) → pre-computed statistics
+   qlik_get_dataset_freshness(datasetId) → data currency
+   qlik_get_dataset_trust_score(datasetId) → may return error (handle gracefully)
 ```
 
 ### 5.5 Post-Reload Spot Checks
@@ -251,18 +251,18 @@ Validates data quality through MCP as part of comprehensive QA.
 Quick validation that data loaded correctly after a Qlik reload.
 
 ```
-1. get_fields(appId)
+1. qlik_get_fields(appId)
    → Verify expected fields exist. Check $numeric/$text/$date tags
    match expected types.
 
 2. Row count checks:
-   create_data_object(measures=[
+   qlik_create_data_object(measures=[
      {expression: "Count([Table.KeyField])", label: "Rows"}
    ], dimensions=[])
    → Compare against expected row counts from source profiling.
 
 3. Spot-check field values:
-   get_field_values(appId, fieldName, limit=20)
+   qlik_get_field_values(appId, fieldName, limit=20)
    → Verify sample values look reasonable.
 ```
 
@@ -270,11 +270,11 @@ Quick validation that data loaded correctly after a Qlik reload.
 
 The MCP server includes tools for Qlik Cloud governance features (business glossaries and data products). These aren't tied to any specific development task but provide value for organizations using Qlik's governance capabilities.
 
-**Business Glossary tools** (`create_glossary`, `create_glossary_term`, `create_glossary_category`, `search_glossary_terms`, `get_glossary_term`, `update_glossary_term`, `update_term_status`, `delete_glossary_term`, `get_glossary_categories`, `get_glossary_term_links`, `create_glossary_term_links`, `get_full_glossary_export`): Create and manage governed business term definitions. Terms can be linked to apps, datasets, fields, master dimensions, and master measures via `create_glossary_term_links`. Term status follows a `draft → verified → deprecated` lifecycle where only stewards can verify or modify verified terms. Linking glossary terms to master items brings business context into the app for end users. As a best practice, place glossaries in a shared space where all tenant users have Can view access.
+**Business Glossary tools** (`qlik_create_glossary`, `qlik_create_glossary_term`, `qlik_create_glossary_category`, `qlik_search_glossary_terms`, `qlik_get_glossary_term`, `qlik_update_glossary_term`, `qlik_update_term_status`, `qlik_delete_glossary_term`, `qlik_get_glossary_categories`, `qlik_get_glossary_term_links`, `qlik_create_glossary_term_links`, `qlik_get_full_glossary_export`): Create and manage governed business term definitions. Terms can be linked to apps, datasets, fields, master dimensions, and master measures via `qlik_create_glossary_term_links`. Term status follows a `draft → verified → deprecated` lifecycle where only stewards can verify or modify verified terms. Linking glossary terms to master items brings business context into the app for end users. As a best practice, place glossaries in a shared space where all tenant users have Can view access.
 
-**Data Product tools** (`create_data_product`, `get_data_product`, `get_data_product_documentation`, `update_data_product`, `update_data_product_space`, `update_activate_data_product`, `update_deactivate_data_product`, `delete_data_product`): Curated, governed bundles of datasets. Support a `draft → active → deactivated` lifecycle with key contacts, tags, and markdown documentation.
+**Data Product tools** (`qlik_create_data_product`, `qlik_get_data_product`, `qlik_get_data_product_documentation`, `qlik_update_data_product`, `qlik_update_data_product_space`, `qlik_update_activate_data_product`, `qlik_update_deactivate_data_product`, `qlik_delete_data_product`): Curated, governed bundles of datasets. Support a `draft → active → deactivated` lifecycle with key contacts, tags, and markdown documentation.
 
-**Dataset metadata tools** (`update_dataset_metadata`, `update_dataset_quality`, `get_dataset_quality_computation_status`, `get_dataset_memberships`): Update dataset descriptions/tags, trigger quality computations, and check data product memberships.
+**Dataset metadata tools** (`qlik_update_dataset_metadata`, `qlik_update_dataset_quality`, `qlik_get_dataset_quality_computation_status`, `qlik_get_dataset_memberships`): Update dataset descriptions/tags, trigger quality computations, and check data product memberships.
 
 **Potential framework usage:**
 - During documentation generation: create glossary entries from the data dictionary, linking terms to master items created during visualization scaffolding.
