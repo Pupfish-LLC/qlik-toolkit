@@ -23,6 +23,29 @@ Using any of these in a `LOAD` or `RESIDENT` statement produces a reload error o
 | `CASE WHEN` | Not a keyword | `IF()`, `Pick()`, or `Match()` inside a LOAD |
 | `LIMIT` | Not a keyword | `FIRST n LOAD ...` prefix (works on any source); `WHERE RecNo() <= N` as a fallback for RESIDENT |
 | Table aliases (`FROM table t1`) | Not supported in LOAD | Full table names in square brackets; no alias |
+| `WITH ... AS (...)` (CTE) | No CTE syntax in LOAD/RESIDENT | Sequential LOADs into named tables (`[_Stage1]:`, `[_Stage2]:`), reference downstream with `RESIDENT`, then `DROP TABLE` the intermediates |
+| `ROW_NUMBER() OVER (...)` | No window functions in LOAD/RESIDENT | `RowNo()` with `ORDER BY` in a RESIDENT load (for partition-less numbering); `AutoNumber(partition_key)` for partitioned row numbers; or aggregate-and-rejoin via `GROUP BY` |
+| `LAG()` / `LEAD()` | No window functions in LOAD/RESIDENT | `Previous(field)` for the prior row in the current LOAD; `Peek(field, row_no, table_name)` for arbitrary row offsets in an already-loaded table |
+| `UNION` / `UNION ALL` | Not keywords in LOAD/RESIDENT | `CONCATENATE([Target])` prefix; auto-concatenates when field sets fully match (see Section 2.1) |
+| `EXCEPT` / `INTERSECT` | Not keywords | `WHERE NOT EXISTS(aliased_key, source_key)` (set difference); `WHERE EXISTS(aliased_key, source_key)` (intersection) — always with an aliased lookup field to avoid the symbol-space pitfall |
+| `MERGE INTO target USING source` (SQL upsert) | Not LOAD/RESIDENT syntax; the Qlik `MERGE` prefix is a different mechanism scoped to partial reloads | `CONCATENATE` new rows then dedup with `WHERE NOT EXISTS`; or use the Qlik `MERGE` partial-reload prefix when a change-log feed is available (see `incremental-load-patterns.md`) |
+| `LATERAL` / `CROSS APPLY` | No equivalent in LOAD/RESIDENT | Push the row-expanding join to the `SQL SELECT` pass-through layer where database-native LATERAL syntax is valid; or, for delimited-string expansion, use `SubField` + `IterNo()` in a `WHILE` clause |
+
+### Notes on the additions
+
+**CTEs.** SQL CTEs (`WITH x AS (...) SELECT ... FROM x`) have no direct equivalent in LOAD. The Qlik idiom is to materialize each CTE-equivalent as a temp table with a `_` prefix, reference it via `RESIDENT`, and `DROP TABLE` it once consumed. Two consequences: (1) every intermediate is visible in the data model until dropped, so the DROP discipline from Section 2.4 applies; (2) preceding LOAD (SKILL.md Section 4) often replaces a two-CTE chain in a single statement when the only goal is to layer expressions.
+
+**Window functions.** `RowNo()` returns the sequential row number within the current LOAD (re-numbered after each `LOAD`); pair it with `ORDER BY` in a RESIDENT load for deterministic numbering. For partitioned row numbers (`ROW_NUMBER() OVER (PARTITION BY x ORDER BY y)`), the common Qlik pattern is to sort the source on the partition + order keys, then use `If(partition_key = Previous(partition_key), Peek('row_n') + 1, 1) AS row_n`. `Previous(field)` returns the value of `field` from the prior input row of the same LOAD; `Peek(field, row_no, table_name)` reaches into an already-loaded table at an arbitrary row.
+
+**UNION / UNION ALL.** Both map to `CONCATENATE`. `UNION ALL` (no dedup) is the closer match — `CONCATENATE` appends without dedup. For `UNION` semantics (distinct rows across the union), follow the concatenate with a `LOAD DISTINCT` resident pass. Per help.qlik.com, when two LOADs share an identical field set (same names AND same count), Qlik auto-concatenates implicitly — no `CONCATENATE` prefix needed (see SPEC-03-08 and Section 2.1 above for the auto-concat rule and its INLINE/RESIDENT failure modes). Use the explicit `CONCATENATE([TargetTable])` prefix when field sets differ or when you want the code to read unambiguously.
+
+Reference: help.qlik.com Cloud — [Concatenate](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/Concatenate.htm).
+
+**EXCEPT / INTERSECT.** Both translate to a `WHERE EXISTS` / `WHERE NOT EXISTS` filter against an aliased lookup table. Always alias the lookup field (load it into a side table under a different name and use the two-parameter `EXISTS(aliased_field, source_field)` form) — otherwise the symbol-space behavior in SKILL.md Section 15 will produce surprising results (the one-parameter form sees values already loaded in the current statement, so it dedups on the fly).
+
+**MERGE INTO (SQL) vs MERGE (Qlik prefix).** The SQL `MERGE INTO target USING source ON ... WHEN MATCHED ... WHEN NOT MATCHED` upsert syntax does not exist in LOAD/RESIDENT. Qlik has a `MERGE` prefix, but it is scoped to **partial reloads** and operates on a change-log feed where the first field is `'Insert'`, `'Update'`, or `'Delete'` — a different mechanism, documented at help.qlik.com Cloud — [Merge](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/Merge.htm). For a full-reload upsert, the idiomatic substitution is `CONCATENATE` the new rows on top, then dedup with `WHERE NOT EXISTS` against the prior version. Full incremental-load patterns including the partial-reload `MERGE` prefix and the dual-timestamp SCD2 pattern are in `incremental-load-patterns.md`.
+
+**LATERAL / CROSS APPLY.** These row-multiplying SQL constructs (one row in, N rows out, where N depends on a per-row expression or sub-query) have no LOAD/RESIDENT equivalent. Two options: (1) push the join to the `SQL SELECT` pass-through layer where the database engine evaluates the LATERAL natively; or (2) if the row-multiplication source is a delimited string (the most common case AI emits in this shape), expand inline with `SubField(field, delimiter, IterNo())` inside a `WHILE Len(Trim(SubField(...))) > 0` clause — see SKILL.md Section 24.
 
 ### The `SQL SELECT` pass-through exception
 

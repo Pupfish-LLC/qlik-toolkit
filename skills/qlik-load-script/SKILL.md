@@ -25,6 +25,13 @@ These SQL constructs do NOT exist in Qlik LOAD statements. Using them causes rel
 | `CASE WHEN` | Not a keyword | `IF()`, `Pick()`, or `Match()` |
 | `LIMIT` | Not a keyword | `FIRST n LOAD ...` prefix (works on any source); `WHERE RecNo() <= N` as a fallback |
 | Table aliases (`FROM t1`) | Not supported in LOAD | Full table names in brackets |
+| `WITH ... AS (...)` (CTE) | No CTE syntax in LOAD/RESIDENT | Sequential LOADs into named tables, then RESIDENT downstream; DROP the intermediates |
+| `ROW_NUMBER() OVER (...)` | No window functions in LOAD/RESIDENT | `RowNo()` with `ORDER BY` in a RESIDENT load; or `AutoNumber()` over a `GROUP BY` partition key |
+| `LAG()` / `LEAD()` | No window functions in LOAD/RESIDENT | `Previous(field)` for the prior row; `Peek(field, row, table)` for arbitrary offsets |
+| `UNION` / `UNION ALL` | Not a keyword | `CONCATENATE([Target])` prefix; auto-concatenates when field sets fully match |
+| `EXCEPT` / `INTERSECT` | Not keywords | `WHERE NOT EXISTS(aliased_key, source_key)` (except) / `WHERE EXISTS(...)` (intersect) with an aliased lookup table |
+| `MERGE INTO` (SQL upsert) | Not LOAD/RESIDENT syntax; Qlik's `MERGE` prefix is for partial reloads only | `CONCATENATE` new rows + dedup with `WHERE NOT EXISTS`; or the `MERGE` partial-reload prefix (see `references/incremental-load-patterns.md`) |
+| `LATERAL` / `CROSS APPLY` | No equivalent in LOAD/RESIDENT | Refactor at the `SQL SELECT` pass-through layer, or expand inline with `SubField` + `IterNo()` for row-multiplying delimited strings |
 
 **Exception:** `SQL SELECT` pass-through statements to database connections CAN use native SQL syntax including all of the above. The constraint applies only to LOAD/RESIDENT operations.
 
