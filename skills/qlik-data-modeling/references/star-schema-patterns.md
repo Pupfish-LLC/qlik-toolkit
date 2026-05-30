@@ -133,39 +133,79 @@ This circular reference causes unpredictable filtering behavior.
 
 ### The Link Table Solution
 
-Create a composite key from the shared dimensions:
+The full pattern has three required steps: each fact gets a single composite key (`[%LinkKey]`), the link table carries that key plus the original dimension keys, and the original dimension keys are then **dropped from the facts**. Skipping the DROP step is the most common mistake — it leaves the facts associated to both the link table and the dimensions directly, which reintroduces the synthetic key the link table was supposed to eliminate.
 
 ```qlik
-// 1. Extract unique dim-key combinations from each fact
+// 1. Generate a deterministic composite key on each fact during load.
+//    Hash128 is the documented choice for composite keys that must be
+//    stable across reloads (help.qlik.com — Hash128 returns a 128-bit
+//    hash of its concatenated arguments).
+[Fact_Sales]:
+LOAD
+    Hash128([Product.Key], '|', [Store.Key]) AS [%LinkKey],
+    [Product.Key],
+    [Store.Key],
+    [Sales.Amount],
+    [Sales.Date]
+FROM [lib://QVDs/raw_sales.qvd] (qvd);
+
+[Fact_Returns]:
+LOAD
+    Hash128([Product.Key], '|', [Store.Key]) AS [%LinkKey],
+    [Product.Key],
+    [Store.Key],
+    [Return.Amount],
+    [Return.Date]
+FROM [lib://QVDs/raw_returns.qvd] (qvd);
+
+// 2. Build the link table: one row per unique key combination, carrying
+//    [%LinkKey] plus the original dim keys that connect to the dimensions.
 [Link_ProductStore]:
-LOAD DISTINCT [Product.Key], [Store.Key] RESIDENT [Fact_Sales];
+LOAD DISTINCT
+    [%LinkKey],
+    [Product.Key],
+    [Store.Key]
+RESIDENT [Fact_Sales];
 
 CONCATENATE ([Link_ProductStore])
-LOAD DISTINCT [Product.Key], [Store.Key] RESIDENT [Fact_Returns];
+LOAD DISTINCT
+    [%LinkKey],
+    [Product.Key],
+    [Store.Key]
+RESIDENT [Fact_Returns];
 
-// 2. Strip the dimension keys off the facts and replace with a composite
-//    link key so each fact associates to the link table, not the dims.
-//    (Easier alternative: leave the keys on the facts if there is only
-//    one path — a link table is only needed when the direct associations
-//    would form a loop.)
+// 3. Strip the dim keys off the facts. After this step each fact carries
+//    ONLY [%LinkKey] as its connection point — dim associations flow
+//    through the link table.
+DROP FIELDS [Product.Key], [Store.Key] FROM [Fact_Sales];
+DROP FIELDS [Product.Key], [Store.Key] FROM [Fact_Returns];
 
-// 3. Facts connect to Link_ProductStore; Link_ProductStore connects to dims.
-// Fact_Sales ----[Product.Key, Store.Key]----> Link_ProductStore <----[Product.Key]---- Dim_Product
-//                                                          |
-//                                              [Store.Key] |
-//                                                          v
-//                                                   Dim_Store
+// Resulting associations:
+//   Fact_Sales   ----[%LinkKey]---->  Link_ProductStore
+//   Fact_Returns ----[%LinkKey]---->  Link_ProductStore
+//   Link_ProductStore ----[Product.Key]----> Dim_Product
+//   Link_ProductStore ----[Store.Key]------> Dim_Store
 ```
 
-### When to Use Link Tables
+Each table pair shares exactly one field — no synthetic key. `[%LinkKey]` is hidden from end users by `SET HidePrefix = '%'` (see § Hiding Technical Keys from Users below and `qlik-naming-conventions` § Key Field Naming). `Hash128` produces a deterministic 128-bit hash that is safe to persist to QVDs and stable across reloads; see `qlik-data-modeling` § 4 for when to choose hash vs `AutoNumber`.
 
-- **Circular references:** Two fact tables share multiple dimensions.
-- **Multi-grain facts:** Multiple facts at different grains sharing dimensions (use link table + grain type field).
-- **Many-to-many disambiguation:** Explicitly structure ambiguous relationships.
+The composite-key + DROP FIELDS pattern follows Kimball's "factless fact" / multi-grain link-table guidance and is the same shape Bitmetric and Qlik community blogs recommend for multi-fact same-grain models. The DROP FIELDS step is documented in help.qlik.com (Script statements and keywords → Drop fields).
 
-### Deferral Rule
+### When to Use Link Tables — Design-Time Decision
 
-Defer link table creation until the model actually requires it. Do not preemptively build link tables for relationships that don't yet exist. Start with direct connections, introduce a link table only when circular references appear.
+Link tables for multi-fact same-grain models are a **design-time** decision, not something to defer until problems surface. If you have identified two or more fact tables that share the same dimension keys, the choice of whether to associate them through a link table is part of the initial star-schema design. Building the facts first with direct dim associations and then retrofitting a link table later requires reloading and re-validating both facts, plus auditing every expression that referenced the dim keys on the facts.
+
+Use a link table when, at design time, you identify any of:
+
+- **Multiple fact tables sharing multiple dimension keys** (the canonical multi-fact same-grain case — direct associations would form a closed loop or a synthetic key).
+- **Multi-grain facts sharing dimensions** — link table carries `[Fact.Type]` or a grain discriminator alongside the keys.
+- **Many-to-many disambiguation** where the relationship structure is genuinely ambiguous and needs an explicit hub.
+
+### When You Do NOT Need a Link Table
+
+A link table is overkill for a **single-fact star schema** with one path to each dimension. One fact, N dimensions, each dimension reached by exactly one key — that is a clean star and does not need an intermediate hub. The deferral guidance applies here: do not preemptively introduce a link table for a model that does not have multiple facts sharing keys. Add it only if a second fact at the same grain is later introduced.
+
+The distinguishing question at design time: **how many fact tables in the model will share dimension keys?** One → direct associations. Two or more at the same grain → link table from the start.
 
 ---
 
