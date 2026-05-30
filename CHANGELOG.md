@@ -70,6 +70,12 @@ Seven Qlik behavior claims corrected against tier-1 sources during the cleanup:
 - Every Qlik behavior claim newly written or substantially reworded during the cleanup was validated against `qlik-source-registry` tier sources where applicable; per-cluster validation evidence retained in cluster summaries.
 - Cleanup planning artifacts (`cleanup-plan/`, `pending-traps.md`) were `.gitignore`d throughout the cleanup and never shipped.
 
+### Migration
+
+The `platform-conventions` skill was renamed to `qlik-platform-discovery`. Skill auto-loading by description is unaffected. If you have explicit auto-load triggers (settings, hooks, or scripts) that reference the old name, update them:
+1. Replace `platform-conventions` with `qlik-platform-discovery` in any settings, hooks, or scripts that name the skill directly.
+2. No reinstall required — the plugin update carries the new name.
+
 ## [0.4.0] — 2026-05-27
 
 ### Added

@@ -49,15 +49,15 @@ There are no slash commands to memorize. The skills auto-load when their descrip
 
 | Skill | What it covers |
 |---|---|
-| **qlik-load-script** | Script syntax reference, QVD optimization, incremental load patterns (insert-only, SCD2 dual-timestamp), `JOIN`/`KEEP`, `ApplyMap`, `CROSSTABLE`, master calendar, error handling, null handling, diagnostic patterns. |
+| **qlik-load-script** | Script syntax reference, QVD optimization, incremental load patterns (insert-only, insert/update, insert/update/delete, SCD2 dual-timestamp), `JOIN`/`KEEP`, `ApplyMap`, `CROSSTABLE`, master calendar, error handling, null handling, diagnostic patterns. |
 | **qlik-data-modeling** | Star schema, key resolution (natural / composite / hash / AutoNumber), synthetic-key vs circular-reference distinction, QVD layer architecture, multi-app patterns (single, generator/consumer, four-layer, binary load), source-architecture consumption (dimensional warehouse, OLTP, Data Vault 2.0, pre-joined views, flat files), grain alignment across multiple facts. |
 | **qlik-expressions** | Set analysis syntax and modifiers, `TOTAL` qualifier, `Aggr()` patterns, conditional expressions, null handling in expressions, dollar-sign expansion, calculation conditions, common anti-patterns. |
 | **qlik-performance** | Memory optimization (field types, dual values, symbolic keys), script load optimization (optimized QVD load rules, redundant disk reads), expression calculation optimization, calculation conditions, data reduction techniques, profiling and diagnostic approaches. |
-| **qlik-visualization** | Chart type selection guide, layout patterns, color and formatting, filter design, responsive design, accessibility, reference app reverse-engineering. |
+| **qlik-visualization** | Chart type selection guide, layout patterns, color and formatting, filter design, responsive design, accessibility, reference app reverse-engineering, Dashboard Bundle controls (Variable Input pipe pattern). |
 | **qlik-naming-conventions** | Field, variable, table, expression, and file naming standards. Entity-prefix dot notation. Cross-layer field mapping from source through ETL layers to UI display. Reserved words and character restrictions. |
 | **qlik-cloud-mcp** | Capability registry for the Qlik Cloud MCP server. Tool-to-task mapping, MCP detection patterns, behavioral gotchas not covered by the tool definitions, multi-step workflows (expression validation, reference app analysis, viz scaffolding, data quality checks). |
 | **qlik-review-checklist** | Complete QA checklist used by the `qa-reviewer` agent: data model integrity, naming compliance, script quality, expression correctness, cross-artifact consistency, blocked dependency audit, data quality validation. |
-| **data-quality-validator** | Post-load data quality validation query templates: null rate analysis, referential integrity, value distribution, row count validation, orphaned record detection, sparse field identification, duplicate detection. |
+| **data-quality-validator** | Post-load data quality validation query templates: null rate analysis, referential integrity, value distribution, row count validation, orphaned record detection, sparse field identification, duplicate detection, and patterns for embedding the same checks directly into load scripts. |
 | **source-profiler** | Source data profiling: query templates for source schemas, field types, cardinality, null rates, sample values, data quality indicators. Includes source architecture classification (Dimensional Warehouse / OLTP / Data Vault 2.0 / Pre-Joined Views / Flat Files / API) with consumption implications per type. |
 | **qlik-platform-discovery** | Brownfield Qlik platform patterns: subroutine identification and limitation patterns from existing `.qvs` scripts, naming-convention variations, connection conventions, QVD storage conventions, architecture pattern detection, convention-conflict resolution when platform conventions differ from framework defaults. Bundles a Platform Context Document template. |
 | **qlik-project-scaffold** | Cross-platform Qlik project directory scaffolder. Creates a minimal, unopinionated baseline structure (data-sources, scripts, qvds, documentation, tests) with starter READMEs. Idempotent (safe to re-run). |
@@ -96,7 +96,7 @@ Claude (with `qlik-review-checklist` auto-loaded): Invokes the `qa-reviewer` age
 
 **4. Set analysis help.**
 You: *"Write a set analysis expression for YoY sales growth."*
-Claude (with `qlik-expressions` auto-loaded): Returns `Sum({<[Fiscal Year]={$(=Max([Fiscal Year]))}>} [Order.Amount]) - Sum({<[Fiscal Year]={$(=Max([Fiscal Year])-1)}>} [Order.Amount])` and explains the alternate-state handling.
+Claude (with `qlik-expressions` auto-loaded): Returns `Sum({<[Cal.FiscalYear]={$(=Max([Cal.FiscalYear]))}>} [Order.Amount]) - Sum({<[Cal.FiscalYear]={$(=Max([Cal.FiscalYear])-1)}>} [Order.Amount])` and explains the alternate-state handling.
 
 ## What's NOT In This Version
 
@@ -118,6 +118,13 @@ If a use case emerges where a coordinator would clearly help, a slash command ca
 - [ ] Ship `qlik-security` (Section Access patterns).
 - [ ] Ship `qlik-deploy` (app deployment patterns).
 - [ ] Optional slash commands for the highest-traffic workflows (driven by user feedback).
+
+## Known Out-of-Scope Areas
+
+Topics this plugin intentionally does not cover in v1.0. Each is referenced elsewhere in the plugin (in skill bodies or agent guidance) and pointed back to this list.
+
+- **Section Access (row-level / column-level security).** Deferred to v2.0 pending a full rewrite against current Qlik Cloud documentation. The original draft contained foundational inaccuracies. Until then, refer to the [Qlik Cloud Section Access docs](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm). Referenced from the "What's NOT In This Version" section above and from the `qa-reviewer` agent's security-gap notes.
+- **MCP connections to non-Qlik databases.** The `qlik-cloud-mcp` skill covers the Qlik Cloud MCP server only. Profiling and querying external sources (Redshift, Snowflake, SQL Server, Postgres, etc.) via their own MCP connections is delegated to `source-profiler` Path B (manual profile completion when a live MCP connection isn't available). Referenced from `qlik-cloud-mcp/SKILL.md` and `source-profiler/SKILL.md`.
 
 ## Feedback
 
