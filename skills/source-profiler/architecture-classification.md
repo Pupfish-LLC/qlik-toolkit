@@ -16,19 +16,28 @@ Use this decision tree to classify the source system's overall architecture patt
 - YES → Go to Data Vault 2.0 (Section 2.3)
 - NO → Continue to question 2
 
-**2. Does the schema have tables with suffixes _dim, dim_, _fact, fact_, or explicit dimension/fact naming?**
-- YES → Go to Dimensional Warehouse (Section 2.1)
-- NO → Continue to question 3
+**2. Does the schema show dimensional-modeling signals?** Dimensional design is a *modeling property*, not a naming property. Naming alone is unreliable — Inmon-influenced shops use entity nouns (`Customer`, `Product`, `OrderFact`), some shops use abbreviated prefixes (`d_`, `f_`, `dimcustomer`), and a long-dead DW project may have left `dim_` prefixes on tables that are now operational/OLTP. Check **multiple signals** and weight presence:
+   - **Naming**: tables use `dim_`, `_dim`, `fact_`, `_fact`, `d_`, `f_`, or entity-noun convention (`Customer`, `Product`, `OrderFact`)
+   - **Surrogate keys**: dimension-shaped tables have an integer surrogate key column (`customer_id`, `product_id`) distinct from the natural business key (`email`, `sku`)
+   - **Denormalized dimension attributes**: dimension-shaped tables are wide (often 20+ descriptive columns rolled into a single table — category, region, segment, hierarchy levels)
+   - **Additive measures**: fact-shaped tables carry additive numeric measures (amount, quantity, count) alongside foreign keys to dimensions
+   - **SCD or DW metadata**: presence of `effective_from`/`effective_to`/`is_current`, `dw_load_date`, `dw_update_date`
+   - YES (two or more signals present, with surrogate keys and/or denormalized dimensions being the strongest) → Go to Dimensional Warehouse (Section 2.1)
+   - NO → Continue to question 3
 
-**3. Does the schema consist primarily of normalized tables with many foreign keys, no explicit surrogate keys, and operational timestamps (created_at, updated_at)?**
-- YES → Go to Normalized OLTP (Section 2.2)
+**3. Does the schema consist of a small number of very wide, denormalized analytic tables (One Big Table / "flat and fat" structures, e.g., `cust_360`, `orders_enriched`, `customer_lifetime_view`) where most attributes for an entity are pre-joined into a single table?**
+- YES → Treat as a denormalized dimensional consumption case (Section 2.1, "One Big Table variant" notes). The shape resembles a flat file but the intent is dimensional — load mostly as-is, identify grain explicitly, watch for hidden many-to-one expansion (rows duplicated because a child attribute was rolled up into the parent row).
 - NO → Continue to question 4
 
-**4. Are the source data files CSV, delimited text, or unstructured? Are there header rows with column names?**
-- YES → Go to Flat Files / CSV (Section 2.4)
+**4. Does the schema consist primarily of normalized tables with many foreign keys, no explicit surrogate keys, and operational timestamps (created_at, updated_at)?**
+- YES → Go to Normalized OLTP (Section 2.2)
 - NO → Continue to question 5
 
-**5. Are the data accessed via REST API, webhooks, or third-party data service?**
+**5. Are the source data files CSV, delimited text, or unstructured? Are there header rows with column names?**
+- YES → Go to Flat Files / CSV (Section 2.4)
+- NO → Continue to question 6
+
+**6. Are the data accessed via REST API, webhooks, or third-party data service?**
 - YES → Go to API Sources (Section 2.5)
 - NO → Classify as "Other" and describe the schema manually
 
@@ -40,14 +49,28 @@ Use this decision tree to classify the source system's overall architecture patt
 
 **Also known as:** Star schema, kimball model
 
-**Identification Criteria:**
-- Explicit dimension table naming: `dim_customer`, `dim_product`, `dim_store`, `dim_date`
-- Explicit fact table naming: `fact_orders`, `fact_sales`, `fact_returns`
-- Dimension tables have surrogate keys (auto-increment integers): `customer_id`, `product_id`
-- Dimension tables have business keys (natural identifiers from the source): `email`, `sku`, `account_number`
-- Dimension tables often include SCD (Slowly Changing Dimension) columns: `effective_from`, `effective_to`, `is_current`, or `dw_insert_date`, `dw_update_date`
-- Fact tables have composite keys: (`order_id`, `line_number`) or foreign keys pointing to dimension surrogate keys
-- Fact tables have additive measures (amounts, counts) and non-additive dimensions (descriptions)
+**Identification Criteria (multi-signal — no single signal is sufficient or required):**
+
+*Naming signals (helpful but not decisive — naming alone misclassifies both ways):*
+- Conventional dimension naming: `dim_customer`, `dim_product`, `dim_store`, `dim_date`
+- Conventional fact naming: `fact_orders`, `fact_sales`, `fact_returns`
+- Abbreviated prefixes: `d_customer`, `f_sales`, `dimcustomer`
+- Entity-noun naming (Inmon-influenced): `Customer`, `Product`, `OrderFact`, `SalesFact`
+
+*Structural signals (stronger evidence — dimensional design is a modeling property):*
+- Dimension tables have surrogate keys (typically auto-increment integers) distinct from natural keys: `customer_id` (surrogate) alongside `email`, `account_number` (business keys)
+- Dimension tables are wide and denormalized (often 20-50+ descriptive columns rolled in): category, sub-category, region, segment, hierarchy levels all flattened into the dimension rather than spread across normalized lookups
+- Fact tables have additive numeric measures (amounts, quantities, counts) alongside foreign keys to dimensions
+- Fact tables have grain explicitly identified by composite keys: (`order_id`, `line_number`) or by surrogate foreign keys to dimensions
+- Few-to-no joins required for typical analytic queries — most attributes for an entity are already in one table
+
+*SCD / DW metadata signals:*
+- Dimension tables include SCD columns: `effective_from`, `effective_to`, `is_current`, `version_number`
+- DW load metadata: `dw_insert_date`, `dw_update_date`, `dw_load_date`
+
+**Classification rule of thumb:** Two or more structural signals (especially surrogate keys plus denormalized dimension width) indicate Dimensional Warehouse regardless of naming. Conversely, `dim_`/`fact_` naming without surrogate keys, without wide dimensions, and with operational timestamps (`created_at`, `modified_at`) is likely a legacy-named OLTP source — classify per Section 2.2.
+
+**One Big Table (OBT) variant:** A small number of very wide denormalized analytic tables (`cust_360`, `orders_enriched`, `customer_lifetime_view`) where most attributes for an entity are pre-joined into a single table is *dimensional in intent* even though it shapes like a flat file. Treat as a degenerate dimensional warehouse: load mostly as-is, but explicitly identify grain (the row may already represent a many-to-many flattening), and validate row counts against the expected entity cardinality to detect hidden duplication from upstream joins.
 
 **Example Schema:**
 ```
@@ -99,11 +122,19 @@ shipments (shipment_id, order_id, shipment_date, carrier, tracking_number)
 - **Mutable:** Records are updated in place (no versioning); soft-delete flags used
 
 **Consumption Strategy for Qlik:**
-- Do NOT load raw OLTP schema into Qlik; the many-to-many relationships and heavy normalization produce cartesian products
-- Instead, use OLTP as a source for ETL: extract normalized tables, transform (denormalize) into a dimensional model, load into Qlik
-- If loading raw OLTP directly (not recommended), create composite keys to avoid producing too many synthetic keys in Qlik
-- Incremental loads use `created_date`, `modified_date`, or status flags; identify which tables are insert-only vs. insert/update vs. insert/update/delete
-- Handle mutable status fields carefully: a status change updates the record in place; capture history via versioning in Qlik if needed
+
+Loading OLTP-derived data into Qlik is viable — well-modeled OLTP loaded with disciplined field naming is a normal and practitioner-recognized pattern (Rob Wunderlich, Barry Harmsen). Qlik's associative engine builds associations between tables that share a single common field name; it does **not** produce SQL-style cartesian products from joined tables. The real risks of loading OLTP-shaped data into Qlik are different:
+
+- **Synthetic keys** when multiple OLTP tables share more than one field name (e.g., every table carries `created_date`, `modified_date`, `status`, `record_source`). The fix is renaming non-key fields with entity-prefix dot notation (`[Customer.Status]`, `[Order.Status]`) before letting tables coexist in the model — see the `qlik-naming-conventions` skill. Per the One-Key Rule in `qlik-data-modeling`, each associated table pair should share exactly one field.
+- **Navigation complexity** for end users when the model exposes 15-30+ tables — selections still propagate correctly via the associative engine, but users have a harder time understanding what's connected to what, and chart expressions must reason across more hops.
+- **Mutable status fields**: a status change updates the record in place, so loading OLTP gives you current-state only. Capture history via SCD Type 2 versioning in the extract/transform layer if temporal analysis is required.
+
+Two valid consumption approaches:
+
+1. **Denormalize into a dimensional model in the extract/transform layer** before loading Qlik. Preferred when the OLTP schema is sprawling (many tables, many relationships) and consumer apps benefit from a clean star schema. Push joins into `SQL SELECT` at extract or use `LEFT JOIN` prefix in a Qlik Transform script — see `qlik-data-modeling` section 7 and `source-consumption-patterns.md`.
+2. **Load well-modeled OLTP largely as-is**, applying entity-prefixed field renames to prevent synthetic keys and selectively dropping or hiding fields the UI doesn't need. Viable when the OLTP schema is moderate in size, relationships are well-understood, and the associative model maps cleanly onto user navigation. This is not an anti-pattern.
+
+Incremental loads typically use `created_date`, `modified_date`, or status flags; identify per table whether the load pattern is insert-only, insert/update, or insert/update/delete. See `qlik-load-script` for incremental patterns.
 
 ### 2.3 Data Vault 2.0
 
@@ -399,7 +430,7 @@ Quick-reference table matching architecture type, table role, and recommended Ql
 | Dimensional Warehouse | Dimension (SCD 2) | Surrogate key + date filter | Dual-timestamp (insert new version, close old) | Missing closed records | Load both open and closed versions; join facts by effective_from/effective_to |
 | Dimensional Warehouse | Fact | Composite (dim keys) | Insert-by-transaction-date | Late-arriving facts | Include lookback window in date filter (e.g., last 7 days of previous month) |
 | Dimensional Warehouse | Fact | Surrogate key | Insert-by-dw_load_date | Confusing business key with surrogate | Always join facts to dimensions on surrogate, not business key |
-| Normalized OLTP | Transaction | Natural (order_id, item_seq) | Insert/Update-by-timestamp | Many-to-many synthetic keys | Denormalize to star schema in ETL; do not load raw 3NF into Qlik |
+| Normalized OLTP | Transaction | Natural (order_id, item_seq) | Insert/Update-by-timestamp | Synthetic keys from shared field names (created_date, status, record_source repeated across tables) | Entity-prefix non-key fields (qlik-naming-conventions); choose between denormalizing in extract/transform or loading well-modeled OLTP as-is per Section 2.2 |
 | Normalized OLTP | Operational | Natural (customer_id) | Full refresh | Mutable status fields | Capture status history via SCD Type 2 in ETL layer |
 | Data Vault 2.0 | Hub | Business key + hash | Insert-only (hash dedup) | Hash key collisions (theoretical, very rare) | Use business key for joins, not hash key. Hash key is internal |
 | Data Vault 2.0 | Link | Composite of hub hashes | Insert-only | Incorrect interpretation of many-to-many | Create bridge table in Qlik model; use business keys, not hash keys |
@@ -429,16 +460,24 @@ Quick-reference table matching architecture type, table role, and recommended Ql
 
 ### Example 2: Normalized OLTP
 
-**Architecture Type:** Normalized OLTP (do not load raw)
+**Architecture Type:** Normalized OLTP
 
 **Tables:** customer, orders, order_items, products, shipments
 
-**ETL Strategy (not shown in Qlik, but necessary in source):**
-- Extract: Pull normalized tables as-is
-- Transform: Denormalize into dimensional star (Customer dimension, Product dimension, Order fact with line grain)
-- Load into Qlik: The transformed dimensional model, not raw 3NF
+**Two valid consumption strategies — pick one per Section 2.2:**
 
-**Why:** Raw 3NF in Qlik produces many joins, synthetic keys, and slow queries. Denormalize in ETL (cheap); query fast in Qlik (expensive).
+*Option A — Denormalize in the extract/transform layer (preferred for sprawling schemas):*
+- Extract: Pull normalized tables as-is
+- Transform: Denormalize into a dimensional star (Customer dimension, Product dimension, Order fact at line grain) via SQL joins or Qlik `LEFT JOIN` prefix
+- Load into Qlik: The transformed dimensional model
+
+*Option B — Load well-modeled OLTP largely as-is (viable for moderate schemas):*
+- Extract each OLTP table into Qlik
+- Apply entity-prefixed renames so non-key fields are unique across tables — e.g., `[Customer.Status]`, `[Order.Status]`, `[Customer.CreatedDate]`, `[Order.CreatedDate]` — preventing synthetic keys from shared field names like `status`, `created_date`, `modified_date`
+- Let the associative engine handle the relationships through the single shared key per pair (per the One-Key Rule in `qlik-data-modeling`)
+- Drop or hide fields the UI doesn't need to reduce navigation complexity
+
+**Why the choice matters:** Qlik's associative engine builds associations, not SQL-style joins, so raw OLTP does not produce cartesian products. The real risks are (1) synthetic keys when tables share more than one field name and (2) navigation complexity for users when many tables are exposed. Denormalization (Option A) eliminates both at the cost of ETL effort; entity-prefixed direct load (Option B) handles risk 1 cleanly and risk 2 partially, at lower upfront cost.
 
 ### Example 3: Data Vault 2.0
 
