@@ -235,7 +235,7 @@ The Qlik script engine does not raise an error for the broken form. Both the inp
 Three things to internalize before writing QVD reads:
 
 1. **STORE writes one table per statement:** `STORE * FROM [TableName] INTO [lib://Connection/file.qvd] (qvd);`. There is no append mode — for incremental output, see `references/incremental-load-patterns.md`.
-2. **Optimized read** is preserved by `LOAD *`, field subsetting, `AS` renaming, `LOAD DISTINCT`, `CONCATENATE`, and single-parameter `EXISTS(field)`. It is forced to standard by any field transform, derived fields, two-parameter `EXISTS(field, expression)`, WHERE clauses other than single-parameter EXISTS, or `MAP ... USING`. Folklore correction: field renaming and reordering do NOT break optimized read.
+2. **Optimized read** is preserved by `LOAD *`, field subsetting, `AS` renaming, `LOAD DISTINCT`, `CONCATENATE`, and single-parameter `EXISTS(field)` **when `field` exactly matches a field name stored in the QVD**. It is forced to standard by any field transform, derived fields, two-parameter `EXISTS(field, expression)`, WHERE clauses other than single-parameter EXISTS, single-parameter EXISTS where the field name does not match the QVD's stored name (e.g., the current load aliases it), or `MAP ... USING`. Folklore correction: field renaming and reordering do NOT break optimized read.
 3. **Read each QVD from disk exactly once.** Load to a temp, serve all downstream maps and tables from RESIDENT, then DROP the temp.
 
 `binary [app];` is a separate mechanism for copying a whole data model — must be the first statement, one per script, loads data and section access only.

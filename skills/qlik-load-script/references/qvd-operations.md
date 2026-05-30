@@ -26,6 +26,7 @@ Rules:
 - The `(qvd)` format specifier is required for QVD output.
 - The target connection (`lib://...`) must be writable from the reload context.
 - If the file already exists, STORE overwrites it. There is no append mode; for append-style incremental output, see the patterns in `incremental-load-patterns.md` (sibling reference file).
+- **Concurrent-write hazard.** Per the Qlik knowledge base, STORE opens its target file exclusively, denying other tasks both read and write access while it writes. Two reload tasks scheduled to STORE the same QVD path at overlapping times will collide — one acquires the exclusive lock and the other fails. A reload reading the QVD while another reload is writing it can also fail. The script does not retry on its own. Schedule generator reloads so writes to the same QVD path never overlap, or stage each generator's output to a per-task path and promote to the canonical name only after the writers finish. Reference: Qlik Community KB — "Concurrent Read and Write from/to a QVD file may result in one of the tasks failing."
 
 Reference: help.qlik.com Cloud — Store statement.
 
@@ -67,7 +68,7 @@ Per Qlik help, only specific operations disable optimized read. Anything not on 
 - Field reordering relative to the QVD's stored order
 - `LOAD DISTINCT` — the QVD read itself stays optimized; DISTINCT processing happens after the fast read
 - `CONCATENATE` prefix
-- Single-parameter `EXISTS(field)` / `NOT EXISTS(field)` in a WHERE clause — the standard incremental-filter pattern
+- Single-parameter `EXISTS(field)` / `NOT EXISTS(field)` in a WHERE clause — the standard incremental-filter pattern — **only when `field` exactly matches a field name in the QVD being loaded**. If the QVD stores the field under one name (e.g., `customer_id`) but this LOAD aliases it to a different name (e.g., `[Customer.Key]`), an `EXISTS([Customer.Key])` check forces standard read because the engine cannot match the EXISTS name to a stored symbol before unpacking. Either reference the stored QVD name in EXISTS, or alias upstream so the symbol space already contains the target name
 - A preceding LOAD above the QVD LOAD — the inner QVD read stays optimized; the outer transformation processes in-memory after
 
 ### What forces standard read
