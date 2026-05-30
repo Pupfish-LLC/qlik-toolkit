@@ -87,8 +87,20 @@ ELSE
              Year(_TempDate) * 10 + Ceil(Month(_TempDate) / 3))      AS [Calendar.YearQuarter],
         Dual(Date(MonthStart(_TempDate), 'YYYY-MM'),
              Year(_TempDate) * 100 + Month(_TempDate))               AS [Calendar.YearMonth],
+        // Week() and WeekYear() depend on three SET variables: FirstWeekDay,
+        // BrokenWeeks, and ReferenceDay. North American defaults (BrokenWeeks=1,
+        // FirstWeekDay=6) produce non-ISO week numbers that always reset Jan 1;
+        // ISO 8601 weeks (BrokenWeeks=0, FirstWeekDay=0, ReferenceDay=4) can put
+        // Dec 29-31 in week 1 of the NEXT year (and Jan 1-3 in the last week of
+        // the prior year). Set these SET variables at the top of your script,
+        // OR pass the optional arguments explicitly: Week(date, first_week_day,
+        // broken_weeks, reference_day). See help.qlik.com -- Week function.
+        // YearWeek uses WeekYear() (not Year()) so the year matches the week:
+        // under ISO, WeekYear(2025-12-31) returns 2026, correctly yielding
+        // "2026-W01" instead of the wrong "2025-W01" that Year() would produce.
         Week(_TempDate)                                              AS [Calendar.Week],
-        Year(_TempDate) & '-W' & Num(Week(_TempDate), '00')         AS [Calendar.YearWeek],
+        Dual(WeekYear(_TempDate) & '-W' & Num(Week(_TempDate), '00'),
+             WeekYear(_TempDate) * 100 + Week(_TempDate))            AS [Calendar.YearWeek],
         Day(_TempDate)                                               AS [Calendar.DayOfMonth],
         // WeekDay() already returns a Dual (text = day name, num = 0-6)
         // per help.qlik.com -- no wrapper needed.
