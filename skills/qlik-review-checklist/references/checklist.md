@@ -447,22 +447,13 @@ Syntax and structural errors in expressions: set analysis, TOTAL qualifier, null
 
 ## 6. Security (5 items)
 
-PII handling, Section Access correctness, and data access control. **Note:** a dedicated Section Access skill is out of scope for this plugin version pending a rewrite. The failure-class items below remain catalogued so they can be flagged during review; for current Section Access mechanics consult `help.qlik.com` directly.
+PII handling and data access control. **Note:** a dedicated Section Access skill is out of scope for this plugin version pending a rewrite. All Section Access items below (6.2, 6.3, 6.4, 6.5) are pointer-only — for current Section Access mechanics consult `help.qlik.com` directly.
 
 **Applicable Review Scopes:** Script / Comprehensive
 
 ### 6.1 PII Field Exposure
 
-- **Severity:** Critical
-- **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** PII fields (SSN, national ID, financial account, email, phone, address) should not be loaded without explicit justification
-- **How to Verify:**
-  - Scan source-profile.md for identified PII fields
-  - Check scripts/*.qvs for any LOAD of PII fields into QVDs or final model
-  - If PII loaded, verify project-specification.md includes justification and data governance/retention policy
-  - If no justification, flag for removal or row-level filtering via Section Access
-  - Check for accidental PII in field names or metadata
-- **Finding Format:** `[SC-6.1]: PII exposure without justification / Severity: Critical / Category: Security / Location: [file]:[line] / Finding: PII field [fieldname] (e.g., [SSN | email | phone]) loaded into [table] without documented justification / Impact: Compliance violation, data breach risk, regulatory exposure / Recommended Fix: [Remove PII field OR add Section Access row-level filtering OR document business justification and retention policy]`
+- **Note:** Detailed PII handling and Section Access remediation patterns are deferred to a future version of this toolkit. PII exposure flagging during review remains in scope at the project-governance level (documented justification, retention policy), but Section Access setup as a remediation path is out of scope. For current Section Access requirements, refer to `help.qlik.com` Cloud Section Access docs: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm
 
 ### 6.2 Section Access STAR Statement Handling
 
@@ -474,27 +465,11 @@ PII handling, Section Access correctness, and data access control. **Note:** a d
 
 ### 6.4 Section Access Table Completeness
 
-- **Severity:** Warning
-- **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** Section Access should cover all users/roles that need filtering
-- **How to Verify:**
-  - If Section Access present, verify it is complete for all security domains
-  - Check that no user/role is left unfiltered (orphaned users)
-  - Verify all reduction fields used in data are present in Section Access
-  - Check for placeholder or hardcoded test access entries that should be replaced with production rules
-- **Finding Format:** `[SC-6.4]: Section Access incomplete / Severity: Warning / Category: Security / Location: [scripts/section-access.qvs] / Finding: [User/role missing from Section Access | Reduction field used in data but not in Section Access | Test/placeholder entries present] / Impact: [Some users lack access rules | Filtering inconsistent | Test data in production] / Recommended Fix: [Add missing access rules | Add reduction field to Section Access | Remove test entries and replace with production data]`
+- **Note:** Detailed Section Access mechanics (including completeness, coverage of users/roles, reduction-field alignment, and test-entry cleanup) are deferred to a future version of this toolkit. For current Section Access requirements, refer to `help.qlik.com` Cloud Section Access docs: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm
 
 ### 6.5 OMIT Field Correctness
 
-- **Severity:** Warning
-- **Applicable Scopes:** Script / Comprehensive
-- **What to Check:** If OMIT field used in Section Access, verify it is correctly applied
-- **How to Verify:**
-  - Search Section Access table for OMIT field values
-  - Verify OMIT values exclude only rows that should be hidden (e.g., test regions, confidential dimensions)
-  - Check that OMIT does not accidentally hide legitimate data
-  - Verify OMIT is used only when exclusion is simpler than inclusion (prefer inclusion/positive filtering)
-- **Finding Format:** `[SC-6.5]: OMIT field issue / Severity: Warning / Category: Security / Location: [scripts/section-access.qvs] / Finding: OMIT field [field] values exclude [value], unclear if intentional OR OMIT used instead of explicit inclusion list / Impact: [Unintended data hidden | Security model unclear] / Recommended Fix: [Verify OMIT values are intentional | Consider replacing with explicit inclusion list for clarity]`
+- **Note:** Detailed Section Access mechanics (including OMIT field semantics, exclusion vs inclusion patterns, and field-list scoping) are deferred to a future version of this toolkit. For current Section Access requirements, refer to `help.qlik.com` Cloud Section Access docs: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/Security/manage-security-with-section-access.htm
 
 ---
 
