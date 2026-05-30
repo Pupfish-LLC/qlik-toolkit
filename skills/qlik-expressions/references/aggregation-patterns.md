@@ -93,15 +93,13 @@ NODISTINCT is rare in practice — most use cases want distinct-dimension semant
 
 ## 6. Aggr() with Set Analysis
 
-Two distinct positions for set modifiers. They produce different results:
+Two positions for set modifiers. Both filter the record set the Aggr operation iterates over:
 
-**Set inside the inner aggregation** (most common). The set filters records before the inner aggregation; the dimension iteration is unmodified:
+**Set inside the inner aggregation** (most common, recommended idiom):
 
 ```
 Aggr(Sum({<Status={'Active'}>} [Amount]), [Customer.Key])
 ```
-
-Result: a virtual table with one row per customer in the current selection. Each row's amount is the customer's Active-only total. Customers with no Active amounts still appear in the dimension iteration; their row's amount is NULL (or 0 if the outer aggregation skips NULL — most do).
 
 **Set at the Aggr level** (using the optional SetExpression parameter):
 
@@ -109,9 +107,9 @@ Result: a virtual table with one row per customer in the current selection. Each
 Aggr({<Status={'Active'}>} Sum([Amount]), [Customer.Key])
 ```
 
-Result: the entire Aggr operation evaluates within the Active-only selection. Customers with no Active amounts at all do NOT appear in the dimension iteration — they are filtered out before grouping.
+Per help.qlik.com — Aggr function: "By default, the aggregation function will aggregate over the set of possible records defined by the selection. An alternative set of records can be defined by a set analysis expression." The dimension iteration in either form walks the distinct dimension values present in the post-filter record set — customers with no Active rows do not appear in either virtual table because the filter is applied before grouping.
 
-The subtle difference: inner-set keeps all customers in the dimension axis but produces NULL amounts for inactive ones; outer-set removes those customers from the axis entirely. Pick deliberately based on whether downstream aggregations should "see" the customers with no Active data.
+Prefer the inner-set form as the canonical style. It keeps the set scope visually adjacent to the aggregation it modifies and is the form most readers expect. Reach for the outer-set form only when a single set expression needs to govern multiple inner aggregations consistently, or when matching an existing convention in the codebase.
 
 **Combined with TOTAL on the outer aggregation:**
 
@@ -176,7 +174,7 @@ When the dimension you want depends on an aggregation, pre-build it in the load 
 
 **Calculated dimension inside Aggr.** See Section 7 — silent misbehavior. Pre-build composite fields in the script or pass multiple dimensions to Aggr.
 
-**Set analysis position confusion.** Inner-set vs outer-set produce different virtual tables (Section 6). When debugging "my Aggr returns the wrong subtotal," check whether the set should restrict the dimension axis or only the inner aggregation.
+**Set analysis position.** Inner-set and outer-set positions both filter the record set the Aggr iterates over (Section 6). Prefer the inner-set form as the canonical style; reach for the outer-set SetExpression parameter only when a single set must govern multiple inner aggregations or to match an existing convention.
 
 **Hidden nesting via dollar-sign expansion.** See Section 3 — a SET variable containing an aggregation expands inside another aggregation to invalid nested form. Define wrapper measures that include the Aggr explicitly.
 
