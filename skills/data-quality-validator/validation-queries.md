@@ -142,12 +142,12 @@ RESIDENT [Orders]
 GROUP BY [Customer.Region]
 ORDER BY RegionOrderCount DESC;
 
-// Use preceding LOAD to limit to top 10
+// Use FIRST prefix to limit to top 10 deterministically
+// See: https://help.qlik.com/en-US/sense/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/First.htm
 [_TopRegions]:
-NoConcatenate
-LOAD * WHERE RowNo() <= 10;
-LOAD [Customer.Region], RegionOrderCount
-RESIDENT [_Diag_TopValues];
+FIRST 10 LOAD [Customer.Region], RegionOrderCount
+RESIDENT [_Diag_TopValues]
+ORDER BY RegionOrderCount DESC;
 
 DROP TABLE [_Diag_TopValues];
 
