@@ -10,33 +10,59 @@ When a dimension entity has a one-to-many attribute (a product with multiple cat
 
 ### The Pattern: Bridge Table with Aliased EXISTS and "No Entry" Rows
 
-Bridge tables allow a dimension to participate in multiple relationship combinations while preserving all data.
+A bridge connects a parent entity (e.g., `[Product]`) to a child reference table (e.g., `[Category]`) when one parent can map to many children. The bridge carries **only the foreign keys** — the descriptive attributes live on the child dimension. This is the critical rule: if the bridge also carries `[Category.Label]`, it shares two fields with `[Category]` and Qlik builds a synthetic key. See `anti-patterns.md` § 5 (Multiple Shared Fields).
+
+Three tables participate:
+
+1. **`[Product]`** — parent entity, one row per product, keyed by `product_id`.
+2. **`[Category]`** — child dimension, one row per category, keyed by `[Category.Code]`, carrying `[Category.Label]`.
+3. **`[ProductCategoryBridge]`** — many-to-many link, one row per product/category pair, carrying **only** `product_id` and `[Category.Code]`.
 
 ```qlik
-// 1. Build the bridge from source data
-[_Bridge]:
-LOAD dim_key, code AS [Category.Code], label AS [Category.Label]
-FROM [source.qvd] (qvd);
+// 1. Parent entity (assumed loaded earlier in the script)
+[Product]:
+LOAD product_id, [Product.Name]
+FROM [lib://QVDs/raw_product.qvd] (qvd);
 
-// 2. Create alias lookup for EXISTS
+// 2. Category dimension — owns the descriptive attribute [Category.Label].
+//    Include a 'NONE' sentinel row so products with no category still display
+//    a meaningful label via the dimension join.
+[Category]:
+LOAD DISTINCT code AS [Category.Code], label AS [Category.Label]
+FROM [lib://QVDs/raw_category.qvd] (qvd);
+
+CONCATENATE ([Category])
+LOAD * INLINE [
+    [Category.Code], [Category.Label]
+    NONE, No Entry
+];
+
+// 3. Bridge — carries ONLY the keys. No [Category.Label] here; it lives on [Category].
+[ProductCategoryBridge]:
+LOAD product_id, code AS [Category.Code]
+FROM [lib://QVDs/raw_product_category.qvd] (qvd);
+
+// 4. Aliased EXISTS lookup for products that already have a bridge row.
 [_HasCategory]:
-LOAD DISTINCT dim_key AS _has_category RESIDENT [_Bridge];
+LOAD DISTINCT product_id AS _has_category RESIDENT [ProductCategoryBridge];
 
-// 3. Add 'No Entry' for entities without category data
-CONCATENATE([_Bridge])
+// 5. Add the sentinel ('NONE') bridge row for products with no category,
+//    so they remain visible when the user filters on [Category.Label].
+CONCATENATE ([ProductCategoryBridge])
 LOAD DISTINCT
-    dim_key,
-    Null() AS [Category.Code],
-    'No Entry' AS [Category.Label]
-RESIDENT [Dimension]
-WHERE NOT EXISTS(_has_category, dim_key);
+    product_id,
+    'NONE' AS [Category.Code]
+RESIDENT [Product]
+WHERE NOT EXISTS(_has_category, product_id);
 
 DROP TABLE [_HasCategory];
 ```
 
+Resulting associations: `[Product] —product_id— [ProductCategoryBridge] —[Category.Code]— [Category]`. Each association shares exactly one field — no synthetic key. (See `qlik-data-modeling` § 1, The One-Key Rule.)
+
 ### Why Aliased EXISTS?
 
-The EXISTS function checks the **entire symbol space** (all tables with that field name). Without aliasing the lookup field (`_has_category`), an EXISTS on `dim_key` would incorrectly check dimensions already in memory, creating cross-contamination.
+The EXISTS function checks the **entire symbol space** (all tables with that field name). Without aliasing the lookup field (`_has_category`), an EXISTS on `product_id` would incorrectly check every table holding `product_id` — including `[Product]` itself — and skip every row, defeating the "No Entry" insertion.
 
 **The aliasing pattern is critical:** Load the distinct keys to a temp table with an alias, use the alias in the EXISTS check, then drop the temp. This ensures EXISTS checks only the specific values you need.
 
