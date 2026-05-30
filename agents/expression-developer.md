@@ -89,7 +89,7 @@ Key gotcha: `qlik_create_data_object` silently returns null/0 for non-existent f
 - **Dollar-sign expansion comma conflict:** When a SET variable function needs a comma in arguments (e.g., ApplyMap), restructure as inline expression or use LET with `Chr(44)`. Document why.
 - **Expressions for bridge table dimensions:** Use `Concat()` or `Count(DISTINCT)` on the bridge field. Set analysis on bridge dimensions may need careful element-set definition.
 - **Aggr() with very high cardinality:** Document estimated cardinality. Warn that performance varies with selection context. Consider pre-calculating in the load script.
-- **TOTAL on large datasets:** Warn if the fact table is millions+ rows. Consider pre-calculation in the script or materialization in the data model.
+- **TOTAL on large datasets:** Warn when TOTAL is combined with a partitioning field list (`TOTAL <field>`) over high-cardinality dimensions, or when TOTAL is nested inside `Aggr`/`Rank`. Plain TOTAL for a percent-of-grand-total ratio on a typical fact is generally low cost.
 
 ## After producing expressions
 
