@@ -32,6 +32,8 @@ Qlik does not publish official thresholds for "this app is too big" or "this rel
 
 Avoid framing reload thresholds in absolute minutes — the right number depends on whether the refresh SLA is "near-real-time" (minutes), "intraday" (hours), or "overnight" (multi-hour window). A 30-minute reload is fine overnight, problematic hourly.
 
+Note on Cloud scheduling cadence: Qlik Cloud's built-in reload scheduler operates on hour-or-coarser cadences. Sub-hour refresh requires Qlik Automations or external orchestration; factor that operational cost into "near-real-time" decisions.
+
 Investigate field-level and script-load optimization before splitting. Architecture changes carry operational cost; spend it deliberately.
 
 Structural mechanics for each pattern — generator/consumer contracts, four-layer contracts, binary load syntax — live in `qlik-data-modeling` → `references/multi-app-architecture.md`. This section covers WHEN to split based on performance signals; that file covers HOW the patterns work.
@@ -55,7 +57,7 @@ Practical implications:
 - A 4-digit code stored as a string has higher per-distinct-value symbol-table cost than the same code stored as an integer. The fact-table pointer cost is the same in both cases (driven by cardinality, not type).
 - For HIGH-CARDINALITY fields in LARGE fact tables, the pointer-bit savings can still matter: lower cardinality means fewer bits per pointer (e.g., 10K distinct values = 14 bits/row; 1M distinct = 20 bits/row).
 
-Reference for the symbol-table / bit-stuffed-pointer concept: Henric Cronström, "Symbol Tables and Bit-Stuffed Pointers," Qlik Design Blog.
+Reference for the symbol-table / bit-stuffed-pointer concept: Henric Cronström, "Symbol Tables and Bit-Stuffed Pointers," Qlik Design Blog. https://community.qlik.com/t5/Design/Symbol-Tables-and-Bit-Stuffed-Pointers/ba-p/1475369
 
 **Strategy:** Load dates as plain integers (days since epoch) and format for display in chart expressions. The key is to strip the textual representation at load time — `Date()` returns a dual (text + numeric), so using it here would carry the textual side into the symbol table, defeating the goal. Use `Floor()` (or `Num(Floor(...))`) on a numeric date, or `Floor(Date#(date_field, 'YYYY-MM-DD'))` if the source is text:
 ```qlik
@@ -138,7 +140,7 @@ LOAD order_id, product_id, customer_id, amount,
 FROM [db_export.csv];
 ```
 
-Removing 30 unused fields may reduce memory footprint by 10-30% depending on data types and cardinality.
+Memory impact depends on the cardinality and width of the specific fields dropped, not their count. Dropping a single high-cardinality wide string column may save more than dropping 20 low-cardinality numeric columns. Profile with App Analyzer (Section 7.A) to identify which fields actually dominate the model footprint.
 
 ### E. Table Normalization vs. Denormalization
 
@@ -300,9 +302,9 @@ When documenting expressions in a catalog or reviewing performance, use a coarse
 
 | Weight | Typical Pattern | Why |
 |---|---|---|
-| **Low** | Simple Sum/Count/Avg over indexed fields; field references; basic set modifiers on small fact tables | Single-pass aggregation; engine evaluates in tens of milliseconds for typical sizes |
+| **Low** | Simple Sum/Count/Avg over a single fact-table field; basic set modifiers on small fact tables | Single-pass aggregation; engine evaluates in tens of milliseconds for typical sizes |
 | **Medium** | Set analysis with multiple modifiers; Count(DISTINCT) on high-cardinality fields; If() with simple branches; non-nested Aggr on low/medium-cardinality dimensions | Multiple passes or modifier evaluation; usually acceptable for interactive use |
-| **High** | Nested Aggr; Aggr over high-cardinality dimensions; complex string operations at query time; Rank/RankMin/Top-N inside Aggr; recursive expressions | Virtual tables, repeated aggregation passes, or string work that should ideally be precomputed in the load script |
+| **High** | Nested Aggr; Aggr over high-cardinality dimensions; Aggr with a calculated/expression dimension instead of a model field (forces per-row re-evaluation and breaks dimensional caching — see `qlik-expressions` § 4 for the correctness side); complex string operations at query time; Rank/RankMin/Top-N inside Aggr; recursive expressions | Virtual tables, repeated aggregation passes, or string work that should ideally be precomputed in the load script |
 
 Label every catalog entry. High-weight expressions are the first place to look when sheet response time degrades, and the first candidates for pre-calculation in the load script or for calculation conditions that gate their evaluation.
 
@@ -315,6 +317,12 @@ For the set-analysis-vs-flag-multiplication comparison referenced by Medium- and
 ## 5. Calculation Conditions
 
 Calculation conditions prevent expensive expression evaluation when the context doesn't support the calculation. Pair every condition with a message variable explaining why the calculation is suppressed.
+
+**Two mechanisms — pick deliberately:**
+- **Object-property calculation condition** (set on the object itself, e.g., chart property "Calculation condition"): when the condition is false, the engine skips expression evaluation entirely and displays the calculation-condition message. Best for heavy expressions where the goal is to avoid any work — the engine never reaches the measure.
+- **In-expression IF() guard** (e.g., `IF(<test>, <heavy-expression>, Null())`): the engine still evaluates the condition test for every cell context, and the test's `else` branch (often `Null()` or a fallback string) is computed per cell. Useful when the message must vary by cell, when a partial result is desired in the false branch, or when the condition depends on per-cell state. Lower setup cost; higher per-cell evaluation cost than the object property.
+
+Prefer the object-property condition when the entire object should be suppressed; prefer the in-expression guard when only a single measure needs gating or the false-branch output must vary.
 
 ### A. When to Use Calculation Conditions
 
@@ -412,11 +420,19 @@ Qlik Cloud provides "Application performance evaluation" (sometimes called the A
 
 **What it does NOT do:** It reports at sheet and object level, not at individual-expression level. To attribute slowness to a specific expression, use the object-level breakdown combined with knowledge of which expressions back which objects.
 
-**Usage:** Run the evaluation after representative reload + interaction. Target sheets and objects with load time >1s, then identify the contributing expression(s) for optimization.
+**Usage:** Run the evaluation after representative reload + interaction. Target sheets and objects that exceed the App Performance Evaluator's configured response-time threshold (default several seconds; configurable to a stricter target like 1s for interactive analytics), then identify the contributing expression(s) for optimization.
 
 Reference: https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Apps/app-performance-evaluation.htm
 
-### C. TRACE-Based Timing
+### C. Reload Analyzer and Catalog & Lineage
+
+For per-app and per-task reload duration history, use the qlik-oss Reload Analyzer — another community-built monitoring app in the same `qlik-oss/qlik-cloud-monitoring-apps` repo as App Analyzer. It is the practical tool for spotting reload-time regressions across days/weeks and identifying which task or app is trending slower.
+
+For cross-app QVD dependency tracing — "which consumer apps load this generator's QVD?" — use Qlik Cloud's built-in Catalog & Lineage views. These help identify which downstream apps will be affected before changing a generator's output width or schema.
+
+Reference: https://github.com/qlik-oss/qlik-cloud-monitoring-apps
+
+### D. TRACE-Based Timing
 
 Add markers at major phases:
 ```qlik
@@ -431,7 +447,7 @@ TRACE === TRANSFORM: Completed. Rows: $(=NoOfRows('Filtered.Orders')) ===;
 
 Review TRACE output in reload log. Phases consuming >5% of reload time are optimization targets.
 
-### D. Row Count Logging
+### E. Row Count Logging
 
 Log row counts to understand data reduction:
 ```qlik
