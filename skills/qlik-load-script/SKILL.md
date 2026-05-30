@@ -337,7 +337,14 @@ Full reference: `references/error-handling.md` (TRACE semicolon trap, ScriptErro
 
 ## 14. NoConcatenate and Auto-Concatenation
 
-When a new LOAD produces a field set identical to an existing table's (same names AND same count), Qlik silently concatenates the rows into the existing table — the new table name is never registered. The same rule applies to `LOAD * INLINE` blocks with matching columns and to RESIDENT loads that mirror their source. The basic NoConcatenate pattern, the INLINE auto-concat trap, the explicit `CONCATENATE([TargetTable])` prefix (which forces concatenation even when field sets differ), and the QVD-specific application live in `references/sql-constructs.md` Section 2.1 and `references/qvd-operations.md` (NoConcatenate Around QVD Loads, Multi-QVD Concatenation).
+Two distinct outcomes when a new LOAD shares field names with an existing table:
+
+- **Full match (same names AND same field count) → silent auto-concatenation.** The new rows are appended into the existing table and the new table name is never registered: `NoOfRows('NewTable')` returns NULL and `DROP TABLE [NewTable]` fails. The same rule applies to `LOAD * INLINE` blocks with matching columns and to RESIDENT loads that mirror their source.
+- **Partial overlap (some shared names but different field count) → NOT auto-concatenated.** Qlik keeps the tables separate and emits a "tables ... cannot be concatenated implicitly" warning. The shared field names then create unintended associations: a single shared field links the tables (often surprising the developer), and two or more shared fields generate a `$Syn` synthetic key. See `qlik-data-modeling` for synthetic-key resolution.
+
+The basic NoConcatenate pattern, the INLINE auto-concat trap, the explicit `CONCATENATE([TargetTable])` prefix (which forces concatenation even when field sets differ), and the QVD-specific application live in `references/sql-constructs.md` Section 2.1 and `references/qvd-operations.md` (NoConcatenate Around QVD Loads, Multi-QVD Concatenation).
+
+Reference: help.qlik.com Cloud — [Concatenate](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/Concatenate.htm) and [NoConcatenate](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/NoConcatenate.htm).
 
 **Mapping LOAD tables are invisible to meta-functions.** Tables created via `Mapping LOAD` are consumed at `ApplyMap()` time and do not persist as named tables in the data model. `NoOfRows('MappingTableName')`, `FieldValueCount()`, `FieldName()`, and all other table/field meta-functions return null or -1 for Mapping tables. Validate indirectly by checking the row count of the downstream table that consumes the mapping (e.g., if the target table loads 0 rows, the mapping was likely empty or misconfigured).
 

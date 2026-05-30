@@ -71,7 +71,9 @@ These five patterns are the next most common sources of reload failures and sile
 
 ### 2.1 NoConcatenate on auto-concatenation risk
 
-When a new `LOAD` produces a field set that matches an existing table exactly (same names AND same field count), Qlik silently concatenates the new rows into the existing table. The new table name is never registered: `NoOfRows('NewTable')` returns NULL, and `DROP TABLE [NewTable]` fails.
+Two distinct outcomes when a new `LOAD` shares field names with an existing table — only one of them is auto-concatenation:
+
+**(1) Full match (same names AND same field count) → silent auto-concatenation.** Qlik appends the new rows into the existing table and never registers the new table name. `NoOfRows('NewTable')` returns NULL, and `DROP TABLE [NewTable]` fails.
 
 Always use `NoConcatenate` on temp tables that dedup, filter, or pivot existing data:
 
@@ -81,11 +83,13 @@ Always use `NoConcatenate` on temp tables that dedup, filter, or pivot existing 
 DROP TABLE [_TempA];
 ```
 
-`INLINE` LOADs trigger the same rule: two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The typical symptom is a later `RESIDENT [SecondTable]` failing with "table not found." Fix by adding a discriminator column or by prefixing with `NoConcatenate`.
+`INLINE` LOADs trigger the same full-match rule: two `LOAD * INLINE` blocks with identical column structures auto-concatenate even though they look visually distinct in source. The typical symptom is a later `RESIDENT [SecondTable]` failing with "table not found." Fix by adding a discriminator column or by prefixing with `NoConcatenate`.
 
-Mapping tables are exempt from this rule (they are consumed at `ApplyMap()` time and don't appear in the data model).
+**(2) Partial overlap (some shared names but different field count) → NOT auto-concatenated.** Qlik keeps the two tables separate and emits a "tables ... cannot be concatenated implicitly" warning. The shared field names then create unintended associations between the two tables in the data model: a single shared field links them (often surprising the developer), and two or more shared fields generate a `$Syn` synthetic key. The fix is either to alias the overlapping non-key fields with `AS` so the names don't collide, to force concatenation with the explicit `CONCATENATE([TargetTable])` prefix (which fills the missing fields with NULL in the target), or to redesign the model — see `qlik-data-modeling` for synthetic-key resolution.
 
-Reference: help.qlik.com Cloud — Concatenate / NoConcatenate statements.
+Mapping tables are exempt from both rules (they are consumed at `ApplyMap()` time and don't appear in the data model).
+
+Reference: help.qlik.com Cloud — [Concatenate](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/Concatenate.htm) and [NoConcatenate](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptPrefixes/NoConcatenate.htm).
 
 ### 2.2 Count() requires an explicit expression — no `Count(*)`
 
