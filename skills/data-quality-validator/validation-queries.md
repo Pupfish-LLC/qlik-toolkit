@@ -230,14 +230,8 @@ SET vExpectedOrders = 2500000;
 LET vActualCustomers = NoOfRows('Customers');
 LET vActualOrders = NoOfRows('Orders');
 
-// Create validation summary table
+// Create validation summary table with the first row inline
 [_RowCountValidation]:
-LOAD * INLINE [
-    TableName, ExpectedRows, ActualRows, RowCountStatus
-];
-
-// Populate with row count results
-CONCATENATE([_RowCountValidation])
 LOAD
     'Customers' AS TableName,
     $(vExpectedCustomers) AS ExpectedRows,
@@ -245,6 +239,7 @@ LOAD
     IF($(vActualCustomers) >= $(vExpectedCustomers) * 0.9 AND $(vActualCustomers) <= $(vExpectedCustomers) * 1.1, 'PASS', 'WARN') AS RowCountStatus
 AUTOGENERATE 1;
 
+// Append additional row count results
 CONCATENATE([_RowCountValidation])
 LOAD
     'Orders' AS TableName,
