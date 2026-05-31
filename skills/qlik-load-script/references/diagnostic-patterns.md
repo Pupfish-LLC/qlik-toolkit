@@ -110,13 +110,29 @@ SUB LogLoadCount(vLogTable, vLogOperation)
     LET vLogRows = NoOfRows('$(vLogTable)');
     LET vLogTime = Timestamp(Now(), 'YYYY-MM-DD hh:mm:ss');
 
+    // Apostrophe-safety: build the row via bracketed INLINE LOAD (with
+    // a `|` delimiter), then CONCATENATE-LOAD RESIDENT into _LoadLog.
+    // The previous AUTOGENERATE form
+    //   '$(vLogOperation)' AS Operation, ...
+    // expands the variable INSIDE a single-quoted string literal, so an
+    // apostrophe in vLogOperation (or any caller-supplied string field)
+    // breaks the parse before the LOAD executes. See
+    // `error-handling.md` "Dollar-Sign Apostrophe-Expansion Trap" for
+    // the class-level recipe. NoConcatenate forces _LogRow standalone —
+    // without it the matching 4-field schema silently auto-merges into
+    // _LoadLog and the subsequent DROP TABLE fails.
+    [_LogRow]:
+    NoConcatenate
+    LOAD * INLINE [
+    LogTimestamp|TableName|Operation|RowCount
+    $(vLogTime)|$(vLogTable)|$(vLogOperation)|$(vLogRows)
+    ] (delimiter is '|');
+
     CONCATENATE([_LoadLog])
-    LOAD
-        '$(vLogTime)'       AS LogTimestamp,
-        '$(vLogTable)'      AS TableName,
-        '$(vLogOperation)'  AS Operation,
-        $(vLogRows)          AS RowCount
-    AUTOGENERATE 1;
+    LOAD LogTimestamp, TableName, Operation, RowCount
+    RESIDENT [_LogRow];
+
+    DROP TABLE [_LogRow];
 
     TRACE [LOG] $(vLogTable) | $(vLogOperation) | $(vLogRows) rows;
 END SUB
@@ -296,13 +312,29 @@ IF ScriptErrorCount > 0 THEN
     TRACE [CRITICAL] Last error: $(vLastError);
     // ScriptErrorList contains all errors separated by line feeds
 
-    // Create error log table for post-reload inspection
+    // Apostrophe-safety: vLastError is ScriptError text, which from
+    // databases routinely contains apostrophes (e.g., "Can't connect").
+    // The previous form
+    //   '$(vLastError)' AS LastError
+    // expanded the apostrophe into a single-quoted string literal,
+    // breaking the LOAD parse inside the error-capture block itself.
+    // FIX: route the value through a bracketed INLINE LOAD with `|`
+    // delimiter, then CONCATENATE-LOAD RESIDENT into _ErrorLog. See
+    // `error-handling.md` "Dollar-Sign Apostrophe-Expansion Trap".
+    LET vErrorTimestamp = Timestamp(Now(), 'YYYY-MM-DD hh:mm:ss');
+    [_ErrorLogRow]:
+    NoConcatenate
+    LOAD * INLINE [
+    ErrorTimestamp|ErrorCount|LastError
+    $(vErrorTimestamp)|$(vErrorCount)|$(vLastError)
+    ] (delimiter is '|');
+
     [_ErrorLog]:
-    LOAD
-        Timestamp(Now(), 'YYYY-MM-DD hh:mm:ss') AS ErrorTimestamp,
-        '$(vErrorCount)' AS ErrorCount,
-        '$(vLastError)' AS LastError
-    AUTOGENERATE 1;
+    NoConcatenate
+    LOAD ErrorTimestamp, ErrorCount, LastError
+    RESIDENT [_ErrorLogRow];
+
+    DROP TABLE [_ErrorLogRow];
 
     STORE [_ErrorLog] INTO [lib://QVDs/Diagnostics/ErrorLog.qvd] (qvd);
     DROP TABLE [_ErrorLog];

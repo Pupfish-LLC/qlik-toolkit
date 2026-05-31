@@ -64,6 +64,20 @@ END IF
 
 Concatenated list of all errors, line-feed separated. Use for logging at end-of-reload summary.
 
+## Dollar-Sign Apostrophe-Expansion Trap
+
+Dollar-sign expansion happens **before** the script statement is parsed (help.qlik.com: "The replacement is made just before the script statement or the expression is evaluated" — [Use of variables in the script](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/use-variables-in-script.htm)). Embedding `$(varname)` inside a single-quoted string literal — the common `'$(varname)' AS Field` or `'$(varname)'` CALL-argument shape — produces broken script when the variable's value contains an apostrophe: the expanded text terminates the literal early and the parser fails.
+
+This trap routinely surfaces in error logging because `ScriptError` text from databases contains apostrophes (e.g., `"Can't open file"`), the variable lands inside a literal that the LET or CALL or LOAD then fails to parse, and the failure happens inside the very subroutine designed to capture errors.
+
+**Canonical fixes:**
+
+- **Inside LOAD (bracketed INLINE LOAD).** Replace `'$(varname)' AS Field AUTOGENERATE 1` with a bracketed INLINE LOAD using a delimiter that is uncommon in the data (`|` is conventional). Inside the bracketed block, expanded text is data — apostrophes are literal characters, not string-literal delimiters. CONCATENATE-LOAD RESIDENT into the target log table afterwards. Use `NoConcatenate` on the temp row so a matching-schema target does not auto-merge it ([qlik-load-script § 14](../SKILL.md#14-noconcatenate-and-auto-concatenation)). The fix lives in `script-templates/error-handling.qvs` at `SUB LogMessage` — read it before applying the pattern elsewhere.
+- **Inside CALL (bare variable reference).** Replace `CALL Sub('$(varname)')` with `CALL Sub(varname)`. Qlik passes the variable's value to the SUB without re-expanding into a single-quoted literal, so apostrophes survive (help.qlik.com: [Sub statement](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Scripting/ScriptControlStatements/Sub.htm) — variable arguments have copy-out semantics). Static labels like `'CRITICAL'` stay as plain literals.
+- **Inside LET (route through INLINE LOAD + Peek).** Replace `LET vOut = 'prefix: ' & '$(vIn)' & ...;` with a bracketed INLINE LOAD that builds the assembled string inside an AS-expression (data values flow in as fields, prefixes stay as parsed literals), then `Peek` the result into `vOut`. `Chr(39) & vVar & Chr(39)` is occasionally workable in expression contexts but does not solve the upstream `$(...)` expansion-into-literal problem; prefer the INLINE LOAD route.
+
+**Residual limits.** The bracketed INLINE LOAD pattern fails when the variable value contains `]` (closes the bracket early), the chosen delimiter, or a newline. These are uncommon in caller-supplied phase tags and database error text but possible in arbitrary external strings. Document the assumption near the SUB and ask callers to pre-substitute risky characters if their inputs may include them. Worked examples and the verified mechanism are in `script-templates/error-handling.qvs` (`SUB LogMessage`, `SUB CheckError`).
+
 ## ErrorMode — Halt vs Continue
 
 `SET ErrorMode = 1;` is the default in Qlik Sense and Qlik Cloud.
